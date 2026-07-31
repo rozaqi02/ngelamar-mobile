@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# File APK hasil build - terlalu besar untuk di-push ke GitHub (>50 MB)
+*.apk
+*.aab
+/build/app/outputs/
