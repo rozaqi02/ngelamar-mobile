@@ -26,5 +26,23 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
       expect(SalaryEvaluatorService.formatRupiah(-500000), equals('-Rp 500.000'));
       expect(SalaryEvaluatorService.formatRupiah(0), equals('Rp 0'));
     });
+
+    test('Should parse salary amount string correctly', () {
+      expect(SalaryEvaluatorService.parseSalaryAmount('Rp 12.000.000'), equals(12000000.0));
+      expect(SalaryEvaluatorService.parseSalaryAmount('15 jt'), equals(15000000.0));
+      expect(SalaryEvaluatorService.parseSalaryAmount(''), equals(0.0));
+    });
+
+    test('Should evaluate salary against UMR correctly', () {
+      final eval = SalaryEvaluatorService.evaluateSalary(
+        grossSalary: 10000000,
+        city: 'Jakarta',
+        workType: 'WFO',
+        needsKos: true,
+      );
+      expect(eval.grossSalary, equals(10000000.0));
+      expect(eval.city, equals('Jakarta'));
+      expect(eval.estimatedNetTakeHomePay, greaterThan(0));
+    });
   });
 }

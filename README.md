@@ -1,6 +1,6 @@
-# Ngelamar App (v1.7.0)
+# Ngelamar App (v1.7.3)
 
-Aplikasi Personal Career CRM dan Penglacak Lamaran Kerja dengan Desain Liquid Glass Apple iOS 26 & AI Career Flight Deck.
+Aplikasi Personal Career CRM dan Pelacak Lamaran Kerja dengan Desain Liquid Glass Apple iOS 26, navbar dinamis Apple HIG, dan Hub Persiapan Karir untuk fresh graduate.
 
 Dikembangkan oleh **idka-solutions team**.
 
@@ -18,23 +18,53 @@ Dikembangkan oleh **idka-solutions team**.
    - Scoring AI Readiness Index (0-100%) secara real-time.
    - Rekomendasi otomatis aksi karir (Follow-Up HRD, Evaluator Gaji UMR, Persiapan Interview).
    - Ekspor Laporan Eksekutif Progres Karir 1-tap ke WhatsApp atau Catatan.
+   - Perbandingan Penawaran Berdampingan (Side-by-Side Offer Comparison Sheet) jika memiliki 2+ status Offering.
 
-3. **Dashboard & Ringkasan Progres**
+3. **Notifikasi Lokal & Pengingat Interview**
+   - Pengingat otomatis jadwal interview via notifikasi lokal HP.
+   - Deteksi otomatis lamaran duplikat saat paste atau pengisian form.
+
+4. **AppleToast v2 Floating Dynamic Capsule**
+   - Notifikasi kapsul melayang di bagian bawah layar di atas navbar.
+   - Mendukung sistem antrian pesan statis untuk mencegah penumpukan toast.
+   - Dilengkapi tombol aksi interaktif (misal: "Lihat", "Kirim WA").
+
+5. **Dashboard & Ringkasan Progres**
    - Salam pembuka dinamis sesuai waktu lokal dan nama pengguna.
    - Ringkasan statistik lamaran aktif (Total, Dikirim, Interview & Tes, Offering).
    - Indikator Response Rate HRD dalam bentuk persentase.
    - Smart Auto-Fill CTA untuk mengisi form otomatis dari teks loker.
+   - Dialog opsional untuk memuat contoh data lamaran saat pertama kali digunakan.
 
-4. **Manajemen Lamaran Kerja Overhauled**
+6. **Manajemen Lamaran Kerja Overhauled**
    - Pinned Cupertino Search Header dengan filter teks langsung.
    - Monogram Avatar Perusahaan otomatis dengan gradien dinamis.
    - Consolidated Apple Pill Status & Quick Filter Bar.
    - Grouped Card layout dengan indikator status dot dan badge lokasi/tipe kerja.
 
-5. **Detail Lamaran & Cheat-Sheet Interview**
+7. **Detail Lamaran, Skill Gap Checklist & Cheat-Sheet Interview**
    - Informasi detail status, tanggal melamar, tipe kerja, lokasi, sumber loker, dan ekspektasi gaji.
+   - Interactive Skill Gap Checklist untuk persiapan interview.
    - Cheat-Sheet Interview & Follow-Up Generator ke HRD.
    - Evaluator Gaji & UMR Kota.
+
+---
+
+## Privasi & Keamanan Data
+
+- **100% Lokal:** Seluruh data lamaran kerja tersimpan secara aman di dalam penyimpanan lokal perangkat Anda (Hive Local Database).
+- **Tanpa Akun:** Tidak memerlukan registrasi, login, atau pembuatan akun.
+- **Tanpa Server Luar:** Data Anda tidak pernah dikirim ke server pihak ketiga manapun.
+
+---
+
+## Cara Menginstall File APK (`Ngelamar.apk`)
+
+1. Unduh file `Ngelamar.apk` yang berada di root repository ini ke perangkat Android Anda.
+2. Buka file `Ngelamar.apk` melalui Pengelola File (File Manager).
+3. Jika muncul peringatan keamanan, aktifkan opsi **"Izin dari sumber ini"** atau **"Install aplikasi dari sumber tidak dikenal"** di Pengaturan HP Anda.
+4. Tekan **Install** dan tunggu hingga proses selesai.
+5. Aplikasi **Ngelamar** siap digunakan!
 
 ---
 
@@ -44,11 +74,12 @@ Dikembangkan oleh **idka-solutions team**.
 - **State Management:** Flutter Riverpod
 - **Local Database:** Hive / Hive Flutter
 - **Penyimpanan Preferensi:** SharedPreferences
+- **Notifikasi Lokal:** Flutter Local Notifications
 - **Desain UI/UX:** Apple iOS 26 Liquid Glass Design System
 
 ---
 
-## Langkah Menjalankan Aplikasi
+## Langkah Menjalankan Aplikasi (Developer)
 
 1. Pastikan Flutter SDK telah terinstall di komputer Anda.
 2. Clone repository ini:

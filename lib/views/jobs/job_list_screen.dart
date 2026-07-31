@@ -7,8 +7,10 @@ import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/apple_inline_badge.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
+import '../prep/fresh_grad_prep_screen.dart';
 
 /// Overhauled Apple iOS 18 JobListScreen layout.
 /// Features iOS native search header, company monogram avatar badges,
@@ -246,13 +248,48 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         ),
                       ),
                     ),
-                    // Top-Right Actions (Reset + Add Button)
+                    // Top-Right Actions (Reset + Offer Comparison + Add Button)
                     Positioned(
                       right: 16,
                       bottom: 12,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (state.offeringCount >= 2) ...[
+                            GestureDetector(
+                              onTap: () {
+                                AppleSheetWindow.showAppleModalSheet(
+                                  context: context,
+                                  child: const FreshGradPrepScreen(),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.systemPurple
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(CupertinoIcons.gift_fill,
+                                        color: AppTheme.systemPurple, size: 13),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Bandingkan',
+                                      style: TextStyle(
+                                        color: AppTheme.systemPurple,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           if (hasActiveFilter) ...[
                             GestureDetector(
                               onTap: () {
@@ -489,12 +526,13 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         job.interviewDate!.isAfter(DateTime.now()) &&
         job.interviewDate!.difference(DateTime.now()).inDays <= 3;
 
-    return AppleBouncyCard(
-      onTap: () => AppleSheetWindow.showAppleModalSheet(
-        context: context,
-        child: JobDetailScreen(job: job),
-      ),
-      child: Container(
+    return RepaintBoundary(
+      child: AppleBouncyCard(
+        onTap: () => AppleSheetWindow.showAppleModalSheet(
+          context: context,
+          child: JobDetailScreen(job: job),
+        ),
+        child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: surf,
@@ -648,22 +686,20 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
               // Bottom Row: WorkType & Location badges + Favorite toggle + Date
               Row(
                 children: [
-                  _inlineBadge(
-                    context,
-                    job.workType == 'WFH'
+                  AppleInlineBadge(
+                    icon: job.workType == 'WFH'
                         ? CupertinoIcons.house_fill
                         : CupertinoIcons.briefcase_fill,
-                    job.workType,
+                    label: job.workType,
                     color: job.workType == 'WFH'
                         ? AppTheme.systemGreen
                         : txtTer,
                   ),
                   if (job.location != null) ...[
                     const SizedBox(width: 10),
-                    _inlineBadge(
-                      context,
-                      CupertinoIcons.location_fill,
-                      job.location!,
+                    AppleInlineBadge(
+                      icon: CupertinoIcons.location_fill,
+                      label: job.location!,
                       color: txtTer,
                     ),
                   ],
@@ -704,27 +740,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _inlineBadge(BuildContext context, IconData icon, String label,
-      {required Color color}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppTheme.getTextSecondary(context),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
+
 
   // Apple Contextual Empty State
   Widget _buildEmptyState(String category) {

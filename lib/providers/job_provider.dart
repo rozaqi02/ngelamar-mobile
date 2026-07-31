@@ -90,14 +90,6 @@ class JobNotifier extends StateNotifier<JobState> {
 
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
-    if (loaded.isEmpty) {
-      final samples = _generateSampleJobs();
-      for (var s in samples) {
-        await box.put(s.id, s.toJson());
-        loaded.add(s);
-      }
-    }
-
     // Load user prefs
     final name  = await PrefsService.getUserName() ?? '';
     final theme = await PrefsService.getThemeMode();
@@ -108,6 +100,17 @@ class JobNotifier extends StateNotifier<JobState> {
       userName: name,
       isDarkMode: theme == 'dark',
     );
+  }
+
+  Future<void> loadSampleJobs() async {
+    final box = Hive.box<String>(_boxName);
+    final samples = _generateSampleJobs();
+    for (var s in samples) {
+      await box.put(s.id, s.toJson());
+    }
+    final updatedJobs = [...samples, ...state.jobs];
+    updatedJobs.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
+    state = state.copyWith(jobs: updatedJobs);
   }
 
   Future<void> addJob(JobApplication job) async {

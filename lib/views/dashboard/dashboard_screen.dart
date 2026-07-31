@@ -7,9 +7,10 @@ import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/apple_inline_badge.dart';
 import '../jobs/job_detail_screen.dart';
 import '../jobs/add_edit_job_screen.dart';
-import '../flight_deck/career_flight_deck_screen.dart';
+import '../prep/fresh_grad_prep_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -174,8 +175,8 @@ class DashboardScreen extends ConsumerWidget {
                       _buildResponseRateBanner(context, state),
                       const SizedBox(height: 14),
 
-                      // Exclusive Feature: Career Flight Deck CTA
-                      _buildCareerFlightDeckCTA(context, state),
+                      // Fresh Grad Prep Hub CTA
+                      _buildPrepHubCTA(context),
                       const SizedBox(height: 28),
 
                       _sectionTitle(context, 'Ringkasan Lamaran'),
@@ -314,17 +315,17 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildCareerFlightDeckCTA(BuildContext context, JobState state) {
+  Widget _buildPrepHubCTA(BuildContext context) {
     final isDark = AppTheme.isDark(context);
     final surf = AppTheme.getSurface(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
-    final purple = isDark ? AppTheme.systemPurple : AppTheme.lSystemPurple;
+    final blue = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
 
     return AppleBouncyCard(
       onTap: () => AppleSheetWindow.showAppleModalSheet(
         context: context,
-        child: const CareerFlightDeckScreen(),
+        child: const FreshGradPrepScreen(),
       ),
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -332,7 +333,7 @@ class DashboardScreen extends ConsumerWidget {
           color: surf,
           borderRadius: BorderRadius.circular(AppTheme.radiusCard),
           border: Border.all(
-            color: purple.withValues(alpha: 0.35),
+            color: blue.withValues(alpha: 0.35),
             width: AppTheme.borderHairline,
           ),
           boxShadow: [
@@ -349,10 +350,10 @@ class DashboardScreen extends ConsumerWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: purple.withValues(alpha: 0.14),
+                color: blue.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               ),
-              child: Icon(CupertinoIcons.sparkles, color: purple, size: 20),
+              child: Icon(CupertinoIcons.doc_checkmark_fill, color: blue, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -362,7 +363,7 @@ class DashboardScreen extends ConsumerWidget {
                   Row(
                     children: [
                       Text(
-                        'Career Flight Deck',
+                        'Persiapan Karir Fresh Grad',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -374,13 +375,13 @@ class DashboardScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: purple.withValues(alpha: 0.15),
+                          color: blue.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'UNGGULAN',
+                          'PANDUAN',
                           style: TextStyle(
-                            color: purple,
+                            color: blue,
                             fontWeight: FontWeight.w700,
                             fontSize: 9,
                           ),
@@ -390,7 +391,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Analisis AI readiness index & pusat kendali karir',
+                    'Checklist berkas, estimator gaji UMR & panduan interview',
                     style: TextStyle(color: txtSec, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -591,12 +592,13 @@ class DashboardScreen extends ConsumerWidget {
     final txtSec = AppTheme.getTextSecondary(context);
     final txtTer = AppTheme.getTextTertiary(context);
 
-    return AppleBouncyCard(
-      onTap: () => AppleSheetWindow.showAppleModalSheet(
-        context: context,
-        child: JobDetailScreen(job: job),
-      ),
-      child: Container(
+    return RepaintBoundary(
+      child: AppleBouncyCard(
+        onTap: () => AppleSheetWindow.showAppleModalSheet(
+          context: context,
+          child: JobDetailScreen(job: job),
+        ),
+        child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: surf,
@@ -667,10 +669,10 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  _pillInfo(context, CupertinoIcons.briefcase, job.workType),
+                  AppleInlineBadge(icon: CupertinoIcons.briefcase, label: job.workType),
                   if (job.location != null) ...[
                     const SizedBox(width: 10),
-                    _pillInfo(context, CupertinoIcons.location, job.location!),
+                    AppleInlineBadge(icon: CupertinoIcons.location, label: job.location!),
                   ],
                   const Spacer(),
                   GestureDetector(
@@ -700,22 +702,11 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _pillInfo(BuildContext context, IconData icon, String label) {
-    final txtTer = AppTheme.getTextTertiary(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11, color: txtTer),
-        const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-                color: txtTer, fontSize: 11)),
-      ],
-    );
-  }
+
 
   Widget _buildEmptyState(BuildContext context) {
     final isDark = AppTheme.isDark(context);

@@ -240,6 +240,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await ref.read(jobProvider.notifier).setUserName(name);
     await PrefsService.setOnboardingDone();
     if (!mounted) return;
+
+    final shouldLoadSamples = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Muat contoh data lamaran?'),
+        content: const Text(
+            'Anda dapat memuat contoh lamaran pekerjaan untuk mencoba fitur Ngelamar, atau mulai dengan daftar kosong.'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Tidak, Mulai Kosong'),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Muat Contoh'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLoadSamples == true) {
+      await ref.read(jobProvider.notifier).loadSampleJobs();
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),

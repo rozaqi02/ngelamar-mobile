@@ -7,10 +7,27 @@ import '../providers/job_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'jobs/job_list_screen.dart';
 import 'settings/settings_screen.dart';
+import 'prep/fresh_grad_prep_screen.dart';
+
+// Data model tiap item navbar
+class _NavItem {
+  final IconData activeIcon;
+  final IconData inactiveIcon;
+  final String label;
+
+  const _NavItem({
+    required this.activeIcon,
+    required this.inactiveIcon,
+    required this.label,
+  });
+}
 
 /// Apple iOS 26 Liquid Glass Dynamic Capsule Navigation Bar.
-/// Features dual-layer glassmorphism blur, liquid sliding active indicator pill,
-/// specular glass reflections, and micro-bounce touch feedback.
+/// - Pill sliding dengan spring animation via TweenAnimationBuilder
+/// - Icon 24pt + label 10pt sesuai Apple HIG SF Pro
+/// - Tidak ada teks overflow: SizedBox fixed width per item
+/// - Specular glass highlight strip di bagian atas navbar
+/// - Haptic-like scale bounce saat tap
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
 
@@ -18,18 +35,78 @@ class MainNavigation extends ConsumerStatefulWidget {
   ConsumerState<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends ConsumerState<MainNavigation> {
+class _MainNavigationState extends ConsumerState<MainNavigation>
+    with TickerProviderStateMixin {
   int _currentIndex = 0;
   int _previousIndex = 0;
+
+  // Controller untuk bounce scale per item
+  late List<AnimationController> _scaleControllers;
+  late List<Animation<double>> _scaleAnimations;
+
+  static const _items = [
+    _NavItem(
+      activeIcon: CupertinoIcons.house_fill,
+      inactiveIcon: CupertinoIcons.house,
+      label: 'Beranda',
+    ),
+    _NavItem(
+      activeIcon: CupertinoIcons.briefcase_fill,
+      inactiveIcon: CupertinoIcons.briefcase,
+      label: 'Lamaran',
+    ),
+    _NavItem(
+      activeIcon: CupertinoIcons.checkmark_seal_fill,
+      inactiveIcon: CupertinoIcons.checkmark_seal,
+      label: 'Persiapan',
+    ),
+    _NavItem(
+      activeIcon: CupertinoIcons.gear_alt_fill,
+      inactiveIcon: CupertinoIcons.gear_alt,
+      label: 'Pengaturan',
+    ),
+  ];
 
   final List<Widget> _screens = const [
     DashboardScreen(key: ValueKey(0)),
     JobListScreen(key: ValueKey(1)),
-    SettingsScreen(key: ValueKey(2)),
+    FreshGradPrepScreen(key: ValueKey(2)),
+    SettingsScreen(key: ValueKey(3)),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleControllers = List.generate(
+      _items.length,
+      (_) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 140),
+      ),
+    );
+    _scaleAnimations = _scaleControllers.map((ctrl) {
+      return TweenSequence<double>([
+        TweenSequenceItem(
+            tween: Tween(begin: 1.0, end: 0.82), weight: 40),
+        TweenSequenceItem(
+            tween: Tween(begin: 0.82, end: 1.08), weight: 40),
+        TweenSequenceItem(
+            tween: Tween(begin: 1.08, end: 1.0), weight: 20),
+      ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _scaleControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
   void _onTabTap(int index) {
     if (index == _currentIndex) return;
+    _scaleControllers[index].forward(from: 0);
     setState(() {
       _previousIndex = _currentIndex;
       _currentIndex = index;
@@ -41,32 +118,29 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     final isDark = ref.watch(jobProvider).isDarkMode;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     final bg = AppTheme.getBackground(context);
-
-    // Directional slide animation
     final goingRight = _currentIndex > _previousIndex;
 
+    // Navbar pill: tinggi tetap 64, padding horizontal 10, vertical 6
+    // Setiap item mendapat lebar yang sama persis via LayoutBuilder
     return Scaffold(
       backgroundColor: bg,
       body: Stack(
         children: [
-          // Directional animated tab switch
+          // Animated screen transition
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
+            duration: const Duration(milliseconds: 230),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
             transitionBuilder: (child, animation) {
-              final inOffset =
-                  goingRight ? const Offset(0.04, 0) : const Offset(-0.04, 0);
-              final outOffset =
-                  goingRight ? const Offset(-0.04, 0) : const Offset(0.04, 0);
-
+              final inOff =
+                  goingRight ? const Offset(0.025, 0) : const Offset(-0.025, 0);
+              final outOff =
+                  goingRight ? const Offset(-0.025, 0) : const Offset(0.025, 0);
               return FadeTransition(
                 opacity: animation,
                 child: SlideTransition(
                   position: Tween<Offset>(
-                    begin: child.key == ValueKey(_currentIndex)
-                        ? inOffset
-                        : outOffset,
+                    begin: child.key == ValueKey(_currentIndex) ? inOff : outOff,
                     end: Offset.zero,
                   ).animate(animation),
                   child: child,
@@ -76,143 +150,116 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             child: _screens[_currentIndex],
           ),
 
-          // Apple iOS 26 Liquid Glass Dynamic Capsule Navbar
+          // Bottom Navbar - Apple Liquid Glass Capsule
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
-                bottom: bottomInset > 0 ? bottomInset + 8 : 22,
+                bottom: bottomInset > 0 ? bottomInset + 8 : 20,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(36),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
-                  child: Container(
-                    height: 68,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF161618).withValues(alpha: 0.78)
-                          : Colors.white.withValues(alpha: 0.82),
-                      borderRadius: BorderRadius.circular(36),
-                      // Liquid Glass Specular Edge Highlight Gradient Border
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.16)
-                            : Colors.black.withValues(alpha: 0.08),
-                        width: AppTheme.borderHairline,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark
-                              ? Colors.black.withValues(alpha: 0.60)
-                              : Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        ),
-                        // Inner Glass Highlight
-                        BoxShadow(
-                          color: (isDark ? Colors.white : AppTheme.systemBlue)
-                              .withValues(alpha: 0.04),
-                          blurRadius: 10,
-                          spreadRadius: -2,
-                          offset: const Offset(0, -2),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 6),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final totalW = constraints.maxWidth;
-                        final itemW = totalW / 3;
+              child: RepaintBoundary(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Lebar total container
+                    final navWidth = constraints.maxWidth;
+                    // Lebar tiap item sama rata
+                    final itemW = navWidth / _items.length;
 
-                        return Stack(
-                          children: [
-                            // Liquid Sliding Active Pill Background
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeOutBack,
-                              left: _currentIndex * itemW,
-                              top: 0,
-                              bottom: 0,
-                              width: itemW,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 2),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: isDark
-                                        ? [
-                                            const Color(0xFF2C2C2E),
-                                            const Color(0xFF3A3A3C)
-                                          ]
-                                        : [
-                                            const Color(0xFFF2F2F7),
-                                            const Color(0xFFE5E5EA)
-                                          ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.12)
-                                        : Colors.black.withValues(alpha: 0.06),
-                                    width: AppTheme.borderHairline,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (isDark
-                                              ? AppTheme.systemBlue
-                                              : AppTheme.lSystemBlue)
-                                          .withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 3),
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(36),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                        child: Container(
+                          height: 64,
+                          decoration: BoxDecoration(
+                            // Dual layer glass: translucent bg + specular shine
+                            color: isDark
+                                ? const Color(0xD4141416)
+                                : const Color(0xEEF8F8FA),
+                            borderRadius: BorderRadius.circular(36),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.14)
+                                  : Colors.black.withValues(alpha: 0.07),
+                              width: AppTheme.borderHairline,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                    alpha: isDark ? 0.55 : 0.10),
+                                blurRadius: 32,
+                                offset: const Offset(0, 10),
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                    alpha: isDark ? 0.20 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              // -- Glass specular highlight strip (top rim) --
+                              Positioned(
+                                top: 0,
+                                left: 12,
+                                right: 12,
+                                height: 1,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.0),
+                                        Colors.white.withValues(
+                                            alpha: isDark ? 0.22 : 0.55),
+                                        Colors.white.withValues(alpha: 0.0),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            // Interactive Tab Items
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildLiquidNavItem(
-                                    0,
-                                    CupertinoIcons.square_grid_2x2_fill,
-                                    CupertinoIcons.square_grid_2x2,
-                                    'Beranda',
-                                    isDark,
+                              // -- Liquid Sliding Active Pill --
+                              // TweenAnimationBuilder untuk spring-like smooth interpolasi
+                              TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  begin: _previousIndex.toDouble(),
+                                  end: _currentIndex.toDouble(),
+                                ),
+                                duration: const Duration(milliseconds: 320),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, animVal, _) {
+                                  return Positioned(
+                                    left: animVal * itemW + 5,
+                                    top: 5,
+                                    bottom: 5,
+                                    width: itemW - 10,
+                                    child: _buildActivePill(isDark),
+                                  );
+                                },
+                              ),
+
+                              // -- Tab Items Row --
+                              Row(
+                                children: List.generate(
+                                  _items.length,
+                                  (i) => SizedBox(
+                                    width: itemW,
+                                    height: 64,
+                                    child: _buildTabItem(i, isDark),
                                   ),
                                 ),
-                                Expanded(
-                                  child: _buildLiquidNavItem(
-                                    1,
-                                    CupertinoIcons.briefcase_fill,
-                                    CupertinoIcons.briefcase,
-                                    'Lamaran',
-                                    isDark,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _buildLiquidNavItem(
-                                    2,
-                                    CupertinoIcons.gear_alt_fill,
-                                    CupertinoIcons.gear_alt,
-                                    'Pengaturan',
-                                    isDark,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -222,64 +269,99 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
     );
   }
 
-  Widget _buildLiquidNavItem(
-    int index,
-    IconData selectedIcon,
-    IconData unselectedIcon,
-    String label,
-    bool isDark,
-  ) {
+  /// Pill aktif dengan gradient putih lembut + subtle shadow biru
+  Widget _buildActivePill(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? const [Color(0xFF2C2C2F), Color(0xFF232325)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF4F4F8)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.12)
+              : Colors.black.withValues(alpha: 0.06),
+          width: AppTheme.borderHairline,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
+                .withValues(alpha: 0.22),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Satu item tab: icon 22pt + label 10pt, terkurung dalam SizedBox fixed
+  Widget _buildTabItem(int index, bool isDark) {
     final isSelected = _currentIndex == index;
-    final blueColor = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
-    final txtSec = AppTheme.getTextSecondary(context);
+    final activeColor = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
+    final inactiveColor = isDark
+        ? const Color(0xFF8E8E93)
+        : const Color(0xFF6E6E73);
+    final item = _items[index];
 
     return GestureDetector(
       onTap: () => _onTabTap(index),
       behavior: HitTestBehavior.opaque,
-      child: Center(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.symmetric(
-            horizontal: isSelected ? 12 : 8,
-            vertical: 6,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedScale(
-                scale: isSelected ? 1.12 : 1.0,
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutBack,
-                child: Icon(
-                  isSelected ? selectedIcon : unselectedIcon,
-                  color: isSelected ? blueColor : txtSec,
-                  size: 21,
-                ),
+      child: AnimatedBuilder(
+        animation: _scaleAnimations[index],
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimations[index].value,
+            child: child,
+          );
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Icon dengan AnimatedSwitcher untuk swap aktif/tidak aktif
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                scale: anim,
+                child: FadeTransition(opacity: anim, child: child),
               ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                child: isSelected
-                    ? Row(
-                        children: [
-                          const SizedBox(width: 6),
-                          Text(
-                            label,
-                            style: TextStyle(
-                              color: blueColor,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12.5,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      )
-                    : const SizedBox.shrink(),
+              child: Icon(
+                isSelected ? item.activeIcon : item.inactiveIcon,
+                key: ValueKey('${index}_$isSelected'),
+                color: isSelected ? activeColor : inactiveColor,
+                size: 22,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 3),
+            // Label dengan lebar terbatas agar tidak overflow
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 180),
+              style: TextStyle(
+                color: isSelected ? activeColor : inactiveColor,
+                fontWeight:
+                    isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 10,
+                letterSpacing: -0.15,
+                height: 1.0,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
       ),
     );

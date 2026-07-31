@@ -11,7 +11,7 @@ import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 
 import '../../widgets/apple_sheet_window.dart';
-import '../flight_deck/career_flight_deck_screen.dart';
+import '../prep/fresh_grad_prep_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -23,8 +23,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
-  static const String _appVersion = '1.7.0';
-  static const String _buildNumber = '170';
+  static const String _appVersion = '1.7.3';
+  static const String _buildNumber = '172';
 
   @override
   void initState() {
@@ -242,16 +242,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 24),
 
                 // ── Fitur Unggulan Pembeda ────────────────────────────
-                _sectionLabel('FITUR UNGGULAN'),
+                _sectionLabel('PANDUAN & PERSIAPAN'),
                 _settingsCard([
                   _buildActionRow(
-                    icon: CupertinoIcons.sparkles,
-                    iconColor: AppTheme.systemPurple,
-                    title: 'Career Flight Deck',
-                    subtitle: 'Analisis AI readiness score & pusat kendali',
+                    icon: CupertinoIcons.doc_checkmark_fill,
+                    iconColor: AppTheme.systemBlue,
+                    title: 'Persiapan Karir Fresh Grad',
+                    subtitle: 'Checklist berkas, estimator gaji UMR & panduan interview',
                     onTap: () => AppleSheetWindow.showAppleModalSheet(
                       context: context,
-                      child: const CareerFlightDeckScreen(),
+                      child: const FreshGradPrepScreen(),
                     ),
                   ),
                 ]),
@@ -410,6 +410,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // ── Tentang Aplikasi ─────────────────────────────────
                 _sectionLabel('TENTANG APLIKASI'),
                 _settingsCard([
+                  _buildActionRow(
+                    icon: CupertinoIcons.share,
+                    iconColor: AppTheme.systemBlue,
+                    title: 'Bagikan Aplikasi',
+                    subtitle: 'Bagikan Ngelamar ke teman pencari kerja',
+                    onTap: () {
+                      Share.share(
+                        'Coba aplikasi Ngelamar, Personal Career CRM untuk melacak dan mengelola seluruh lamaran kerjamu secara instan!',
+                      );
+                    },
+                  ),
+                  _divider(),
                   _buildInfoRow('Versi Aplikasi', '$_appVersion ($_buildNumber)'),
                   _divider(),
                   _buildInfoRow('Developer', 'idka-solutions team'),

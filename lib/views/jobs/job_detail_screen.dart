@@ -180,10 +180,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           icon: const Icon(CupertinoIcons.pencil,
                               color: AppTheme.systemBlue, size: 20),
                           onPressed: () async {
-                            await AppleSheetWindow.showAppleModalSheet(
+                            final result = await AppleSheetWindow.showAppleModalSheet(
                               context: context,
                               child: AddEditJobScreen(jobToEdit: currentJob),
                             );
+                            if (result != null && context.mounted) {
+                              AppleToast.success(context, 'Perubahan disimpan');
+                            }
                           },
                         ),
                         // Delete
@@ -434,7 +437,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   _divider(),
                   _infoRow(
                       CupertinoIcons.money_dollar_circle,
-                      'Gaji Ditawarkan',
+                      'Ekspektasi / Gaji Ditawarkan',
                       currentJob.salaryOffered!),
                 ],
               ],
@@ -701,7 +704,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: surf,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                   color: AppTheme.systemGreen.withValues(alpha: 0.3)),
             ),
@@ -841,27 +844,38 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 final selected = _selectedTemplateIndex == index;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(templates[index].title),
-                    selected: selected,
-                    selectedColor: AppTheme.systemBlue,
-                    backgroundColor: surfSec,
-                    checkmarkColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : txtSec,
-                      fontWeight:
-                          selected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                    ),
-                    onSelected: (_) {
+                  child: GestureDetector(
+                    onTap: () {
                       setState(() {
                         _selectedTemplateIndex = index;
                         _followupContentController.text =
                             templates[index].content;
                       });
                     },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: selected ? AppTheme.systemBlue : surfSec,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: selected
+                              ? AppTheme.systemBlue
+                              : bdr,
+                          width: AppTheme.borderHairline,
+                        ),
+                      ),
+                      child: Text(
+                        templates[index].title,
+                        style: TextStyle(
+                          color: selected ? Colors.white : txtSec,
+                          fontSize: 12,
+                          fontWeight:
+                              selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               }),
@@ -895,14 +909,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(
-                              text: _followupContentController.text));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              backgroundColor: AppTheme.systemGreen,
-                              content: Text('Pesan berhasil disalin!'),
-                            ),
-                          );
+                          final text = _followupContentController.text;
+                          Clipboard.setData(ClipboardData(text: text));
+                          final hrContact = currentJob.hrContact;
+                          final isPhone = hrContact != null &&
+                              RegExp(r'^\+?[0-9]+$').hasMatch(
+                                  hrContact.replaceAll(RegExp(r'\s+'), ''));
+                          if (isPhone) {
+                            AppleToast.success(
+                              context,
+                              'Pesan Follow-Up Disalin',
+                              subtitle: 'Siap dikirim ke $hrContact',
+                              actionLabel: 'Kirim WA',
+                              onAction: () => FollowupService.launchWhatsApp(
+                                  hrContact, text),
+                            );
+                          } else {
+                            AppleToast.success(
+                                context, 'Pesan Follow-Up Disalin');
+                          }
                         },
                         icon: const Icon(CupertinoIcons.doc_on_doc, size: 16),
                         label: const Text('Salin Pesan'),
@@ -1032,15 +1057,26 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                SwitchListTile(
-                  title: Text('Perlu Sewa Kos / Kontrakan?',
-                      style: TextStyle(fontSize: 13, color: txtPri)),
-                  subtitle: Text('Menambahkan estimasi kos ke biaya hidup minimal',
-                      style: TextStyle(fontSize: 11, color: txtSec)),
-                  value: _needsKos,
-                  activeTrackColor: AppTheme.systemBlue,
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (val) => setState(() => _needsKos = val),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Perlu Sewa Kos / Kontrakan?',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: txtPri)),
+                          const SizedBox(height: 2),
+                          Text('Menambahkan estimasi kos ke biaya hidup minimal',
+                              style: TextStyle(fontSize: 11, color: txtSec)),
+                        ],
+                      ),
+                    ),
+                    CupertinoSwitch(
+                      value: _needsKos,
+                      activeTrackColor: AppTheme.systemBlue,
+                      onChanged: (val) => setState(() => _needsKos = val),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1052,7 +1088,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: surf,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isFeasible
                     ? AppTheme.systemGreen.withValues(alpha: 0.4)

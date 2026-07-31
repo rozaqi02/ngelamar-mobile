@@ -27,9 +27,9 @@ class _ToastItem {
   });
 }
 
-/// Apple iOS 18 Dynamic Capsule Toast Notification Bar with Queueing System.
-/// Floating glassmorphic capsule above the bottom navigation dock with support for
-/// titles, subtitles, interactive action buttons, and queueing consecutive notifications.
+/// Apple iOS Dynamic Island & Floating Glass Capsule Toast Notification System.
+/// Provides compact, high-precision floating toast notifications with queuing support,
+/// spring animations, and native Apple HIG design aesthetics.
 class AppleToast {
   static final List<_ToastItem> _queue = [];
   static bool _isShowing = false;
@@ -42,7 +42,7 @@ class AppleToast {
     Color? color,
     String? actionLabel,
     VoidCallback? onAction,
-    Duration duration = const Duration(milliseconds: 3200),
+    Duration duration = const Duration(milliseconds: 2800),
   }) {
     final item = _ToastItem(
       context: context,
@@ -65,7 +65,6 @@ class AppleToast {
     _isShowing = true;
     final item = _queue.removeAt(0);
 
-    // Verify overlay exists
     final overlay = Overlay.maybeOf(item.context);
     if (overlay == null) {
       _isShowing = false;
@@ -89,8 +88,7 @@ class AppleToast {
         onDismiss: () {
           entry.remove();
           _isShowing = false;
-          // Process next toast after short delay
-          Future.delayed(const Duration(milliseconds: 150), _processQueue);
+          Future.delayed(const Duration(milliseconds: 100), _processQueue);
         },
       ),
     );
@@ -207,6 +205,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
   late AnimationController _animController;
   late Animation<Offset> _slideAnim;
   late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
   Timer? _dismissTimer;
 
   @override
@@ -214,23 +213,30 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 320),
-      reverseDuration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 360),
+      reverseDuration: const Duration(milliseconds: 200),
     );
 
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 1.2),
+      begin: const Offset(0, 0.8),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeOutBack,
       reverseCurve: Curves.easeInCubic,
     ));
 
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
+    );
+
+    _scaleAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: Curves.easeOutCubic,
       ),
     );
 
@@ -256,127 +262,145 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
-    final txtPri = widget.isDark ? Colors.white : Colors.black;
+    final txtPri = widget.isDark ? Colors.white : const Color(0xFF1C1C1E);
     final txtSec = widget.isDark
         ? Colors.white.withValues(alpha: 0.6)
         : Colors.black.withValues(alpha: 0.55);
 
     return Positioned(
-      bottom: bottomInset + 88, // Floating above bottom navbar dock
+      bottom: bottomInset + 78,
       left: 16,
       right: 16,
       child: SlideTransition(
         position: _slideAnim,
         child: FadeTransition(
           opacity: _fadeAnim,
-          child: GestureDetector(
-            onTap: _dismiss,
-            onVerticalDragEnd: (details) {
-              if (details.velocity.pixelsPerSecond.dy > 100) _dismiss();
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: widget.isDark
-                        ? const Color(0xFF1E1E20).withValues(alpha: 0.90)
-                        : Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: widget.isDark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : Colors.black.withValues(alpha: 0.08),
-                      width: AppTheme.borderHairline,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                            alpha: widget.isDark ? 0.45 : 0.12),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      // Icon Badge
-                      Container(
-                        width: 34,
-                        height: 34,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: GestureDetector(
+              onTap: _dismiss,
+              onVerticalDragEnd: (details) {
+                if (details.velocity.pixelsPerSecond.dy > 50) _dismiss();
+              },
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(26),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: widget.color.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(widget.icon,
-                            color: widget.color, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-
-                      // Text message & subtitle
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.message,
-                              style: TextStyle(
-                                color: txtPri,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          color: widget.isDark
+                              ? const Color(0xF21C1C1E)
+                              : const Color(0xF5FFFFFF),
+                          borderRadius: BorderRadius.circular(26),
+                          border: Border.all(
+                            color: widget.isDark
+                                ? Colors.white.withValues(alpha: 0.16)
+                                : Colors.black.withValues(alpha: 0.08),
+                            width: AppTheme.borderHairline,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                  alpha: widget.isDark ? 0.45 : 0.10),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
                             ),
-                            if (widget.subtitle != null) ...[
-                              const SizedBox(height: 1),
-                              Text(
-                                widget.subtitle!,
-                                style: TextStyle(
-                                  color: txtSec,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w400,
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icon Badge
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: widget.color.withValues(alpha: 0.14),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                widget.icon,
+                                color: widget.color,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+
+                            // Text message & subtitle
+                            Flexible(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.message,
+                                    style: TextStyle(
+                                      color: txtPri,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (widget.subtitle != null) ...[
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      widget.subtitle!,
+                                      style: TextStyle(
+                                        color: txtSec,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                            // Glass Action Button
+                            if (widget.actionLabel != null &&
+                                widget.onAction != null) ...[
+                              const SizedBox(width: 10),
+                              GestureDetector(
+                                onTap: () {
+                                  _dismiss();
+                                  widget.onAction?.call();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4.5),
+                                  decoration: BoxDecoration(
+                                    color: widget.color.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: widget.color.withValues(alpha: 0.3),
+                                      width: AppTheme.borderHairline,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    widget.actionLabel!,
+                                    style: TextStyle(
+                                      color: widget.color,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.1,
+                                    ),
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ],
                         ),
                       ),
-
-                      // Action button
-                      if (widget.actionLabel != null && widget.onAction != null) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            _dismiss();
-                            widget.onAction?.call();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: widget.color,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Text(
-                              widget.actionLabel!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),

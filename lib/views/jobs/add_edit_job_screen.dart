@@ -7,6 +7,7 @@ import '../../providers/job_provider.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_toast.dart';
+import '../../services/notification_service.dart';
 
 class AddEditJobScreen extends ConsumerStatefulWidget {
   final JobApplication? jobToEdit;
@@ -100,24 +101,38 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   }
 
   void _parsePastedText() {
-    final rawText = _pasteController.text;
-    if (rawText.trim().isEmpty) {
-      AppleToast.warning(context, 'Silakan paste teks iklan loker dulu!');
-      return;
-    }
+    final text = _pasteController.text;
+    if (text.trim().isEmpty) return;
 
-    final result = TextParserService.parseJobText(rawText);
+    final result = TextParserService.parseJobText(text);
+
     setState(() {
-      _companyController.text = result.companyName;
       _positionController.text = result.position;
+      _companyController.text = result.companyName;
       _workType = result.workType;
-      if (result.salary != null) _salaryController.text = result.salary!;
+      if (result.salary != null) {
+        _salaryController.text = result.salary!;
+      }
       if (result.location != null) _locationController.text = result.location!;
-      _descriptionController.text = rawText;
+      _descriptionController.text = text;
     });
 
-    AppleToast.success(context,
-        'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}');
+    // Check duplicate
+    final jobs = ref.read(jobProvider).jobs;
+    final isDup = jobs.any((j) =>
+        j.companyName.toLowerCase() == result.companyName.toLowerCase() &&
+        j.position.toLowerCase() == result.position.toLowerCase());
+
+    if (isDup) {
+      AppleToast.warning(
+        context,
+        'Peringatan Lamaran Duplikat',
+        subtitle: 'Lamaran posisi "${result.position}" di ${result.companyName} sudah pernah dicatat.',
+      );
+    } else {
+      AppleToast.success(context,
+          'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}');
+    }
   }
 
   void _saveJob() {
@@ -159,7 +174,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       ref.read(jobProvider.notifier).addJob(newJob);
     }
 
-    Navigator.pop(context);
+    if (newJob.interviewDate != null) {
+      NotificationService.showNotification(
+        id: newJob.id.hashCode,
+        title: '🗓️ Pengingat Interview: ${newJob.position}',
+        body: 'Jadwal interview di ${newJob.companyName} telah ditetapkan.',
+      );
+    }
+
+    Navigator.pop(context, newJob);
   }
 
   @override
@@ -314,7 +337,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: surfSec,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: bdr),
               ),
               child: Column(
@@ -402,7 +425,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                           controller: _salaryController,
                           style: TextStyle(color: txtPri),
                           decoration: const InputDecoration(
-                            labelText: 'Ekspektasi/Gaji',
+                            labelText: 'Ekspektasi / Gaji Ditawarkan',
                             hintText: 'Contoh: Rp 6.000.000',
                             prefixIcon:
                                 Icon(CupertinoIcons.money_dollar, size: 18),
@@ -488,7 +511,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: surfSec,
-                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: bdr),
               ),
               child: Column(
@@ -551,7 +574,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: surfSec,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: bdr),
               ),
               child: Column(
