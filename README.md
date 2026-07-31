@@ -1,39 +1,40 @@
-# Ngelamar App (v1.6.0)
+# Ngelamar App (v1.7.0)
 
-Aplikasi Personal Career CRM dan Penglacak Lamaran Kerja dengan Desain Modern Berstandar Apple iOS Human Interface Guidelines (HIG).
+Aplikasi Personal Career CRM dan Penglacak Lamaran Kerja dengan Desain Liquid Glass Apple iOS 26 & AI Career Flight Deck.
 
 Dikembangkan oleh **idka-solutions team**.
 
 ---
 
-## Fitur Utama
+## Fitur Utama & Keunggulan Unik
 
-1. **Dashboard & Ringkasan Progres**
+1. **Apple iOS 26 Liquid Glass Bottom Navbar**
+   - Dual-layer glassmorphic blur (`sigmaX: 35, sigmaY: 35`).
+   - Liquid active pill indicator yang meluncur mulus dengan fisika fluida.
+   - Specular edge highlight reflection khas curved glass Apple.
+   - Responsif terhadap mode gelap dan mode terang.
+
+2. **FITUR UNGGULAN PEMBEDA: Career Flight Deck & AI Readiness Matrix**
+   - Scoring AI Readiness Index (0-100%) secara real-time.
+   - Rekomendasi otomatis aksi karir (Follow-Up HRD, Evaluator Gaji UMR, Persiapan Interview).
+   - Ekspor Laporan Eksekutif Progres Karir 1-tap ke WhatsApp atau Catatan.
+
+3. **Dashboard & Ringkasan Progres**
    - Salam pembuka dinamis sesuai waktu lokal dan nama pengguna.
    - Ringkasan statistik lamaran aktif (Total, Dikirim, Interview & Tes, Offering).
    - Indikator Response Rate HRD dalam bentuk persentase.
    - Smart Auto-Fill CTA untuk mengisi form otomatis dari teks loker.
 
-2. **Manajemen Lamaran Kerja Overhauled (Lamaran v1.6.0)**
+4. **Manajemen Lamaran Kerja Overhauled**
    - Pinned Cupertino Search Header dengan filter teks langsung.
    - Monogram Avatar Perusahaan otomatis dengan gradien dinamis.
    - Consolidated Apple Pill Status & Quick Filter Bar.
    - Grouped Card layout dengan indikator status dot dan badge lokasi/tipe kerja.
 
-3. **Detail Lamaran Lengkap**
+5. **Detail Lamaran & Cheat-Sheet Interview**
    - Informasi detail status, tanggal melamar, tipe kerja, lokasi, sumber loker, dan ekspektasi gaji.
-   - Jadwal interview dan pengingat otomatis.
-   - Kontak HRD dengan tombol pintas Follow-Up.
-   - Cheat-Sheet Interview: Penilaian skill otomatis dan rekomendasi jawaban pertanyaan wawancara.
-   - Follow-Up Generator: Template pesan WhatsApp / Email untuk follow-up ke HRD.
-   - Evaluator Gaji & UMR: Perhitungan kelayakan gaji terhadap UMR kota dan biaya hidup.
-
-4. **Pengaturan & Kustomisasi (Settings)**
-   - Mode Gelap (Dark Mode) dan Mode Terang (Light Mode) khas Apple iOS.
-   - Edit profil dan nama pengguna.
-   - Ekspor laporan ringkasan teks ke WhatsApp atau Catatan.
-   - Cadangkan data dalam format JSON (Backup & Restore).
-   - Informasi aplikasi dan pengembang.
+   - Cheat-Sheet Interview & Follow-Up Generator ke HRD.
+   - Evaluator Gaji & UMR Kota.
 
 ---
 
@@ -43,7 +44,7 @@ Dikembangkan oleh **idka-solutions team**.
 - **State Management:** Flutter Riverpod
 - **Local Database:** Hive / Hive Flutter
 - **Penyimpanan Preferensi:** SharedPreferences
-- **Desain UI/UX:** Apple iOS 18 HIG Design System
+- **Desain UI/UX:** Apple iOS 26 Liquid Glass Design System
 
 ---
 

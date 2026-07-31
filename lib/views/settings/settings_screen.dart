@@ -10,6 +10,9 @@ import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 
+import '../../widgets/apple_sheet_window.dart';
+import '../flight_deck/career_flight_deck_screen.dart';
+
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -20,14 +23,13 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
-  static const String _appVersion = '1.6.0';
-  static const String _buildNumber = '160';
+  static const String _appVersion = '1.7.0';
+  static const String _buildNumber = '170';
 
   @override
   void initState() {
     super.initState();
-    final name = ref.read(jobProvider).userName;
-    _nameController.text = name;
+    _nameController.text = ref.read(jobProvider).userName;
   }
 
   @override
@@ -41,61 +43,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _exportData() {
     final jobs = ref.read(jobProvider).jobs;
-    final jsonStr =
-        const JsonEncoder.withIndent('  ').convert(jobs.map((j) => j.toMap()).toList());
+    final jsonList = jobs.map((j) => j.toMap()).toList();
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(jsonList);
+
     Share.share(jsonStr, subject: 'Backup Data Ngelamar App');
   }
 
   void _copyBackupText() {
     final jobs = ref.read(jobProvider).jobs;
-    final jsonStr = jsonEncode(jobs.map((j) => j.toMap()).toList());
+    final jsonList = jobs.map((j) => j.toMap()).toList();
+    final jsonStr = jsonEncode(jsonList);
+
     Clipboard.setData(ClipboardData(text: jsonStr));
-    _showSnackbar('Data backup berhasil disalin ke Clipboard!',
+    _showSnackbar('Data backup JSON berhasil disalin ke Clipboard!',
         color: AppTheme.systemGreen);
   }
 
   void _shareTextReport() {
     final state = ref.read(jobProvider);
     final buffer = StringBuffer();
-    buffer.writeln('LAPORAN PROGRES NGELAMAR');
-    buffer.writeln('================================');
-    buffer.writeln('Total Lamaran : ${state.totalCount}');
-    buffer.writeln('Dikirim       : ${state.appliedCount}');
-    buffer.writeln('Interview     : ${state.interviewCount}');
-    buffer.writeln('Offering      : ${state.offeringCount}');
-    buffer.writeln('Diterima      : ${state.acceptedCount}');
-    buffer.writeln('Ditolak       : ${state.rejectedCount}');
-    buffer.writeln(
-        'Response Rate : ${state.responseRate.toStringAsFixed(0)}%');
-    buffer.writeln('================================\n');
+    buffer.writeln('📋 LAPORAN PROGRES NGELAMAR APP');
+    buffer.writeln('==============================');
+    buffer.writeln('🗃️ Total Lamaran: ${state.totalCount}');
+    buffer.writeln('✈️ Dikirim: ${state.appliedCount}');
+    buffer.writeln('🎙️ Interview: ${state.interviewCount}');
+    buffer.writeln('🎁 Offering: ${state.offeringCount}');
+    buffer.writeln('📈 Response Rate: ${state.responseRate.toStringAsFixed(0)}%');
+    buffer.writeln('==============================\n');
+
     for (var i = 0; i < state.jobs.length; i++) {
       final j = state.jobs[i];
-      buffer.writeln('${i + 1}. ${j.position} @ ${j.companyName} [${j.status}]');
+      buffer.writeln(
+          '${i + 1}. ${j.position} - ${j.companyName} [${j.status}]');
     }
-    Share.share(buffer.toString(), subject: 'Laporan Progres Ngelamar');
+
+    Share.share(buffer.toString(), subject: 'Laporan Progres Ngelamar App');
   }
 
-  Future<void> _importData() async {
+  void _importData() async {
     final text = _importController.text.trim();
     if (text.isEmpty) {
       _showSnackbar('Silakan tempel teks JSON backup dahulu!',
-          color: AppTheme.systemRed);
+          color: AppTheme.systemOrange);
       return;
     }
+
     try {
-      final List<dynamic> parsed = jsonDecode(text);
-      final List<JobApplication> imported =
-          parsed.map((m) => JobApplication.fromMap(m)).toList();
-      for (var job in imported) {
+      final List<dynamic> parsedList = jsonDecode(text);
+      final List<JobApplication> importedJobs =
+          parsedList.map((m) => JobApplication.fromMap(m)).toList();
+
+      for (var job in importedJobs) {
         await ref.read(jobProvider.notifier).addJob(job);
       }
+
       _importController.clear();
       if (mounted) {
-        _showSnackbar('Berhasil mengimpor ${imported.length} lamaran!',
+        _showSnackbar(
+            '🎉 Berhasil mengimpor ${importedJobs.length} data lamaran!',
             color: AppTheme.systemGreen);
       }
     } catch (e) {
-      _showSnackbar('Format JSON tidak valid!', color: AppTheme.systemRed);
+      if (!mounted) return;
+      _showSnackbar('Format JSON tidak valid. Periksa kembali teks backup.',
+          color: AppTheme.systemRed);
     }
   }
 
@@ -155,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Apple Large Title
+          // Apple Large Title Navigation Bar
           SliverAppBar(
             backgroundColor: bg,
             surfaceTintColor: Colors.transparent,
@@ -171,8 +182,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 final progress = 1.0 -
                     ((available - collapsedH) / (expandedH - collapsedH))
                         .clamp(0.0, 1.0);
+
                 return Stack(
                   children: [
+                    // Large title
                     Positioned(
                       left: 16,
                       bottom: 12,
@@ -189,6 +202,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                     ),
+                    // Collapsed title
                     Positioned(
                       left: 16,
                       bottom: 14,
@@ -224,6 +238,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _sectionLabel('PROFIL'),
                 _settingsCard([
                   _buildProfileRow(state),
+                ]),
+                const SizedBox(height: 24),
+
+                // ── Fitur Unggulan Pembeda ────────────────────────────
+                _sectionLabel('FITUR UNGGULAN'),
+                _settingsCard([
+                  _buildActionRow(
+                    icon: CupertinoIcons.sparkles,
+                    iconColor: AppTheme.systemPurple,
+                    title: 'Career Flight Deck',
+                    subtitle: 'Analisis AI readiness score & pusat kendali',
+                    onTap: () => AppleSheetWindow.showAppleModalSheet(
+                      context: context,
+                      child: const CareerFlightDeckScreen(),
+                    ),
+                  ),
                 ]),
                 const SizedBox(height: 24),
 

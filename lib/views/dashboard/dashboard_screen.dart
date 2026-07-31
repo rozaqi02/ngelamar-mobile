@@ -9,6 +9,7 @@ import '../../widgets/apple_sheet_window.dart';
 import '../../widgets/apple_toast.dart';
 import '../jobs/job_detail_screen.dart';
 import '../jobs/add_edit_job_screen.dart';
+import '../flight_deck/career_flight_deck_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -171,6 +172,10 @@ class DashboardScreen extends ConsumerWidget {
                     delegate: SliverChildListDelegate([
                       // Response Rate Banner
                       _buildResponseRateBanner(context, state),
+                      const SizedBox(height: 14),
+
+                      // Exclusive Feature: Career Flight Deck CTA
+                      _buildCareerFlightDeckCTA(context, state),
                       const SizedBox(height: 28),
 
                       _sectionTitle(context, 'Ringkasan Lamaran'),
@@ -305,6 +310,98 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCareerFlightDeckCTA(BuildContext context, JobState state) {
+    final isDark = AppTheme.isDark(context);
+    final surf = AppTheme.getSurface(context);
+    final txtPri = AppTheme.getTextPrimary(context);
+    final txtSec = AppTheme.getTextSecondary(context);
+    final purple = isDark ? AppTheme.systemPurple : AppTheme.lSystemPurple;
+
+    return AppleBouncyCard(
+      onTap: () => AppleSheetWindow.showAppleModalSheet(
+        context: context,
+        child: const CareerFlightDeckScreen(),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: surf,
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+          border: Border.all(
+            color: purple.withValues(alpha: 0.35),
+            width: AppTheme.borderHairline,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: purple.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+              ),
+              child: Icon(CupertinoIcons.sparkles, color: purple, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Career Flight Deck',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: txtPri,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: purple.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'UNGGULAN',
+                          style: TextStyle(
+                            color: purple,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Analisis AI readiness index & pusat kendali karir',
+                    style: TextStyle(color: txtSec, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_right,
+                color: AppTheme.getTextTertiary(context), size: 14),
+          ],
+        ),
       ),
     );
   }
