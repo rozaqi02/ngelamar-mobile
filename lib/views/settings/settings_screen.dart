@@ -23,8 +23,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
-  static const String _appVersion = '1.7.3';
-  static const String _buildNumber = '172';
+  static const String _appVersion = '1.7.4';
+  static const String _buildNumber = '174';
 
   @override
   void initState() {
@@ -55,8 +55,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final jsonStr = jsonEncode(jsonList);
 
     Clipboard.setData(ClipboardData(text: jsonStr));
-    _showSnackbar('Data backup JSON berhasil disalin ke Clipboard!',
-        color: AppTheme.systemGreen);
+    _showSnackbar(
+      'Data backup JSON berhasil disalin ke Clipboard!',
+      color: AppTheme.systemGreen,
+    );
   }
 
   void _shareTextReport() {
@@ -68,13 +70,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     buffer.writeln('✈️ Dikirim: ${state.appliedCount}');
     buffer.writeln('🎙️ Interview: ${state.interviewCount}');
     buffer.writeln('🎁 Offering: ${state.offeringCount}');
-    buffer.writeln('📈 Response Rate: ${state.responseRate.toStringAsFixed(0)}%');
+    buffer.writeln(
+      '📈 Response Rate: ${state.responseRate.toStringAsFixed(0)}%',
+    );
     buffer.writeln('==============================\n');
 
     for (var i = 0; i < state.jobs.length; i++) {
       final j = state.jobs[i];
       buffer.writeln(
-          '${i + 1}. ${j.position} - ${j.companyName} [${j.status}]');
+        '${i + 1}. ${j.position} - ${j.companyName} [${j.status}]',
+      );
     }
 
     Share.share(buffer.toString(), subject: 'Laporan Progres Ngelamar App');
@@ -83,30 +88,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _importData() async {
     final text = _importController.text.trim();
     if (text.isEmpty) {
-      _showSnackbar('Silakan tempel teks JSON backup dahulu!',
-          color: AppTheme.systemOrange);
+      _showSnackbar(
+        'Silakan tempel teks JSON backup dahulu!',
+        color: AppTheme.systemOrange,
+      );
       return;
     }
 
     try {
-      final List<dynamic> parsedList = jsonDecode(text);
-      final List<JobApplication> importedJobs =
-          parsedList.map((m) => JobApplication.fromMap(m)).toList();
-
-      for (var job in importedJobs) {
-        await ref.read(jobProvider.notifier).addJob(job);
+      final decoded = jsonDecode(text);
+      if (decoded is! List) {
+        throw const FormatException('Root backup harus berupa daftar.');
       }
+      final importedJobs = decoded.map((item) {
+        if (item is! Map) {
+          throw const FormatException('Isi backup harus berupa objek.');
+        }
+        return JobApplication.fromMap(Map<String, dynamic>.from(item));
+      }).toList();
+      await ref.read(jobProvider.notifier).importJobs(importedJobs);
 
       _importController.clear();
       if (mounted) {
         _showSnackbar(
-            '🎉 Berhasil mengimpor ${importedJobs.length} data lamaran!',
-            color: AppTheme.systemGreen);
+          '🎉 Berhasil mengimpor ${importedJobs.length} data lamaran!',
+          color: AppTheme.systemGreen,
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnackbar('Format JSON tidak valid. Periksa kembali teks backup.',
-          color: AppTheme.systemRed);
+      _showSnackbar(
+        'Format JSON tidak valid. Periksa kembali teks backup.',
+        color: AppTheme.systemRed,
+      );
     }
   }
 
@@ -116,11 +130,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (_) => CupertinoAlertDialog(
         title: const Text('Hapus Semua Data?'),
         content: const Text(
-            'Semua data lamaran akan dihapus permanen. Pastikan sudah backup terlebih dahulu.'),
+          'Semua data lamaran akan dihapus permanen. Pastikan sudah backup terlebih dahulu.',
+        ),
         actions: [
           CupertinoDialogAction(
-              child: const Text('Batal'),
-              onPressed: () => Navigator.pop(context, false)),
+            child: const Text('Batal'),
+            onPressed: () => Navigator.pop(context, false),
+          ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             onPressed: () => Navigator.pop(context, true),
@@ -130,12 +146,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
     if (confirm == true) {
-      final jobs = ref.read(jobProvider).jobs;
-      for (var j in jobs) {
-        await ref.read(jobProvider.notifier).deleteJob(j.id);
-      }
+      await ref.read(jobProvider.notifier).clearAllJobs();
       if (mounted) {
-        _showSnackbar('Semua data berhasil dihapus.', color: AppTheme.systemRed);
+        _showSnackbar(
+          'Semua data berhasil dihapus.',
+          color: AppTheme.systemRed,
+        );
       }
     }
   }
@@ -179,9 +195,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const collapsedH = 56.0;
                 const expandedH = 100.0;
                 final available = constraints.maxHeight - topPadding;
-                final progress = 1.0 -
-                    ((available - collapsedH) / (expandedH - collapsedH))
-                        .clamp(0.0, 1.0);
+                final progress =
+                    1.0 -
+                    ((available - collapsedH) / (expandedH - collapsedH)).clamp(
+                      0.0,
+                      1.0,
+                    );
 
                 return Stack(
                   children: [
@@ -236,9 +255,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               delegate: SliverChildListDelegate([
                 // ── Profil ──────────────────────────────────────────
                 _sectionLabel('PROFIL'),
-                _settingsCard([
-                  _buildProfileRow(state),
-                ]),
+                _settingsCard([_buildProfileRow(state)]),
                 const SizedBox(height: 24),
 
                 // ── Fitur Unggulan Pembeda ────────────────────────────
@@ -248,7 +265,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: CupertinoIcons.doc_checkmark_fill,
                     iconColor: AppTheme.systemBlue,
                     title: 'Persiapan Karir Fresh Grad',
-                    subtitle: 'Checklist berkas, estimator gaji UMR & panduan interview',
+                    subtitle:
+                        'Checklist berkas, estimator gaji UMR & panduan interview',
                     onTap: () => AppleSheetWindow.showAppleModalSheet(
                       context: context,
                       child: const FreshGradPrepScreen(),
@@ -264,7 +282,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: CupertinoIcons.moon_fill,
                     iconColor: AppTheme.systemIndigo,
                     title: 'Mode Gelap',
-                    subtitle: state.isDarkMode ? 'Aktif' : 'Nonaktif (Mode Terang)',
+                    subtitle: state.isDarkMode
+                        ? 'Aktif'
+                        : 'Nonaktif (Mode Terang)',
                     value: state.isDarkMode,
                     onChanged: (_) =>
                         ref.read(jobProvider.notifier).toggleThemeMode(),
@@ -311,22 +331,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(CupertinoIcons.arrow_down_doc,
-                                color: AppTheme.systemOrange, size: 18),
+                            const Icon(
+                              CupertinoIcons.arrow_down_doc,
+                              color: AppTheme.systemOrange,
+                              size: 18,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Pulihkan Data (Restore)',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: txtPri)),
-                                  Text('Tempel teks JSON backup di bawah ini',
-                                      style: TextStyle(
-                                          color: txtSec,
-                                          fontSize: 12)),
+                                  Text(
+                                    'Pulihkan Data (Restore)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      color: txtPri,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Tempel teks JSON backup di bawah ini',
+                                    style: TextStyle(
+                                      color: txtSec,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -357,14 +386,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(CupertinoIcons.arrow_down_doc,
-                                      color: Colors.white, size: 16),
+                                  Icon(
+                                    CupertinoIcons.arrow_down_doc,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                   SizedBox(width: 6),
-                                  Text('Impor Data Sekarang',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14)),
+                                  Text(
+                                    'Impor Data Sekarang',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -381,14 +416,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _settingsCard([
                   _buildStatRow('Total Lamaran', '${state.totalCount}'),
                   _divider(),
-                  _buildStatRow('Diterima', '${state.acceptedCount}',
-                      valueColor: AppTheme.systemGreen),
+                  _buildStatRow(
+                    'Diterima',
+                    '${state.acceptedCount}',
+                    valueColor: AppTheme.systemGreen,
+                  ),
                   _divider(),
-                  _buildStatRow('Ditolak', '${state.rejectedCount}',
-                      valueColor: AppTheme.systemRed),
+                  _buildStatRow(
+                    'Ditolak',
+                    '${state.rejectedCount}',
+                    valueColor: AppTheme.systemRed,
+                  ),
                   _divider(),
-                  _buildStatRow('Response Rate',
-                      '${state.responseRate.toStringAsFixed(0)}%'),
+                  _buildStatRow(
+                    'Response Rate',
+                    '${state.responseRate.toStringAsFixed(0)}%',
+                  ),
                 ]),
                 const SizedBox(height: 24),
 
@@ -422,7 +465,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     },
                   ),
                   _divider(),
-                  _buildInfoRow('Versi Aplikasi', '$_appVersion ($_buildNumber)'),
+                  _buildInfoRow(
+                    'Versi Aplikasi',
+                    '$_appVersion ($_buildNumber)',
+                  ),
                   _divider(),
                   _buildInfoRow('Developer', 'idka-solutions team'),
                   _divider(),
@@ -432,8 +478,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Center(
                   child: Text(
                     '\u00a9 ${DateTime.now().year} Ngelamar App. All rights reserved.',
-                    style: TextStyle(
-                        color: txtTer, fontSize: 11),
+                    style: TextStyle(color: txtTer, fontSize: 11),
                   ),
                 ),
               ]),
@@ -474,10 +519,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _divider() => Container(
-        height: 0.5,
-        margin: const EdgeInsets.only(left: 50),
-        color: AppTheme.getBorder(context),
-      );
+    height: 0.5,
+    margin: const EdgeInsets.only(left: 50),
+    color: AppTheme.getBorder(context),
+  );
 
   Widget _buildProfileRow(JobState state) {
     final txtPri = AppTheme.getTextPrimary(context);
@@ -500,9 +545,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: Center(
               child: Text(
-                state.userName.isEmpty
-                    ? 'J'
-                    : state.userName[0].toUpperCase(),
+                state.userName.isEmpty ? 'J' : state.userName[0].toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -526,16 +569,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Text(
                   'Ketuk untuk mengubah nama',
-                  style:
-                      TextStyle(color: txtSec, fontSize: 12),
+                  style: TextStyle(color: txtSec, fontSize: 12),
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: _showEditNameDialog,
-            child: const Icon(CupertinoIcons.pencil,
-                color: AppTheme.systemBlue, size: 18),
+            child: const Icon(
+              CupertinoIcons.pencil,
+              color: AppTheme.systemBlue,
+              size: 18,
+            ),
           ),
         ],
       ),
@@ -608,14 +653,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: txtPri)),
-                Text(subtitle,
-                    style: TextStyle(
-                        fontSize: 12, color: txtSec)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: txtPri,
+                  ),
+                ),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: txtSec)),
               ],
             ),
           ),
@@ -662,20 +708,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: titleColor ?? txtPri)),
-                  Text(subtitle,
-                      style: TextStyle(
-                          fontSize: 12, color: txtSec)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: titleColor ?? txtPri,
+                    ),
+                  ),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: txtSec)),
                 ],
               ),
             ),
             if (showChevron)
-              Icon(CupertinoIcons.chevron_right,
-                  color: txtTer, size: 14),
+              Icon(CupertinoIcons.chevron_right, color: txtTer, size: 14),
           ],
         ),
       ),
@@ -689,18 +735,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Expanded(
+            child: Text(
+              label,
               style: TextStyle(
-                  fontSize: 15,
-                  color: txtPri,
-                  fontWeight: FontWeight.w400)),
-          Text(value,
+                fontSize: 15,
+                color: txtPri,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
               style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: valueColor ?? txtSec)),
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? txtSec,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -713,16 +770,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Expanded(
+            child: Text(label, style: TextStyle(fontSize: 15, color: txtPri)),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
               style: TextStyle(
-                  fontSize: 15, color: txtPri)),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 14,
-                  color: txtSec,
-                  fontWeight: FontWeight.w400)),
+                fontSize: 14,
+                color: txtSec,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
         ],
       ),
     );

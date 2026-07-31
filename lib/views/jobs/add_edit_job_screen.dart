@@ -40,6 +40,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   String _jobSource = 'LinkedIn';
   DateTime _appliedDate = DateTime.now();
   DateTime? _interviewDate;
+  bool _isSaving = false;
 
   final List<String> _statusOptions = [
     'Dikirim',
@@ -61,7 +62,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     'KitaLulus',
     'Email Direct',
     'Referensi',
-    'Lainnya'
+    'Lainnya',
   ];
 
   @override
@@ -73,8 +74,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _positionController = TextEditingController(text: j?.position ?? '');
     _salaryController = TextEditingController(text: j?.salaryOffered ?? '');
     _locationController = TextEditingController(text: j?.location ?? '');
-    _descriptionController =
-        TextEditingController(text: j?.jobDescription ?? '');
+    _descriptionController = TextEditingController(
+      text: j?.jobDescription ?? '',
+    );
     _hrContactController = TextEditingController(text: j?.hrContact ?? '');
     _notesController = TextEditingController(text: j?.notes ?? '');
 
@@ -119,29 +121,35 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
     // Check duplicate
     final jobs = ref.read(jobProvider).jobs;
-    final isDup = jobs.any((j) =>
-        j.companyName.toLowerCase() == result.companyName.toLowerCase() &&
-        j.position.toLowerCase() == result.position.toLowerCase());
+    final isDup = jobs.any(
+      (j) =>
+          j.companyName.toLowerCase() == result.companyName.toLowerCase() &&
+          j.position.toLowerCase() == result.position.toLowerCase(),
+    );
 
     if (isDup) {
       AppleToast.warning(
         context,
         'Peringatan Lamaran Duplikat',
-        subtitle: 'Lamaran posisi "${result.position}" di ${result.companyName} sudah pernah dicatat.',
+        subtitle:
+            'Lamaran posisi "${result.position}" di ${result.companyName} sudah pernah dicatat.',
       );
     } else {
-      AppleToast.success(context,
-          'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}');
+      AppleToast.success(
+        context,
+        'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}',
+      );
     }
   }
 
-  void _saveJob() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _saveJob() async {
+    if (_isSaving || !_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
 
     final isEdit = widget.jobToEdit != null;
     final id = isEdit
         ? widget.jobToEdit!.id
-        : DateTime.now().millisecondsSinceEpoch.toString();
+        : DateTime.now().microsecondsSinceEpoch.toString();
 
     final newJob = JobApplication(
       id: id,
@@ -168,21 +176,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       isFavorite: widget.jobToEdit?.isFavorite ?? false,
     );
 
-    if (isEdit) {
-      ref.read(jobProvider.notifier).updateJob(newJob);
-    } else {
-      ref.read(jobProvider.notifier).addJob(newJob);
-    }
-
-    if (newJob.interviewDate != null) {
-      NotificationService.showNotification(
-        id: newJob.id.hashCode,
-        title: '🗓️ Pengingat Interview: ${newJob.position}',
-        body: 'Jadwal interview di ${newJob.companyName} telah ditetapkan.',
+    try {
+      if (newJob.interviewDate != null) {
+        await NotificationService.requestPermission();
+      }
+      if (isEdit) {
+        await ref.read(jobProvider.notifier).updateJob(newJob);
+      } else {
+        await ref.read(jobProvider.notifier).addJob(newJob);
+      }
+      if (!mounted) return;
+      Navigator.pop(context, newJob);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      AppleToast.error(
+        context,
+        'Lamaran gagal disimpan',
+        subtitle: 'Periksa penyimpanan perangkat lalu coba lagi.',
       );
     }
-
-    Navigator.pop(context, newJob);
   }
 
   @override
@@ -192,6 +205,22 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
+    final media = MediaQuery.of(context);
+    final compact = media.size.width < 390 || media.textScaler.scale(1) > 1.25;
+
+    Widget responsivePair(Widget first, Widget second) {
+      if (compact) {
+        return Column(children: [first, const SizedBox(height: 14), second]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: first),
+          const SizedBox(width: 12),
+          Expanded(child: second),
+        ],
+      );
+    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -203,16 +232,19 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           children: [
             // Header title row for modal window
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: txtPri,
+                Expanded(
+                  child: Text(
+                    isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: txtPri,
+                    ),
+                    maxLines: 2,
                   ),
                 ),
+                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
@@ -244,8 +276,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(CupertinoIcons.bolt_fill,
-                            color: AppTheme.systemGreen, size: 20),
+                        Icon(
+                          CupertinoIcons.bolt_fill,
+                          color: AppTheme.systemGreen,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -263,10 +298,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'Copas teks info loker dari LinkedIn/Glints/JobStreet di sini untuk mengisi form otomatis.',
-                      style: TextStyle(
-                        color: txtSec,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: txtSec, fontSize: 12),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -281,7 +313,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
-                      height: 44,
                       child: ElevatedButton.icon(
                         onPressed: _parsePastedText,
                         style: ElevatedButton.styleFrom(
@@ -291,20 +322,29 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        icon: const Icon(CupertinoIcons.wand_stars,
-                            color: Colors.white, size: 18),
-                        label: const Text('Parse & Isi Otomatis',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        icon: const Icon(
+                          CupertinoIcons.wand_stars,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          'Parse & Isi Otomatis',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(CupertinoIcons.info_circle_fill,
-                            size: 13, color: AppTheme.getTextTertiary(context)),
+                        Icon(
+                          CupertinoIcons.info_circle_fill,
+                          size: 13,
+                          color: AppTheme.getTextTertiary(context),
+                        ),
                         const SizedBox(width: 5),
                         Expanded(
                           child: Text(
@@ -325,12 +365,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ],
 
             // Grouped Form Card
-            Text('Informasi Utama',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: txtPri,
-                    letterSpacing: -0.3)),
+            Text(
+              'Informasi Utama',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: txtPri,
+                letterSpacing: -0.3,
+              ),
+            ),
             const SizedBox(height: 10),
 
             Container(
@@ -364,8 +407,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Nama Perusahaan *',
                       hintText: 'Contoh: PT GoTo Indonesia',
-                      prefixIcon:
-                          Icon(CupertinoIcons.building_2_fill, size: 18),
+                      prefixIcon: Icon(
+                        CupertinoIcons.building_2_fill,
+                        size: 18,
+                      ),
                     ),
                     validator: (val) => val == null || val.trim().isEmpty
                         ? 'Nama Perusahaan wajib diisi'
@@ -373,125 +418,124 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _showAppleOptionPicker(
-                            context: context,
-                            title: 'Pilih Status Lamaran',
-                            options: _statusOptions,
-                            currentValue: _status,
-                            onSelected: (val) => setState(() => _status = val),
-                          ),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Status Lamaran',
-                              prefixIcon: Icon(CupertinoIcons.flag, size: 18),
-                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
-                            ),
-                            child: Text(_status, style: TextStyle(fontSize: 13, color: txtPri)),
+                  responsivePair(
+                    InkWell(
+                      onTap: () => _showAppleOptionPicker(
+                        context: context,
+                        title: 'Pilih Status Lamaran',
+                        options: _statusOptions,
+                        currentValue: _status,
+                        onSelected: (val) => setState(() => _status = val),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Status Lamaran',
+                          prefixIcon: Icon(CupertinoIcons.flag, size: 18),
+                          suffixIcon: Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 14,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _showAppleOptionPicker(
-                            context: context,
-                            title: 'Pilih Tipe Kerja',
-                            options: _workTypeOptions,
-                            currentValue: _workType,
-                            onSelected: (val) => setState(() => _workType = val),
-                          ),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Tipe Kerja',
-                              prefixIcon: Icon(CupertinoIcons.desktopcomputer, size: 18),
-                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
-                            ),
-                            child: Text(_workType, style: TextStyle(fontSize: 13, color: txtPri)),
-                          ),
+                        child: Text(
+                          _status,
+                          style: TextStyle(fontSize: 13, color: txtPri),
                         ),
                       ),
-                    ],
+                    ),
+                    InkWell(
+                      onTap: () => _showAppleOptionPicker(
+                        context: context,
+                        title: 'Pilih Tipe Kerja',
+                        options: _workTypeOptions,
+                        currentValue: _workType,
+                        onSelected: (val) => setState(() => _workType = val),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Tipe Kerja',
+                          prefixIcon: Icon(
+                            CupertinoIcons.desktopcomputer,
+                            size: 18,
+                          ),
+                          suffixIcon: Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 14,
+                          ),
+                        ),
+                        child: Text(
+                          _workType,
+                          style: TextStyle(fontSize: 13, color: txtPri),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 14),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _salaryController,
-                          style: TextStyle(color: txtPri),
-                          decoration: const InputDecoration(
-                            labelText: 'Ekspektasi / Gaji Ditawarkan',
-                            hintText: 'Contoh: Rp 6.000.000',
-                            prefixIcon:
-                                Icon(CupertinoIcons.money_dollar, size: 18),
-                          ),
-                        ),
+                  responsivePair(
+                    TextFormField(
+                      controller: _salaryController,
+                      style: TextStyle(color: txtPri),
+                      decoration: const InputDecoration(
+                        labelText: 'Ekspektasi / Gaji Ditawarkan',
+                        hintText: 'Contoh: Rp 6.000.000',
+                        prefixIcon: Icon(CupertinoIcons.money_dollar, size: 18),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _locationController,
-                          textCapitalization: TextCapitalization.words,
-                          style: TextStyle(color: txtPri),
-                          decoration: const InputDecoration(
-                            labelText: 'Kota / Lokasi',
-                            hintText: 'Contoh: Jakarta',
-                            prefixIcon: Icon(CupertinoIcons.location, size: 18),
-                          ),
-                        ),
+                    ),
+                    TextFormField(
+                      controller: _locationController,
+                      textCapitalization: TextCapitalization.words,
+                      style: TextStyle(color: txtPri),
+                      decoration: const InputDecoration(
+                        labelText: 'Kota / Lokasi',
+                        hintText: 'Contoh: Jakarta',
+                        prefixIcon: Icon(CupertinoIcons.location, size: 18),
                       ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 14),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _showAppleOptionPicker(
-                            context: context,
-                            title: 'Pilih Sumber Loker',
-                            options: _sourceOptions,
-                            currentValue: _jobSource,
-                            onSelected: (val) => setState(() => _jobSource = val),
-                          ),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Sumber Loker',
-                              prefixIcon: Icon(CupertinoIcons.link, size: 18),
-                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
-                            ),
-                            child: Text(_jobSource, style: TextStyle(fontSize: 13, color: txtPri)),
+                  responsivePair(
+                    InkWell(
+                      onTap: () => _showAppleOptionPicker(
+                        context: context,
+                        title: 'Pilih Sumber Loker',
+                        options: _sourceOptions,
+                        currentValue: _jobSource,
+                        onSelected: (val) => setState(() => _jobSource = val),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Sumber Loker',
+                          prefixIcon: Icon(CupertinoIcons.link, size: 18),
+                          suffixIcon: Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 14,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: InkWell(
-                          onTap: () => _showAppleDatePicker(
-                            context: context,
-                            initialDate: _appliedDate,
-                            onDateSelected: (val) => setState(() => _appliedDate = val),
-                          ),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Tanggal Melamar',
-                              prefixIcon:
-                                  Icon(CupertinoIcons.calendar, size: 18),
-                            ),
-                            child: Text(
-                              DateFormat('dd/MM/yyyy').format(_appliedDate),
-                              style: TextStyle(fontSize: 13, color: txtPri),
-                            ),
-                          ),
+                        child: Text(
+                          _jobSource,
+                          style: TextStyle(fontSize: 13, color: txtPri),
                         ),
                       ),
-                    ],
+                    ),
+                    InkWell(
+                      onTap: () => _showAppleDatePicker(
+                        context: context,
+                        initialDate: _appliedDate,
+                        onDateSelected: (val) =>
+                            setState(() => _appliedDate = val),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Tanggal Melamar',
+                          prefixIcon: Icon(CupertinoIcons.calendar, size: 18),
+                        ),
+                        child: Text(
+                          DateFormat('dd/MM/yyyy').format(_appliedDate),
+                          style: TextStyle(fontSize: 13, color: txtPri),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -499,12 +543,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             const SizedBox(height: 20),
 
             // Grouped Contact Card
-            Text('Kontak HR & Jadwal',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: txtPri,
-                    letterSpacing: -0.3)),
+            Text(
+              'Kontak HR & Jadwal',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: txtPri,
+                letterSpacing: -0.3,
+              ),
+            ),
             const SizedBox(height: 10),
 
             Container(
@@ -531,7 +578,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     onTap: () => _showAppleDatePicker(
                       context: context,
                       initialDate: _interviewDate ?? DateTime.now(),
-                      onDateSelected: (val) => setState(() => _interviewDate = val),
+                      includeTime: true,
+                      onDateSelected: (val) =>
+                          setState(() => _interviewDate = val),
                     ),
                     child: InputDecorator(
                       decoration: InputDecoration(
@@ -539,8 +588,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                         prefixIcon: const Icon(CupertinoIcons.time, size: 18),
                         suffixIcon: _interviewDate != null
                             ? IconButton(
-                                icon: const Icon(CupertinoIcons.xmark_circle,
-                                    size: 18),
+                                icon: const Icon(
+                                  CupertinoIcons.xmark_circle,
+                                  size: 18,
+                                ),
                                 onPressed: () {
                                   setState(() => _interviewDate = null);
                                 },
@@ -549,8 +600,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       ),
                       child: Text(
                         _interviewDate != null
-                            ? DateFormat('dd MMMM yyyy')
-                                .format(_interviewDate!)
+                            ? DateFormat(
+                                'dd MMMM yyyy, HH:mm',
+                              ).format(_interviewDate!)
                             : 'Belum ada jadwal interview',
                         style: TextStyle(fontSize: 13, color: txtPri),
                       ),
@@ -562,12 +614,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             const SizedBox(height: 20),
 
             // Grouped Notes Card
-            Text('Deskripsi & Catatan',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 17,
-                    color: txtPri,
-                    letterSpacing: -0.3)),
+            Text(
+              'Deskripsi & Catatan',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: txtPri,
+                letterSpacing: -0.3,
+              ),
+            ),
             const SizedBox(height: 10),
 
             Container(
@@ -607,9 +662,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
             SizedBox(
               width: double.infinity,
-              height: 50,
               child: ElevatedButton(
-                onPressed: _saveJob,
+                onPressed: _isSaving ? null : _saveJob,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.systemBlue,
                   elevation: 0,
@@ -617,13 +671,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: Text(
-                  isEdit ? 'Simpan Perubahan' : 'Tambah ke Ngelamar',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          isEdit ? 'Simpan Perubahan' : 'Tambah ke Ngelamar',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -674,6 +741,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     required BuildContext context,
     required DateTime initialDate,
     required ValueChanged<DateTime> onDateSelected,
+    bool includeTime = false,
   }) {
     DateTime tempDate = initialDate;
     final surf = AppTheme.getSurface(context);
@@ -694,29 +762,37 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Text('Batal',
-                        style: TextStyle(color: AppTheme.systemRed, fontSize: 16)),
+                    child: const Text(
+                      'Batal',
+                      style: TextStyle(color: AppTheme.systemRed, fontSize: 16),
+                    ),
                   ),
                   GestureDetector(
                     onTap: () {
                       onDateSelected(tempDate);
                       Navigator.pop(context);
                     },
-                    child: const Text('Selesai',
-                        style: TextStyle(
-                            color: AppTheme.systemBlue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16)),
+                    child: const Text(
+                      'Selesai',
+                      style: TextStyle(
+                        color: AppTheme.systemBlue,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
+                mode: includeTime
+                    ? CupertinoDatePickerMode.dateAndTime
+                    : CupertinoDatePickerMode.date,
                 initialDateTime: initialDate,
                 minimumYear: 2020,
-                maximumYear: 2030,
+                maximumYear: DateTime.now().year + 20,
+                use24hFormat: true,
                 onDateTimeChanged: (val) => tempDate = val,
               ),
             ),

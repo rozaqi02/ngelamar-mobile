@@ -4,16 +4,14 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'providers/job_provider.dart';
 import 'theme/app_theme.dart';
 import 'views/splash_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await NotificationService.init();
 
-  runApp(
-    const ProviderScope(
-      child: NgelamarApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: NgelamarApp()));
 }
 
 class NgelamarApp extends ConsumerWidget {

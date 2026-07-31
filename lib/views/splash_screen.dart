@@ -27,9 +27,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarBrightness: Brightness.dark),
+    );
 
     _controller = AnimationController(
       vsync: this,
@@ -61,15 +61,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
 
     // Title text slide: from bottom 20px → 0
-    _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.4, 0.75, curve: Curves.easeOutCubic),
-      ),
-    );
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.4, 0.75, curve: Curves.easeOutCubic),
+          ),
+        );
 
     // Start animation, then navigate after delay
     _controller.forward().then((_) {
@@ -92,7 +90,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) => const MainNavigation(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MainNavigation(),
         transitionsBuilder: (context, anim, secondaryAnimation, child) {
           return FadeTransition(opacity: anim, child: child);
         },
@@ -104,7 +103,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const OnboardingScreen(),
         transitionsBuilder: (context, anim, secondaryAnimation, child) {
           return FadeTransition(opacity: anim, child: child);
         },
@@ -141,11 +141,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF0A84FF), Color(0xFF5E5CE6)],
-                      ),
                       borderRadius: BorderRadius.circular(26),
                       boxShadow: [
                         BoxShadow(
@@ -155,11 +150,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         ),
                       ],
                     ),
-                    child: const Center(
-                      child: Icon(
-                        CupertinoIcons.briefcase_fill,
-                        color: Colors.white,
-                        size: 48,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(26),
+                      child: Image.asset(
+                        'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -246,7 +243,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Muat contoh data lamaran?'),
         content: const Text(
-            'Anda dapat memuat contoh lamaran pekerjaan untuk mencoba fitur Ngelamar, atau mulai dengan daftar kosong.'),
+          'Anda dapat memuat contoh lamaran pekerjaan untuk mencoba fitur Ngelamar, atau mulai dengan daftar kosong.',
+        ),
         actions: [
           CupertinoDialogAction(
             onPressed: () => Navigator.pop(ctx, false),
@@ -269,7 +267,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) => const MainNavigation(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const MainNavigation(),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
@@ -303,8 +302,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: const Icon(CupertinoIcons.briefcase_fill,
-                    color: Colors.white, size: 30),
+                child: const Icon(
+                  CupertinoIcons.briefcase_fill,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -320,11 +322,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: 8),
               Text(
                 'Masukkan namamu agar Ngelamar bisa menyapamu setiap hari.',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: txtSec,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 15, color: txtSec, height: 1.5),
               ),
               const SizedBox(height: 32),
 
@@ -333,7 +331,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w500),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                ),
                 onSubmitted: (_) => _submit(),
                 decoration: const InputDecoration(
                   hintText: 'Nama kamu...',

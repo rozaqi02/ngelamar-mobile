@@ -54,7 +54,8 @@ class FollowupService {
   static Future<bool> launchWhatsApp(String phone, String message) async {
     final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
     final uri = Uri.parse(
-        'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+    );
     if (await canLaunchUrl(uri)) {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -62,14 +63,14 @@ class FollowupService {
   }
 
   static Future<bool> launchEmail(
-      String email, String subject, String body) async {
+    String email,
+    String subject,
+    String body,
+  ) async {
     final uri = Uri(
       scheme: 'mailto',
       path: email,
-      queryParameters: {
-        'subject': subject,
-        'body': body,
-      },
+      queryParameters: {'subject': subject, 'body': body},
     );
     if (await canLaunchUrl(uri)) {
       return await launchUrl(uri, mode: LaunchMode.externalApplication);

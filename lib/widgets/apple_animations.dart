@@ -76,10 +76,7 @@ class YouTubeStyleEntrance extends StatelessWidget {
           opacity: value.clamp(0.0, 1.0),
           child: Transform.translate(
             offset: Offset(0, offsetY),
-            child: Transform.scale(
-              scale: scale,
-              child: child,
-            ),
+            child: Transform.scale(scale: scale, child: child),
           ),
         );
       },

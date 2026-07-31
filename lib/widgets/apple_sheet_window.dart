@@ -31,10 +31,7 @@ class AppleSheetWindow {
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
             ),
-            border: Border.all(
-              color: bdr,
-              width: AppTheme.borderHairline,
-            ),
+            border: Border.all(color: bdr, width: AppTheme.borderHairline),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -56,8 +53,10 @@ class AppleSheetWindow {
               // Title Header (if provided)
               if (title != null) ...[
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

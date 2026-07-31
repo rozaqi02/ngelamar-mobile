@@ -217,14 +217,14 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
       reverseDuration: const Duration(milliseconds: 200),
     );
 
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.8),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutBack,
-      reverseCurve: Curves.easeInCubic,
-    ));
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.8), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _animController,
+            curve: Curves.easeOutBack,
+            reverseCurve: Curves.easeInCubic,
+          ),
+        );
 
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -234,10 +234,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
     );
 
     _scaleAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
 
     _animController.forward();
@@ -291,7 +288,9 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                       filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: widget.isDark
                               ? const Color(0xF21C1C1E)
@@ -306,7 +305,8 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(
-                                  alpha: widget.isDark ? 0.45 : 0.10),
+                                alpha: widget.isDark ? 0.45 : 0.10,
+                              ),
                               blurRadius: 20,
                               offset: const Offset(0, 6),
                             ),
@@ -376,12 +376,16 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4.5),
+                                    horizontal: 10,
+                                    vertical: 4.5,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: widget.color.withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: widget.color.withValues(alpha: 0.3),
+                                      color: widget.color.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       width: AppTheme.borderHairline,
                                     ),
                                   ),

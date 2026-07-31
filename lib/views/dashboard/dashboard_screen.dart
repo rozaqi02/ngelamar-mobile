@@ -15,7 +15,10 @@ import '../prep/fresh_grad_prep_screen.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
-  Future<void> _openAddJob(BuildContext context, {bool autoFocusPaste = false}) async {
+  Future<void> _openAddJob(
+    BuildContext context, {
+    bool autoFocusPaste = false,
+  }) async {
     final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
       context: context,
       child: AddEditJobScreen(autoFocusPaste: autoFocusPaste),
@@ -75,9 +78,9 @@ class DashboardScreen extends ConsumerWidget {
                       const collapsedH = 56.0;
                       const expandedH = 120.0;
                       final available = constraints.maxHeight - topPadding;
-                      final progress = 1.0 -
-                          ((available - collapsedH) /
-                              (expandedH - collapsedH))
+                      final progress =
+                          1.0 -
+                          ((available - collapsedH) / (expandedH - collapsedH))
                               .clamp(0.0, 1.0);
 
                       return Stack(
@@ -145,14 +148,19 @@ class DashboardScreen extends ConsumerWidget {
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
-                                      .withValues(alpha: 0.12),
+                                  color:
+                                      (isDark
+                                              ? AppTheme.systemBlue
+                                              : AppTheme.lSystemBlue)
+                                          .withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   CupertinoIcons.plus,
                                   size: 18,
-                                  color: isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue,
+                                  color: isDark
+                                      ? AppTheme.systemBlue
+                                      : AppTheme.lSystemBlue,
                                 ),
                               ),
                             ),
@@ -188,12 +196,16 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 28),
 
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _sectionTitle(context, 'Lamaran Terbaru'),
+                          Expanded(
+                            child: _sectionTitle(context, 'Lamaran Terbaru'),
+                          ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: surfSec,
                               borderRadius: BorderRadius.circular(8),
@@ -226,14 +238,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _sectionTitle(BuildContext context, String title) => Text(
-        title,
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.getTextPrimary(context),
-          letterSpacing: -0.3,
-        ),
-      );
+    title,
+    style: TextStyle(
+      fontSize: 17,
+      fontWeight: FontWeight.w600,
+      color: AppTheme.getTextPrimary(context),
+      letterSpacing: -0.3,
+    ),
+  );
 
   Widget _buildResponseRateBanner(BuildContext context, JobState state) {
     final rate = state.responseRate.toStringAsFixed(0);
@@ -241,8 +253,8 @@ class DashboardScreen extends ConsumerWidget {
     final rateColor = state.responseRate >= 50
         ? (isDark ? AppTheme.systemGreen : AppTheme.lSystemGreen)
         : state.responseRate >= 20
-            ? (isDark ? AppTheme.systemOrange : AppTheme.lSystemOrange)
-            : AppTheme.getTextSecondary(context);
+        ? (isDark ? AppTheme.systemOrange : AppTheme.lSystemOrange)
+        : AppTheme.getTextSecondary(context);
 
     final surf = AppTheme.getSurface(context);
     final txtPri = AppTheme.getTextPrimary(context);
@@ -270,8 +282,11 @@ class DashboardScreen extends ConsumerWidget {
               color: rateColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppTheme.radiusCard),
             ),
-            child: Icon(CupertinoIcons.chart_bar_alt_fill,
-                color: rateColor, size: 20),
+            child: Icon(
+              CupertinoIcons.chart_bar_alt_fill,
+              color: rateColor,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -292,8 +307,7 @@ class DashboardScreen extends ConsumerWidget {
                   state.jobs.isEmpty
                       ? 'Belum ada lamaran'
                       : '${state.jobs.where((j) => j.status != 'Dikirim').length} dari ${state.totalCount} ditanggapi',
-                  style: TextStyle(
-                      fontSize: 12, color: txtSec),
+                  style: TextStyle(fontSize: 12, color: txtSec),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -353,14 +367,21 @@ class DashboardScreen extends ConsumerWidget {
                 color: blue.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               ),
-              child: Icon(CupertinoIcons.doc_checkmark_fill, color: blue, size: 20),
+              child: Icon(
+                CupertinoIcons.doc_checkmark_fill,
+                color: blue,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
                       Text(
                         'Persiapan Karir Fresh Grad',
@@ -371,9 +392,11 @@ class DashboardScreen extends ConsumerWidget {
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: blue.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
@@ -399,8 +422,11 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            Icon(CupertinoIcons.chevron_right,
-                color: AppTheme.getTextTertiary(context), size: 14),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: AppTheme.getTextTertiary(context),
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -409,29 +435,50 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildMetricsGrid(BuildContext context, JobState state) {
     final isDark = AppTheme.isDark(context);
-    final teal   = isDark ? AppTheme.systemTeal   : AppTheme.lSystemTeal;
-    final blue   = isDark ? AppTheme.systemBlue   : AppTheme.lSystemBlue;
+    final teal = isDark ? AppTheme.systemTeal : AppTheme.lSystemTeal;
+    final blue = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
     final orange = isDark ? AppTheme.systemOrange : AppTheme.lSystemOrange;
     final purple = isDark ? AppTheme.systemPurple : AppTheme.lSystemPurple;
 
     final items = [
-      _MetricItem('Total', state.totalCount, teal,
-          CupertinoIcons.tray_fill, 'Semua Lamaran'),
-      _MetricItem('Dikirim', state.appliedCount, blue,
-          CupertinoIcons.paperplane_fill, 'Menunggu HR'),
-      _MetricItem('Interview', state.interviewCount, orange,
-          CupertinoIcons.mic_fill, 'Proses Seleksi'),
-      _MetricItem('Offering', state.offeringCount, purple,
-          CupertinoIcons.gift_fill, 'Penawaran Masuk'),
+      _MetricItem(
+        'Total',
+        state.totalCount,
+        teal,
+        CupertinoIcons.tray_fill,
+        'Semua Lamaran',
+      ),
+      _MetricItem(
+        'Dikirim',
+        state.appliedCount,
+        blue,
+        CupertinoIcons.paperplane_fill,
+        'Menunggu HR',
+      ),
+      _MetricItem(
+        'Interview',
+        state.interviewCount,
+        orange,
+        CupertinoIcons.mic_fill,
+        'Proses Seleksi',
+      ),
+      _MetricItem(
+        'Offering',
+        state.offeringCount,
+        purple,
+        CupertinoIcons.gift_fill,
+        'Penawaran Masuk',
+      ),
     ];
 
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.35,
+      childAspectRatio: textScale > 1.3 ? 0.95 : 1.25,
       children: items.map((item) => _buildMetricCard(context, item)).toList(),
     );
   }
@@ -494,8 +541,7 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 1),
           Text(
             item.subtitle,
-            style: TextStyle(
-                color: txtSec, fontSize: 11),
+            style: TextStyle(color: txtSec, fontSize: 11),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -539,8 +585,7 @@ class DashboardScreen extends ConsumerWidget {
                 color: green.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               ),
-              child: Icon(CupertinoIcons.bolt_fill,
-                  color: green, size: 18),
+              child: Icon(CupertinoIcons.bolt_fill, color: green, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -559,16 +604,18 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Paste teks loker, form terisi otomatis',
-                    style: TextStyle(
-                        color: txtSec, fontSize: 12),
+                    style: TextStyle(color: txtSec, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(CupertinoIcons.chevron_right,
-                color: AppTheme.getTextTertiary(context), size: 14),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: AppTheme.getTextTertiary(context),
+              size: 14,
+            ),
           ],
         ),
       ),
@@ -576,7 +623,10 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildJobCard(
-      BuildContext context, JobApplication job, WidgetRef ref) {
+    BuildContext context,
+    JobApplication job,
+    WidgetRef ref,
+  ) {
     final isDark = AppTheme.isDark(context);
     final statusColor = AppTheme.getStatusColor(job.status, isDark: isDark);
     final diffDays = DateTime.now().difference(job.appliedDate).inDays;
@@ -584,8 +634,8 @@ class DashboardScreen extends ConsumerWidget {
     final timeStr = daysAgo == 0
         ? 'Hari ini'
         : daysAgo == 1
-            ? 'Kemarin'
-            : '$daysAgo hr lalu';
+        ? 'Kemarin'
+        : '$daysAgo hr lalu';
 
     final surf = AppTheme.getSurface(context);
     final txtPri = AppTheme.getTextPrimary(context);
@@ -599,114 +649,124 @@ class DashboardScreen extends ConsumerWidget {
           child: JobDetailScreen(job: job),
         ),
         child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: surf,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          job.position,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            letterSpacing: -0.2,
-                            color: txtPri,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          job.companyName,
-                          style: TextStyle(
-                            color: txtSec,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      job.status,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  AppleInlineBadge(icon: CupertinoIcons.briefcase, label: job.workType),
-                  if (job.location != null) ...[
-                    const SizedBox(width: 10),
-                    AppleInlineBadge(icon: CupertinoIcons.location, label: job.location!),
-                  ],
-                  const Spacer(),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () =>
-                        ref.read(jobProvider.notifier).toggleFavorite(job.id),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        job.isFavorite
-                            ? CupertinoIcons.star_fill
-                            : CupertinoIcons.star,
-                        color: job.isFavorite
-                            ? AppTheme.systemOrange
-                            : txtTer,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(timeStr,
-                      style: TextStyle(
-                          color: txtTer, fontSize: 11)),
-                ],
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: surf,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            job.position,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              letterSpacing: -0.2,
+                              color: txtPri,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            job.companyName,
+                            style: TextStyle(color: txtSec, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        job.status,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 6,
+                        children: [
+                          AppleInlineBadge(
+                            icon: CupertinoIcons.briefcase,
+                            label: job.workType,
+                          ),
+                          if (job.location != null)
+                            AppleInlineBadge(
+                              icon: CupertinoIcons.location,
+                              label: job.location!,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () =>
+                          ref.read(jobProvider.notifier).toggleFavorite(job.id),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          job.isFavorite
+                              ? CupertinoIcons.star_fill
+                              : CupertinoIcons.star,
+                          color: job.isFavorite
+                              ? AppTheme.systemOrange
+                              : txtTer,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      timeStr,
+                      style: TextStyle(color: txtTer, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
-
-
+    );
+  }
 
   Widget _buildEmptyState(BuildContext context) {
     final isDark = AppTheme.isDark(context);

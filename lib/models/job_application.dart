@@ -4,12 +4,14 @@ class JobApplication {
   final String id;
   final String companyName;
   final String position;
-  final String status; // 'Dikirim', 'HR Screening', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
+  final String
+  status; // 'Dikirim', 'HR Screening', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
   final DateTime appliedDate;
   final String? salaryOffered;
   final String workType; // 'WFO', 'WFH', 'Hybrid'
   final String? location;
-  final String? jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
+  final String?
+  jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
   final String jobDescription; // Snapshot deskripsi/kualifikasi awal
   final String? hrContact; // Nomor WA atau email HR
   final DateTime? interviewDate;

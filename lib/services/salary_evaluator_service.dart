@@ -67,14 +67,22 @@ class SalaryEvaluatorService {
 
   static double parseSalaryAmount(String? input) {
     if (input == null || input.trim().isEmpty) return 0.0;
-    String clean = input.toLowerCase().replaceAll('rp', '').replaceAll('idr', '').trim();
+    String clean = input
+        .toLowerCase()
+        .replaceAll('rp', '')
+        .replaceAll('idr', '')
+        .trim();
 
     if (clean.contains('-')) {
       clean = clean.split('-').first.trim();
     }
 
     if (clean.contains('jt') || clean.contains('juta')) {
-      final numStr = clean.replaceAll('jt', '').replaceAll('juta', '').replaceAll(',', '.').trim();
+      final numStr = clean
+          .replaceAll('jt', '')
+          .replaceAll('juta', '')
+          .replaceAll(',', '.')
+          .trim();
       final parsed = double.tryParse(numStr);
       if (parsed != null) return parsed * 1000000;
     }
@@ -97,7 +105,9 @@ class SalaryEvaluatorService {
       orElse: () => const UmrData('Nasional (Rata-rata)', 3500000),
     );
 
-    final umrRatio = umrItem.umrAmount > 0 ? (grossSalary / umrItem.umrAmount) : 1.0;
+    final umrRatio = umrItem.umrAmount > 0
+        ? (grossSalary / umrItem.umrAmount)
+        : 1.0;
 
     double operationalCost = 0.0;
     if (workType == 'WFH') {

@@ -61,8 +61,9 @@ class TextParserService {
 
     // Detect Company Name Patterns
     final ptReg = RegExp(
-        r'(pt\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|cv\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|[a-zA-Z0-9\.\-\s]{2,30}\s+inc\.?|[a-zA-Z0-9\.\-\s]{2,30}\s+ltd\.?)',
-        caseSensitive: false);
+      r'(pt\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|cv\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|[a-zA-Z0-9\.\-\s]{2,30}\s+inc\.?|[a-zA-Z0-9\.\-\s]{2,30}\s+ltd\.?)',
+      caseSensitive: false,
+    );
     final ptMatch = ptReg.firstMatch(text);
     if (ptMatch != null) {
       companyName = ptMatch.group(0)!.trim();
@@ -73,8 +74,9 @@ class TextParserService {
 
     // Detect Position Patterns
     final posReg = RegExp(
-        r'([a-zA-Z\s]{2,35}(developer|engineer|designer|specialist|staff|officer|intern|internship|manager|admin|analyst|associate|lead))',
-        caseSensitive: false);
+      r'([a-zA-Z\s]{2,35}(developer|engineer|designer|specialist|staff|officer|intern|internship|manager|admin|analyst|associate|lead))',
+      caseSensitive: false,
+    );
     final posMatch = posReg.firstMatch(text);
     if (posMatch != null) {
       position = posMatch.group(0)!.trim();
@@ -90,8 +92,9 @@ class TextParserService {
 
     // Detect Salary Patterns
     final salaryReg = RegExp(
-        r'(rp\.?\s*[\d\.\,]+(\s*-\s*[\d\.\,]+)?|[\d\.\,]+\s*(jt|juta|mio|milli?on)|idr\s*[\d\.\,]+)',
-        caseSensitive: false);
+      r'(rp\.?\s*[\d\.\,]+(\s*-\s*[\d\.\,]+)?|[\d\.\,]+\s*(jt|juta|mio|milli?on)|idr\s*[\d\.\,]+)',
+      caseSensitive: false,
+    );
     final salaryMatch = salaryReg.firstMatch(text);
     if (salaryMatch != null) {
       salary = salaryMatch.group(0)!.trim();
@@ -114,7 +117,7 @@ class TextParserService {
       'Bali',
       'Malang',
       'Solo',
-      'Batam'
+      'Batam',
     ];
     for (var city in cities) {
       if (lowerText.contains(city.toLowerCase())) {
@@ -147,7 +150,7 @@ class TextParserService {
       'Git',
       'Communication',
       'English',
-      'UI/UX'
+      'UI/UX',
     ];
 
     List<String> extractedSkills = [];

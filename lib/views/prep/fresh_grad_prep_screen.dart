@@ -43,27 +43,32 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
     {
       'q': 'Ceritakan tentang diri Anda',
       'sub': 'Elevator Pitch 60 Detik',
-      'a': 'Sebutkan latar belakang pendidikan, posisi yang diminati, 2-3 keahlian utama, serta pengalaman proyek kuliah atau magang yang relevan secara ringkas dan percaya diri.',
+      'a':
+          'Sebutkan latar belakang pendidikan, posisi yang diminati, 2-3 keahlian utama, serta pengalaman proyek kuliah atau magang yang relevan secara ringkas dan percaya diri.',
     },
     {
       'q': 'Mengapa melamar posisi ini tanpa pengalaman kerja?',
       'sub': 'Motivasi & Nilai',
-      'a': 'Hubungkan ilmu kuliah dan proyek Anda dengan deskripsi kerja. Tunjukkan antusiasme untuk belajar cepat dan kontribusi nyata yang dapat Anda berikan sejak hari pertama.',
+      'a':
+          'Hubungkan ilmu kuliah dan proyek Anda dengan deskripsi kerja. Tunjukkan antusiasme untuk belajar cepat dan kontribusi nyata yang dapat Anda berikan sejak hari pertama.',
     },
     {
       'q': 'Berapa ekspektasi gaji Anda?',
       'sub': 'Negosiasi',
-      'a': 'Sampaikan rentang gaji yang sesuai standar UMR kota tersebut. Contoh: "Berdasarkan riset UMR dan standar fresh graduate di kota ini, ekspektasi saya Rp X - Rp Y, namun saya terbuka menyesuaikan dengan benefit perusahaan."',
+      'a':
+          'Sampaikan rentang gaji yang sesuai standar UMR kota tersebut. Contoh: "Berdasarkan riset UMR dan standar fresh graduate di kota ini, ekspektasi saya Rp X - Rp Y, namun saya terbuka menyesuaikan dengan benefit perusahaan."',
     },
     {
       'q': 'Apa kelebihan dan kekurangan terbesar Anda?',
       'sub': 'Self-Awareness',
-      'a': 'Kelebihan: Pilih 1 soft skill atau hard skill dengan contoh proyek nyata. Kekurangan: Sebutkan kelemahan yang sedang aktif Anda perbaiki, misal "Saya sedang belajar manajemen waktu dengan to-do list harian."',
+      'a':
+          'Kelebihan: Pilih 1 soft skill atau hard skill dengan contoh proyek nyata. Kekurangan: Sebutkan kelemahan yang sedang aktif Anda perbaiki, misal "Saya sedang belajar manajemen waktu dengan to-do list harian."',
     },
     {
       'q': 'Di mana Anda melihat diri Anda dalam 3-5 tahun ke depan?',
       'sub': 'Ambisi & Komitmen',
-      'a': 'Jawab dengan jujur dan realistis. Tunjukkan bahwa Anda ingin tumbuh bersama perusahaan ini, bukan sekadar batu loncatan. Sebutkan keterampilan spesifik yang ingin Anda kuasai.',
+      'a':
+          'Jawab dengan jujur dan realistis. Tunjukkan bahwa Anda ingin tumbuh bersama perusahaan ini, bukan sekadar batu loncatan. Sebutkan keterampilan spesifik yang ingin Anda kuasai.',
     },
   ];
 
@@ -111,7 +116,6 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
     final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
 
-
     return Scaffold(
       backgroundColor: bg,
       body: CustomScrollView(
@@ -125,10 +129,7 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
             border: null,
             largeTitle: Text(
               'Persiapan Karir',
-              style: TextStyle(
-                color: txtPri,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: txtPri, fontWeight: FontWeight.bold),
             ),
             middle: Text(
               'Persiapan Karir',
@@ -235,7 +236,9 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: _progressColor(percent).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
@@ -258,10 +261,10 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                   child: LinearProgressIndicator(
                     value: percent,
                     minHeight: 10,
-                    backgroundColor:
-                        AppTheme.getSurfaceSecondary(context),
+                    backgroundColor: AppTheme.getSurfaceSecondary(context),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                        _progressColor(percent)),
+                      _progressColor(percent),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -321,12 +324,7 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                       },
                     ),
                     if (!isLast)
-                      Divider(
-                        height: 1,
-                        indent: 52,
-                        endIndent: 0,
-                        color: bdr,
-                      ),
+                      Divider(height: 1, indent: 52, endIndent: 0, color: bdr),
                   ],
                 );
               }),
@@ -389,7 +387,10 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 Text(
                   'Hitung estimasi sisa gaji bersih setelah potongan dan biaya hidup.',
                   style: TextStyle(
-                      fontSize: 13, color: txtSec, letterSpacing: -0.1),
+                    fontSize: 13,
+                    color: txtSec,
+                    letterSpacing: -0.1,
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -397,11 +398,14 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Tawaran Gaji Kotor',
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: txtSec,
-                            letterSpacing: -0.2)),
+                    Text(
+                      'Tawaran Gaji Kotor',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: txtSec,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                     Text(
                       SalaryEvaluatorService.formatRupiah(_grossSalary),
                       style: TextStyle(
@@ -417,13 +421,14 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 SliderTheme(
                   data: SliderThemeData(
                     activeTrackColor: blue,
-                    inactiveTrackColor:
-                        AppTheme.getSurfaceSecondary(context),
+                    inactiveTrackColor: AppTheme.getSurfaceSecondary(context),
                     thumbColor: isDark ? Colors.white : Colors.white,
                     thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: 11),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 20),
+                      enabledThumbRadius: 11,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 20,
+                    ),
                     overlayColor: blue.withValues(alpha: 0.12),
                     trackHeight: 5,
                   ),
@@ -439,10 +444,14 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Rp 2 Jt',
-                        style: TextStyle(fontSize: 11, color: txtSec)),
-                    Text('Rp 15 Jt',
-                        style: TextStyle(fontSize: 11, color: txtSec)),
+                    Text(
+                      'Rp 2 Jt',
+                      style: TextStyle(fontSize: 11, color: txtSec),
+                    ),
+                    Text(
+                      'Rp 15 Jt',
+                      style: TextStyle(fontSize: 11, color: txtSec),
+                    ),
                   ],
                 ),
               ],
@@ -463,11 +472,16 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 // Kota dropdown
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   child: Row(
                     children: [
-                      Icon(CupertinoIcons.location_fill,
-                          size: 18, color: AppTheme.systemRed),
+                      Icon(
+                        CupertinoIcons.location_fill,
+                        size: 18,
+                        color: AppTheme.systemRed,
+                      ),
                       const SizedBox(width: 10),
                       Text(
                         'Kota Tujuan Kerja',
@@ -492,8 +506,11 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Icon(CupertinoIcons.chevron_right,
-                                size: 14, color: txtSec),
+                            Icon(
+                              CupertinoIcons.chevron_right,
+                              size: 14,
+                              color: txtSec,
+                            ),
                           ],
                         ),
                       ),
@@ -504,11 +521,16 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 // Perlu Kos switch
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
-                      Icon(CupertinoIcons.house_fill,
-                          size: 18, color: AppTheme.systemOrange),
+                      Icon(
+                        CupertinoIcons.house_fill,
+                        size: 18,
+                        color: AppTheme.systemOrange,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -593,13 +615,15 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                 const SizedBox(height: 6),
                 _SalaryRow(
                   label: 'Potongan BPJS (-4%)',
-                  value: '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}',
+                  value:
+                      '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}',
                   color: AppTheme.systemRed,
                 ),
                 const SizedBox(height: 6),
                 _SalaryRow(
                   label: 'Biaya Hidup & Kos',
-                  value: '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedOperationalCost)}',
+                  value:
+                      '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedOperationalCost)}',
                   color: AppTheme.systemRed,
                 ),
                 const SizedBox(height: 12),
@@ -619,7 +643,8 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                     ),
                     Text(
                       SalaryEvaluatorService.formatRupiah(
-                          eval.estimatedNetSavings),
+                        eval.estimatedNetSavings,
+                      ),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -673,17 +698,20 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
             Expanded(
               child: CupertinoPicker(
                 scrollController: FixedExtentScrollController(
-                    initialItem: tempIndex),
+                  initialItem: tempIndex,
+                ),
                 itemExtent: 40,
                 onSelectedItemChanged: (i) => tempIndex = i,
                 children: cities
-                    .map((u) => Text(
-                          '${u.city} (${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
-                          style: TextStyle(
-                            color: AppTheme.getTextPrimary(context),
-                            fontSize: 15,
-                          ),
-                        ))
+                    .map(
+                      (u) => Text(
+                        '${u.city} (${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
+                        style: TextStyle(
+                          color: AppTheme.getTextPrimary(context),
+                          fontSize: 15,
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -724,8 +752,11 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(CupertinoIcons.lightbulb_fill,
-                    size: 18, color: AppTheme.systemBlue),
+                const Icon(
+                  CupertinoIcons.lightbulb_fill,
+                  size: 18,
+                  color: AppTheme.systemBlue,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -762,22 +793,27 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                   return Column(
                     children: [
                       Theme(
-                        data: Theme.of(context).copyWith(
-                          dividerColor: Colors.transparent,
-                        ),
+                        data: Theme.of(
+                          context,
+                        ).copyWith(dividerColor: Colors.transparent),
                         child: ExpansionTile(
                           tilePadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 4),
-                          expandedCrossAxisAlignment:
-                              CrossAxisAlignment.start,
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
                           childrenPadding: const EdgeInsets.only(
-                              left: 16, right: 16, bottom: 14),
+                            left: 16,
+                            right: 16,
+                            bottom: 14,
+                          ),
                           leading: Container(
                             width: 30,
                             height: 30,
                             decoration: BoxDecoration(
-                              color: AppTheme.systemBlue
-                                  .withValues(alpha: 0.15),
+                              color: AppTheme.systemBlue.withValues(
+                                alpha: 0.15,
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Center(
@@ -823,8 +859,7 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                           ],
                         ),
                       ),
-                      if (!isLast)
-                        Divider(height: 1, indent: 62, color: bdr),
+                      if (!isLast) Divider(height: 1, indent: 62, color: bdr),
                     ],
                   );
                 }),
@@ -869,8 +904,7 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                             color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child:
-                              Icon(icon, size: 18, color: color),
+                          child: Icon(icon, size: 18, color: color),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -902,13 +936,18 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                           padding: EdgeInsets.zero,
                           onPressed: () {
                             Clipboard.setData(
-                                ClipboardData(text: t['text'] as String));
+                              ClipboardData(text: t['text'] as String),
+                            );
                             AppleToast.success(
-                                context, 'Templat berhasil disalin!');
+                              context,
+                              'Templat berhasil disalin!',
+                            );
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF2C2C2E)
@@ -918,9 +957,11 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(CupertinoIcons.doc_on_doc,
-                                    size: 13,
-                                    color: AppTheme.systemBlue),
+                                Icon(
+                                  CupertinoIcons.doc_on_doc,
+                                  size: 13,
+                                  color: AppTheme.systemBlue,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Salin',
@@ -983,42 +1024,55 @@ class _SegmentedHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => 52;
+  double get minExtent => 60;
   @override
-  double get maxExtent => 52;
+  double get maxExtent => 60;
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final bg = AppTheme.getBackground(context);
 
     return Container(
       color: bg.withValues(alpha: 0.95),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: CupertinoSlidingSegmentedControl<int>(
-        groupValue: selectedIndex,
-        thumbColor: isDark ? const Color(0xFF3A3A3C) : Colors.white,
-        backgroundColor: isDark
-            ? const Color(0xFF2C2C2E)
-            : const Color(0xFFE5E5EA),
-        children: {
-          for (int i = 0; i < segments.length; i++)
-            i: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: segments.length,
+        separatorBuilder: (_, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final selected = index == selectedIndex;
+          return CupertinoButton(
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+            onPressed: () => onChanged(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppTheme.systemBlue
+                    : isDark
+                    ? const Color(0xFF2C2C2E)
+                    : const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: Text(
-                segments[i],
+                segments[index],
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.getTextPrimary(context),
-                  letterSpacing: -0.2,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? CupertinoColors.white
+                      : AppTheme.getTextPrimary(context),
                 ),
               ),
             ),
-        },
-        onValueChanged: (v) {
-          if (v != null) onChanged(v);
+          );
         },
       ),
     );
@@ -1026,8 +1080,7 @@ class _SegmentedHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SegmentedHeaderDelegate old) =>
-      old.selectedIndex != selectedIndex ||
-      old.isDark != isDark;
+      old.selectedIndex != selectedIndex || old.isDark != isDark;
 }
 
 // ── Helper Widgets ─────────────────────────────────────────────────────────────
@@ -1080,8 +1133,7 @@ class _ChecklistRow extends StatelessWidget {
       padding: EdgeInsets.zero,
       onPressed: onTap,
       child: Padding(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             AnimatedContainer(
@@ -1089,9 +1141,7 @@ class _ChecklistRow extends StatelessWidget {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: isChecked
-                    ? AppTheme.systemBlue
-                    : Colors.transparent,
+                color: isChecked ? AppTheme.systemBlue : Colors.transparent,
                 shape: BoxShape.circle,
                 border: isChecked
                     ? null
@@ -1118,8 +1168,7 @@ class _ChecklistRow extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: isChecked ? FontWeight.w500 : FontWeight.w400,
                   color: isChecked ? txtPri : txtSec,
-                  decoration:
-                      isChecked ? TextDecoration.lineThrough : null,
+                  decoration: isChecked ? TextDecoration.lineThrough : null,
                   decorationColor: txtSec,
                   letterSpacing: -0.2,
                   height: 1.3,
@@ -1149,23 +1198,24 @@ class _SalaryRow extends StatelessWidget {
     final txtSec = AppTheme.getTextSecondary(context);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: txtSec,
-            letterSpacing: -0.1,
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 13, color: txtSec, letterSpacing: -0.1),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: color,
-            letterSpacing: -0.2,
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+              letterSpacing: -0.2,
+            ),
           ),
         ),
       ],

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../providers/job_provider.dart';
@@ -38,7 +39,6 @@ class MainNavigation extends ConsumerStatefulWidget {
 class _MainNavigationState extends ConsumerState<MainNavigation>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
-  int _previousIndex = 0;
 
   // Controller untuk bounce scale per item
   late List<AnimationController> _scaleControllers;
@@ -86,12 +86,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     );
     _scaleAnimations = _scaleControllers.map((ctrl) {
       return TweenSequence<double>([
-        TweenSequenceItem(
-            tween: Tween(begin: 1.0, end: 0.82), weight: 40),
-        TweenSequenceItem(
-            tween: Tween(begin: 0.82, end: 1.08), weight: 40),
-        TweenSequenceItem(
-            tween: Tween(begin: 1.08, end: 1.0), weight: 20),
+        TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.82), weight: 40),
+        TweenSequenceItem(tween: Tween(begin: 0.82, end: 1.08), weight: 40),
+        TweenSequenceItem(tween: Tween(begin: 1.08, end: 1.0), weight: 20),
       ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
     }).toList();
   }
@@ -105,10 +102,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   }
 
   void _onTabTap(int index) {
-    if (index == _currentIndex) return;
+    HapticFeedback.selectionClick();
     _scaleControllers[index].forward(from: 0);
+    if (index == _currentIndex) return;
     setState(() {
-      _previousIndex = _currentIndex;
       _currentIndex = index;
     });
   }
@@ -118,7 +115,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     final isDark = ref.watch(jobProvider).isDarkMode;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     final bg = AppTheme.getBackground(context);
-    final goingRight = _currentIndex > _previousIndex;
 
     // Navbar pill: tinggi tetap 64, padding horizontal 10, vertical 6
     // Setiap item mendapat lebar yang sama persis via LayoutBuilder
@@ -126,37 +122,15 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       backgroundColor: bg,
       body: Stack(
         children: [
-          // Animated screen transition
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 230),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) {
-              final inOff =
-                  goingRight ? const Offset(0.025, 0) : const Offset(-0.025, 0);
-              final outOff =
-                  goingRight ? const Offset(-0.025, 0) : const Offset(0.025, 0);
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: child.key == ValueKey(_currentIndex) ? inOff : outOff,
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              );
-            },
-            child: _screens[_currentIndex],
-          ),
+          IndexedStack(index: _currentIndex, children: _screens),
 
           // Bottom Navbar - Apple Liquid Glass Capsule
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
+                left: 12,
+                right: 12,
                 bottom: bottomInset > 0 ? bottomInset + 8 : 20,
               ),
               child: RepaintBoundary(
@@ -166,13 +140,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                     final navWidth = constraints.maxWidth;
                     // Lebar tiap item sama rata
                     final itemW = navWidth / _items.length;
+                    final textScale = MediaQuery.textScalerOf(context).scale(1);
+                    final showLabels = itemW >= 72 && textScale <= 1.3;
+                    final navHeight = showLabels ? 66.0 : 56.0;
 
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(36),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
                         child: Container(
-                          height: 64,
+                          height: navHeight,
                           decoration: BoxDecoration(
                             // Dual layer glass: translucent bg + specular shine
                             color: isDark
@@ -188,13 +165,15 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                    alpha: isDark ? 0.55 : 0.10),
+                                  alpha: isDark ? 0.55 : 0.10,
+                                ),
                                 blurRadius: 32,
                                 offset: const Offset(0, 10),
                               ),
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                    alpha: isDark ? 0.20 : 0.04),
+                                  alpha: isDark ? 0.20 : 0.04,
+                                ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -215,7 +194,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                                       colors: [
                                         Colors.white.withValues(alpha: 0.0),
                                         Colors.white.withValues(
-                                            alpha: isDark ? 0.22 : 0.55),
+                                          alpha: isDark ? 0.22 : 0.55,
+                                        ),
                                         Colors.white.withValues(alpha: 0.0),
                                       ],
                                     ),
@@ -225,22 +205,14 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
 
                               // -- Liquid Sliding Active Pill --
                               // TweenAnimationBuilder untuk spring-like smooth interpolasi
-                              TweenAnimationBuilder<double>(
-                                tween: Tween<double>(
-                                  begin: _previousIndex.toDouble(),
-                                  end: _currentIndex.toDouble(),
-                                ),
-                                duration: const Duration(milliseconds: 320),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, animVal, _) {
-                                  return Positioned(
-                                    left: animVal * itemW + 5,
-                                    top: 5,
-                                    bottom: 5,
-                                    width: itemW - 10,
-                                    child: _buildActivePill(isDark),
-                                  );
-                                },
+                              AnimatedPositioned(
+                                duration: const Duration(milliseconds: 420),
+                                curve: Curves.easeOutBack,
+                                left: _currentIndex * itemW + 5,
+                                top: 5,
+                                bottom: 5,
+                                width: itemW - 10,
+                                child: _buildActivePill(isDark),
                               ),
 
                               // -- Tab Items Row --
@@ -249,8 +221,12 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                                   _items.length,
                                   (i) => SizedBox(
                                     width: itemW,
-                                    height: 64,
-                                    child: _buildTabItem(i, isDark),
+                                    height: navHeight,
+                                    child: _buildTabItem(
+                                      i,
+                                      isDark,
+                                      showLabel: showLabels,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -305,7 +281,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   }
 
   /// Satu item tab: icon 22pt + label 10pt, terkurung dalam SizedBox fixed
-  Widget _buildTabItem(int index, bool isDark) {
+  Widget _buildTabItem(int index, bool isDark, {required bool showLabel}) {
     final isSelected = _currentIndex == index;
     final activeColor = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
     final inactiveColor = isDark
@@ -313,55 +289,65 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         : const Color(0xFF6E6E73);
     final item = _items[index];
 
-    return GestureDetector(
-      onTap: () => _onTabTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _scaleAnimations[index],
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimations[index].value,
-            child: child,
-          );
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            // Icon dengan AnimatedSwitcher untuk swap aktif/tidak aktif
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: anim,
-                child: FadeTransition(opacity: anim, child: child),
-              ),
-              child: Icon(
-                isSelected ? item.activeIcon : item.inactiveIcon,
-                key: ValueKey('${index}_$isSelected'),
-                color: isSelected ? activeColor : inactiveColor,
-                size: 22,
-              ),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: item.label,
+      child: Tooltip(
+        message: item.label,
+        child: GestureDetector(
+          onTap: () => _onTabTap(index),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedBuilder(
+            animation: _scaleAnimations[index],
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimations[index].value,
+                child: child,
+              );
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                // Icon dengan AnimatedSwitcher untuk swap aktif/tidak aktif
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: Icon(
+                    isSelected ? item.activeIcon : item.inactiveIcon,
+                    key: ValueKey('${index}_$isSelected'),
+                    color: isSelected ? activeColor : inactiveColor,
+                    size: 22,
+                  ),
+                ),
+                if (showLabel) ...[
+                  const SizedBox(height: 3),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 180),
+                    style: TextStyle(
+                      color: isSelected ? activeColor : inactiveColor,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      fontSize: 10,
+                      letterSpacing: -0.15,
+                      height: 1.0,
+                    ),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 3),
-            // Label dengan lebar terbatas agar tidak overflow
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 180),
-              style: TextStyle(
-                color: isSelected ? activeColor : inactiveColor,
-                fontWeight:
-                    isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 10,
-                letterSpacing: -0.15,
-                height: 1.0,
-              ),
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.clip,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

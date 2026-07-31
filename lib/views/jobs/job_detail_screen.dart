@@ -59,8 +59,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     }
 
     final templates = FollowupService.generateTemplates(widget.job);
-    _followupContentController =
-        TextEditingController(text: templates[_selectedTemplateIndex].content);
+    _followupContentController = TextEditingController(
+      text: templates[_selectedTemplateIndex].content,
+    );
   }
 
   @override
@@ -70,9 +71,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     super.dispose();
   }
 
-  void _updateStatus(JobApplication currentJob, String newStatus) {
-    ref.read(jobProvider.notifier).updateStatus(currentJob.id, newStatus);
-    AppleToast.success(context, 'Status berhasil diubah menjadi "$newStatus"');
+  Future<void> _updateStatus(
+    JobApplication currentJob,
+    String newStatus,
+  ) async {
+    try {
+      await ref
+          .read(jobProvider.notifier)
+          .updateStatus(currentJob.id, newStatus);
+      if (mounted) {
+        AppleToast.success(
+          context,
+          'Status berhasil diubah menjadi "$newStatus"',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppleToast.error(context, 'Status gagal disimpan. Coba lagi.');
+      }
+    }
   }
 
   void _deleteJob(JobApplication currentJob) async {
@@ -81,7 +98,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       builder: (context) => CupertinoAlertDialog(
         title: const Text('Hapus Lamaran?'),
         content: Text(
-            'Apakah Anda yakin ingin menghapus lamaran ${currentJob.position} di ${currentJob.companyName}?'),
+          'Apakah Anda yakin ingin menghapus lamaran ${currentJob.position} di ${currentJob.companyName}?',
+        ),
         actions: [
           CupertinoDialogAction(
             child: const Text('Batal'),
@@ -97,7 +115,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     );
 
     if (confirm == true) {
-      ref.read(jobProvider.notifier).deleteJob(currentJob.id);
+      try {
+        await ref.read(jobProvider.notifier).deleteJob(currentJob.id);
+      } catch (_) {
+        if (mounted) AppleToast.error(context, 'Lamaran gagal dihapus.');
+        return;
+      }
       if (mounted) Navigator.pop(context);
     }
   }
@@ -105,13 +128,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   @override
   Widget build(BuildContext context) {
     // Live reactive job state from provider
-    final currentJob = ref.watch(jobProvider).jobs.firstWhere(
-          (j) => j.id == widget.job.id,
-          orElse: () => widget.job,
-        );
+    final currentJob = ref
+        .watch(jobProvider)
+        .jobs
+        .firstWhere((j) => j.id == widget.job.id, orElse: () => widget.job);
 
     final isDark = AppTheme.isDark(context);
-    final statusColor = AppTheme.getStatusColor(currentJob.status, isDark: isDark);
+    final statusColor = AppTheme.getStatusColor(
+      currentJob.status,
+      isDark: isDark,
+    );
     final bg = AppTheme.getBackground(context);
     final surf = AppTheme.getSurface(context);
     final surfSec = AppTheme.getSurfaceSecondary(context);
@@ -131,8 +157,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 children: [
                   // Drag handle + actions row
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
                         // Back / Close
@@ -144,8 +172,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               color: surfSec,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(CupertinoIcons.chevron_down,
-                                size: 16, color: txtSec),
+                            child: Icon(
+                              CupertinoIcons.chevron_down,
+                              size: 16,
+                              color: txtSec,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -166,9 +197,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               ),
                               Text(
                                 currentJob.companyName,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: txtSec),
+                                style: TextStyle(fontSize: 13, color: txtSec),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -177,13 +206,19 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         ),
                         // Edit
                         IconButton(
-                          icon: const Icon(CupertinoIcons.pencil,
-                              color: AppTheme.systemBlue, size: 20),
+                          icon: const Icon(
+                            CupertinoIcons.pencil,
+                            color: AppTheme.systemBlue,
+                            size: 20,
+                          ),
                           onPressed: () async {
-                            final result = await AppleSheetWindow.showAppleModalSheet(
-                              context: context,
-                              child: AddEditJobScreen(jobToEdit: currentJob),
-                            );
+                            final result =
+                                await AppleSheetWindow.showAppleModalSheet(
+                                  context: context,
+                                  child: AddEditJobScreen(
+                                    jobToEdit: currentJob,
+                                  ),
+                                );
                             if (result != null && context.mounted) {
                               AppleToast.success(context, 'Perubahan disimpan');
                             }
@@ -191,8 +226,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         ),
                         // Delete
                         IconButton(
-                          icon: const Icon(CupertinoIcons.trash,
-                              color: AppTheme.systemRed, size: 20),
+                          icon: const Icon(
+                            CupertinoIcons.trash,
+                            color: AppTheme.systemRed,
+                            size: 20,
+                          ),
                           onPressed: () => _deleteJob(currentJob),
                         ),
                       ],
@@ -203,12 +241,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     splashFactory: NoSplash.splashFactory,
                     indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
-                      color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue).withValues(alpha: 0.14),
+                      color:
+                          (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
+                              .withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     labelColor: AppTheme.systemBlue,
@@ -216,7 +262,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     dividerColor: Colors.transparent,
                     dividerHeight: 0,
                     labelStyle: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 13),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                     tabs: const [
                       Tab(
                         child: Row(
@@ -308,8 +356,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             decoration: BoxDecoration(
               color: surf,
               borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border:
-                  Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
+              border: Border.all(
+                color: statusColor.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -317,15 +367,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Status Lamaran',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: txtSec,
-                              fontWeight: FontWeight.w500)),
+                      Text(
+                        'Status Lamaran',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: txtSec,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
@@ -350,13 +405,22 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       builder: (_) => CupertinoActionSheet(
                         title: const Text('Ubah Status Lamaran'),
                         actions: _statusOptions.map((s) {
-                          final sColor = AppTheme.getStatusColor(s, isDark: AppTheme.isDark(context));
+                          final sColor = AppTheme.getStatusColor(
+                            s,
+                            isDark: AppTheme.isDark(context),
+                          );
                           return CupertinoActionSheetAction(
                             onPressed: () {
                               Navigator.pop(context);
                               _updateStatus(currentJob, s);
                             },
-                            child: Text(s, style: TextStyle(color: sColor, fontWeight: FontWeight.w600)),
+                            child: Text(
+                              s,
+                              style: TextStyle(
+                                color: sColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           );
                         }).toList(),
                         cancelButton: CupertinoActionSheetAction(
@@ -373,7 +437,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       color: surfSec,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(CupertinoIcons.arrow_up_arrow_down, size: 14, color: txtSec),
+                    child: Icon(
+                      CupertinoIcons.arrow_up_arrow_down,
+                      size: 14,
+                      color: txtSec,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -416,29 +484,33 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 _infoRow(CupertinoIcons.calendar, 'Tanggal Melamar', dateStr),
                 _divider(),
                 _infoRow(
-                    CupertinoIcons.briefcase,
-                    'Tipe Kerja',
-                    currentJob.workType),
+                  CupertinoIcons.briefcase,
+                  'Tipe Kerja',
+                  currentJob.workType,
+                ),
                 if (currentJob.location != null) ...[
                   _divider(),
                   _infoRow(
-                      CupertinoIcons.location,
-                      'Lokasi',
-                      currentJob.location!),
+                    CupertinoIcons.location,
+                    'Lokasi',
+                    currentJob.location!,
+                  ),
                 ],
                 if (currentJob.jobSource != null) ...[
                   _divider(),
                   _infoRow(
-                      CupertinoIcons.link,
-                      'Sumber Loker',
-                      currentJob.jobSource!),
+                    CupertinoIcons.link,
+                    'Sumber Loker',
+                    currentJob.jobSource!,
+                  ),
                 ],
                 if (currentJob.salaryOffered != null) ...[
                   _divider(),
                   _infoRow(
-                      CupertinoIcons.money_dollar_circle,
-                      'Ekspektasi / Gaji Ditawarkan',
-                      currentJob.salaryOffered!),
+                    CupertinoIcons.money_dollar_circle,
+                    'Ekspektasi / Gaji Ditawarkan',
+                    currentJob.salaryOffered!,
+                  ),
                 ],
               ],
             ),
@@ -453,8 +525,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 color: AppTheme.systemOrange.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(
-                    color: AppTheme.systemOrange.withValues(alpha: 0.3),
-                    width: 1),
+                  color: AppTheme.systemOrange.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               child: Row(
                 children: [
@@ -465,26 +538,33 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       color: AppTheme.systemOrange.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(CupertinoIcons.calendar_badge_plus,
-                        color: AppTheme.systemOrange, size: 18),
+                    child: const Icon(
+                      CupertinoIcons.calendar_badge_plus,
+                      color: AppTheme.systemOrange,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Jadwal Interview',
-                            style: TextStyle(
-                                color: AppTheme.systemOrange,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13)),
+                        const Text(
+                          'Jadwal Interview',
+                          style: TextStyle(
+                            color: AppTheme.systemOrange,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           interviewStr,
                           style: TextStyle(
-                              color: txtPri,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14),
+                            color: txtPri,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -496,16 +576,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           if (interviewStr != null) const SizedBox(height: 12),
 
           // HR Contact
-          if (currentJob.hrContact != null &&
-              currentJob.hrContact!.isNotEmpty)
+          if (currentJob.hrContact != null && currentJob.hrContact!.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppTheme.systemBlue.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(
-                    color: AppTheme.systemBlue.withValues(alpha: 0.25),
-                    width: 1),
+                  color: AppTheme.systemBlue.withValues(alpha: 0.25),
+                  width: 1,
+                ),
               ),
               child: Row(
                 children: [
@@ -516,26 +596,33 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       color: AppTheme.systemBlue.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(CupertinoIcons.phone_fill,
-                        color: AppTheme.systemBlue, size: 16),
+                    child: const Icon(
+                      CupertinoIcons.phone_fill,
+                      color: AppTheme.systemBlue,
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Kontak HRD',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: txtSec,
-                                fontWeight: FontWeight.w500)),
+                        Text(
+                          'Kontak HRD',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: txtSec,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           currentJob.hrContact!,
                           style: TextStyle(
-                              color: txtPri,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500),
+                            color: txtPri,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -544,24 +631,28 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     onTap: () => _tabController.animateTo(2),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.systemBlue,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Text('Follow Up',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Follow Up',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-          if (currentJob.hrContact != null &&
-              currentJob.hrContact!.isNotEmpty)
+          if (currentJob.hrContact != null && currentJob.hrContact!.isNotEmpty)
             const SizedBox(height: 12),
 
           // Catatan Pribadi
@@ -579,24 +670,31 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(CupertinoIcons.pencil_outline,
-                          size: 14, color: txtSec),
+                      Icon(
+                        CupertinoIcons.pencil_outline,
+                        size: 14,
+                        color: txtSec,
+                      ),
                       const SizedBox(width: 6),
-                      Text('Catatan Pribadi',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: txtSec,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Catatan Pribadi',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: txtSec,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     currentJob.notes!,
                     style: TextStyle(
-                        fontSize: 14,
-                        color: txtPri,
-                        height: 1.5,
-                        fontStyle: FontStyle.italic),
+                      fontSize: 14,
+                      color: txtPri,
+                      height: 1.5,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),
@@ -620,23 +718,26 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(CupertinoIcons.doc_plaintext,
-                          size: 14, color: txtSec),
+                      Icon(
+                        CupertinoIcons.doc_plaintext,
+                        size: 14,
+                        color: txtSec,
+                      ),
                       const SizedBox(width: 6),
-                      Text('Snapshot Deskripsi Loker',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: txtSec,
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        'Snapshot Deskripsi Loker',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: txtSec,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     currentJob.jobDescription,
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: txtPri,
-                        height: 1.6),
+                    style: TextStyle(fontSize: 13, color: txtPri, height: 1.6),
                   ),
                 ],
               ),
@@ -661,17 +762,23 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: txtSec,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: txtSec,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: txtPri,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: txtPri,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -680,10 +787,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     );
   }
 
-  Widget _divider() => Container(
-        height: 0.5,
-        color: AppTheme.getBorder(context),
-      );
+  Widget _divider() =>
+      Container(height: 0.5, color: AppTheme.getBorder(context));
 
   // TAB 2: INTERVIEW CHEAT-SHEET
   Widget _buildAppleInterviewCheatSheetTab(JobApplication currentJob) {
@@ -706,20 +811,26 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               color: surf,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                  color: AppTheme.systemGreen.withValues(alpha: 0.3)),
+                color: AppTheme.systemGreen.withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
                   children: [
-                    Icon(CupertinoIcons.sparkles,
-                        color: AppTheme.systemGreen, size: 20),
+                    Icon(
+                      CupertinoIcons.sparkles,
+                      color: AppTheme.systemGreen,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Skill Kunci Terdeteksi',
                       style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ],
                 ),
@@ -734,23 +845,28 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     spacing: 8,
                     runSpacing: 8,
                     children: skills
-                        .map((s) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.systemGreen
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
+                        .map(
+                          (s) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.systemGreen.withValues(
+                                alpha: 0.15,
                               ),
-                              child: Text(
-                                s,
-                                style: const TextStyle(
-                                  color: AppTheme.systemGreen,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              s,
+                              style: const TextStyle(
+                                color: AppTheme.systemGreen,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
-                            ))
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
               ],
@@ -759,12 +875,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           const SizedBox(height: 20),
 
           // Starter Questions Card
-          Text('Pertanyaan yang Sering Ditanyakan',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                  color: txtPri,
-                  letterSpacing: -0.3)),
+          Text(
+            'Pertanyaan yang Sering Ditanyakan',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: txtPri,
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 10),
           _cheatSheetItem(
             '1. Ceritakan tentang diri Anda & alasan melamar di ${currentJob.companyName}.',
@@ -800,11 +919,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(question,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: txtPri)),
+          Text(
+            question,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: txtPri,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(tip, style: TextStyle(color: txtSec, fontSize: 13, height: 1.4)),
         ],
@@ -827,12 +949,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Pilih Jenis Template',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                  color: txtPri,
-                  letterSpacing: -0.3)),
+          Text(
+            'Pilih Jenis Template',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+              color: txtPri,
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 10),
 
           // Template selector chips
@@ -855,14 +980,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 7),
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: selected ? AppTheme.systemBlue : surfSec,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: selected
-                              ? AppTheme.systemBlue
-                              : bdr,
+                          color: selected ? AppTheme.systemBlue : bdr,
                           width: AppTheme.borderHairline,
                         ),
                       ),
@@ -871,8 +996,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         style: TextStyle(
                           color: selected ? Colors.white : txtSec,
                           fontSize: 12,
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -912,9 +1038,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           final text = _followupContentController.text;
                           Clipboard.setData(ClipboardData(text: text));
                           final hrContact = currentJob.hrContact;
-                          final isPhone = hrContact != null &&
+                          final isPhone =
+                              hrContact != null &&
                               RegExp(r'^\+?[0-9]+$').hasMatch(
-                                  hrContact.replaceAll(RegExp(r'\s+'), ''));
+                                hrContact.replaceAll(RegExp(r'\s+'), ''),
+                              );
                           if (isPhone) {
                             AppleToast.success(
                               context,
@@ -922,11 +1050,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               subtitle: 'Siap dikirim ke $hrContact',
                               actionLabel: 'Kirim WA',
                               onAction: () => FollowupService.launchWhatsApp(
-                                  hrContact, text),
+                                hrContact,
+                                text,
+                              ),
                             );
                           } else {
                             AppleToast.success(
-                                context, 'Pesan Follow-Up Disalin');
+                              context,
+                              'Pesan Follow-Up Disalin',
+                            );
                           }
                         },
                         icon: const Icon(CupertinoIcons.doc_on_doc, size: 16),
@@ -945,7 +1077,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   // TAB 4: SALARY & OFFER EVALUATOR
   Widget _buildAppleSalaryEvaluatorTab(JobApplication currentJob) {
-    final parsedSalary = SalaryEvaluatorService.parseSalaryAmount(currentJob.salaryOffered);
+    final parsedSalary = SalaryEvaluatorService.parseSalaryAmount(
+      currentJob.salaryOffered,
+    );
     final evaluation = SalaryEvaluatorService.evaluateSalary(
       grossSalary: parsedSalary,
       city: _selectedCity,
@@ -977,8 +1111,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               ),
               child: const Row(
                 children: [
-                  Icon(CupertinoIcons.info_circle_fill,
-                      color: AppTheme.systemOrange, size: 18),
+                  Icon(
+                    CupertinoIcons.info_circle_fill,
+                    color: AppTheme.systemOrange,
+                    size: 18,
+                  ),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1007,11 +1144,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Lokasi Pekerjaan & Biaya Hidup',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: txtPri)),
+                Text(
+                  'Lokasi Pekerjaan & Biaya Hidup',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: txtPri,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () {
@@ -1030,7 +1170,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               '${u.city} (UMR: ${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
                               style: TextStyle(
                                 color: AppTheme.systemBlue,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 fontSize: 14,
                               ),
                             ),
@@ -1047,7 +1189,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Kota Penempatan',
-                      prefixIcon: Icon(CupertinoIcons.building_2_fill, size: 18),
+                      prefixIcon: Icon(
+                        CupertinoIcons.building_2_fill,
+                        size: 18,
+                      ),
                       suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
                     ),
                     child: Text(
@@ -1063,11 +1208,19 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Perlu Sewa Kos / Kontrakan?',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: txtPri)),
+                          Text(
+                            'Perlu Sewa Kos / Kontrakan?',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: txtPri,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Menambahkan estimasi kos ke biaya hidup minimal',
-                              style: TextStyle(fontSize: 11, color: txtSec)),
+                          Text(
+                            'Menambahkan estimasi kos ke biaya hidup minimal',
+                            style: TextStyle(fontSize: 11, color: txtSec),
+                          ),
                         ],
                       ),
                     ),
@@ -1128,16 +1281,28 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 ),
                 const SizedBox(height: 16),
 
-                _evalRow('Estimasi Gaji Bersih',
-                    SalaryEvaluatorService.formatRupiah(evaluation.estimatedNetTakeHomePay)),
-                _evalRow('UMR $_selectedCity',
-                    SalaryEvaluatorService.formatRupiah(evaluation.umrAmount)),
-                _evalRow('Estimasi Biaya Hidup + Kos',
-                    SalaryEvaluatorService.formatRupiah(evaluation.estimatedOperationalCost)),
+                _evalRow(
+                  'Estimasi Gaji Bersih',
+                  SalaryEvaluatorService.formatRupiah(
+                    evaluation.estimatedNetTakeHomePay,
+                  ),
+                ),
+                _evalRow(
+                  'UMR $_selectedCity',
+                  SalaryEvaluatorService.formatRupiah(evaluation.umrAmount),
+                ),
+                _evalRow(
+                  'Estimasi Biaya Hidup + Kos',
+                  SalaryEvaluatorService.formatRupiah(
+                    evaluation.estimatedOperationalCost,
+                  ),
+                ),
                 const Divider(height: 20),
                 _evalRow(
                   'Estimasi Tabungan / Bulan',
-                  SalaryEvaluatorService.formatRupiah(evaluation.estimatedNetSavings),
+                  SalaryEvaluatorService.formatRupiah(
+                    evaluation.estimatedNetSavings,
+                  ),
                   isBold: true,
                   color: evaluation.estimatedNetSavings >= 0
                       ? AppTheme.systemGreen
@@ -1151,26 +1316,41 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     );
   }
 
-  Widget _evalRow(String label, String val,
-      {bool isBold = false, Color? color}) {
+  Widget _evalRow(
+    String label,
+    String val, {
+    bool isBold = false,
+    Color? color,
+  }) {
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
+          Expanded(
+            child: Text(
+              label,
               style: TextStyle(
-                  fontSize: 13,
-                  color: isBold ? txtPri : txtSec,
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(val,
+                fontSize: 13,
+                color: isBold ? txtPri : txtSec,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              val,
+              textAlign: TextAlign.right,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                  color: color ?? txtPri)),
+                fontSize: 13,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: color ?? txtPri,
+              ),
+            ),
+          ),
         ],
       ),
     );
