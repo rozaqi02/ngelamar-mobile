@@ -120,8 +120,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final txtPri = Theme.of(context).colorScheme.onSurface;
+    final txtSec = AppTheme.getTextSecondary(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: bg,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -170,14 +174,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               opacity: _titleFade,
               child: SlideTransition(
                 position: _titleSlide,
-                child: const Column(
+                child: Column(
                   children: [
                     Text(
                       'Ngelamar',
                       style: TextStyle(
                         fontSize: 36,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        color: txtPri,
                         letterSpacing: -1.0,
                       ),
                     ),
@@ -186,7 +190,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       'Personal Career CRM',
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.textSecondary,
+                        color: txtSec,
                         fontWeight: FontWeight.w400,
                         letterSpacing: 0.2,
                       ),
@@ -248,8 +252,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    final txtPri = Theme.of(context).colorScheme.onSurface;
+    final txtSec = AppTheme.getTextSecondary(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -274,21 +282,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ),
               const SizedBox(height: 32),
 
-              const Text(
+              Text(
                 'Halo, siapa kamu?',
                 style: TextStyle(
                   fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  color: txtPri,
                   letterSpacing: -0.8,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Masukkan namamu agar Ngelamar bisa menyapamu setiap hari.',
                 style: TextStyle(
                   fontSize: 15,
-                  color: AppTheme.textSecondary,
+                  color: txtSec,
                   height: 1.5,
                 ),
               ),

@@ -6,6 +6,7 @@ import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/apple_toast.dart';
 
 class AddEditJobScreen extends ConsumerStatefulWidget {
   final JobApplication? jobToEdit;
@@ -101,9 +102,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   void _parsePastedText() {
     final rawText = _pasteController.text;
     if (rawText.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan paste teks iklan loker dulu!')),
-      );
+      AppleToast.warning(context, 'Silakan paste teks iklan loker dulu!');
       return;
     }
 
@@ -117,13 +116,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _descriptionController.text = rawText;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.systemGreen,
-        content: Text(
-            '⚡ Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}'),
-      ),
-    );
+    AppleToast.success(context,
+        'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}');
   }
 
   void _saveJob() {
@@ -218,7 +212,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: surfSec,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                   border: Border.all(
                     color: AppTheme.systemGreen.withValues(alpha: 0.35),
                   ),

@@ -118,9 +118,9 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    final isDark = AppTheme.isDark(context);
     final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
-
 
     return Scaffold(
       backgroundColor: bg,
@@ -158,7 +158,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           'Lamaran',
                           style: TextStyle(
                             fontSize: 34,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: txtPri,
                             letterSpacing: -0.8,
                           ),
@@ -175,9 +175,34 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           'Lamaran',
                           style: TextStyle(
                             fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             color: txtPri,
                             letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Add button (top-right)
+                    Positioned(
+                      right: 16,
+                      bottom: 12,
+                      child: GestureDetector(
+                        onTap: () => AppleSheetWindow.showAppleModalSheet(
+                          context: context,
+                          child: const AddEditJobScreen(),
+                        ),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
+                                .withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            CupertinoIcons.plus,
+                            size: 18,
+                            color: isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue,
                           ),
                         ),
                       ),
@@ -188,7 +213,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         state.onlyWfhFilter ||
                         state.selectedStatusFilter != 'Semua')
                       Positioned(
-                        right: 16,
+                        right: 54,
                         bottom: 14,
                         child: GestureDetector(
                           onTap: () {
@@ -351,20 +376,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
           }).toList(),
         ),
       ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset + 74),
-        child: FloatingActionButton(
-          heroTag: 'job_list_fab',
-          onPressed: () => AppleSheetWindow.showAppleModalSheet(
-            context: context,
-            child: const AddEditJobScreen(),
-          ),
-          backgroundColor: AppTheme.systemBlue,
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: const Icon(CupertinoIcons.add, color: Colors.white, size: 22),
-        ),
-      ),
     );
   }
 
@@ -471,10 +482,10 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         job.interviewDate!.difference(DateTime.now()).inDays <= 3;
 
     final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
     final txtTer = AppTheme.getTextTertiary(context);
+    final isDark = AppTheme.isDark(context);
 
     return AppleBouncyCard(
       onTap: () => AppleSheetWindow.showAppleModalSheet(
@@ -485,8 +496,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: surf,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: bdr, width: 0.8),
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),

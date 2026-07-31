@@ -3,6 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─────────────────────────────────────────────────
+  // Apple HIG Radius & Border Constants
+  // ─────────────────────────────────────────────────
+  static const double radiusCard = 12.0;
+  static const double radiusSettings = 10.0;
+  static const double radiusSheet = 16.0;
+  static const double radiusButton = 12.0;
+  static const double radiusBadge = 6.0;
+  static const double borderHairline = 0.33;
+
+  // ─────────────────────────────────────────────────
   // Apple iOS 18 Dark Mode — System Colors
   // ─────────────────────────────────────────────────
   static const Color background       = Color(0xFF000000);
@@ -164,8 +174,8 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
-          side: BorderSide(color: bdr, width: 0.5),
+          borderRadius: const BorderRadius.all(Radius.circular(radiusCard)),
+          side: BorderSide(color: bdr, width: borderHairline),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

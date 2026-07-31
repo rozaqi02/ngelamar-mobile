@@ -28,12 +28,12 @@ class AppleSheetWindow {
           decoration: BoxDecoration(
             color: surf,
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
             ),
             border: Border.all(
               color: bdr,
-              width: 1,
+              width: AppTheme.borderHairline,
             ),
           ),
           child: Column(

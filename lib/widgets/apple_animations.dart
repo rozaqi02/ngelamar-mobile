@@ -12,8 +12,8 @@ class AppleBouncyCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.scaleFactor = 0.96,
-    this.duration = const Duration(milliseconds: 120),
+    this.scaleFactor = 0.975,
+    this.duration = const Duration(milliseconds: 150),
   });
 
   @override
@@ -36,7 +36,11 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
         scale: _isPressed ? widget.scaleFactor : 1.0,
         duration: widget.duration,
         curve: Curves.easeOutCubic,
-        child: widget.child,
+        child: AnimatedOpacity(
+          opacity: _isPressed ? 0.7 : 1.0,
+          duration: widget.duration,
+          child: widget.child,
+        ),
       ),
     );
   }

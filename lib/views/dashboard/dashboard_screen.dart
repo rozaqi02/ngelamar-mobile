@@ -24,6 +24,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(jobProvider);
     final name = state.userName.isEmpty ? 'Job Seeker' : state.userName;
+    final isDark = AppTheme.isDark(context);
     final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
@@ -36,7 +37,7 @@ class DashboardScreen extends ConsumerWidget {
           : CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // Apple Large Title Navigation Bar with greeting
+                // Apple Large Title Navigation Bar with greeting + Add button
                 SliverAppBar(
                   backgroundColor: bg,
                   surfaceTintColor: Colors.transparent,
@@ -79,7 +80,7 @@ class DashboardScreen extends ConsumerWidget {
                                     name,
                                     style: TextStyle(
                                       fontSize: 34,
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w700,
                                       color: txtPri,
                                       letterSpacing: -0.8,
                                     ),
@@ -101,9 +102,35 @@ class DashboardScreen extends ConsumerWidget {
                                 'Ngelamar',
                                 style: TextStyle(
                                   fontSize: 17,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                   color: txtPri,
                                   letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Add button (top-right, always visible)
+                          Positioned(
+                            right: 16,
+                            bottom: 12,
+                            child: GestureDetector(
+                              onTap: () => AppleSheetWindow.showAppleModalSheet(
+                                context: context,
+                                child: const AddEditJobScreen(),
+                              ),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
+                                      .withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.plus,
+                                  size: 18,
+                                  color: isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue,
                                 ),
                               ),
                             ),
@@ -169,30 +196,6 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewPadding.bottom + 74),
-        child: FloatingActionButton.extended(
-          heroTag: 'dashboard_fab',
-          onPressed: () => AppleSheetWindow.showAppleModalSheet(
-            context: context,
-            child: const AddEditJobScreen(),
-          ),
-          backgroundColor: AppTheme.systemBlue,
-          elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          icon:
-              const Icon(CupertinoIcons.add, color: Colors.white, size: 18),
-          label: const Text(
-            'Tambah Loker',
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14),
-          ),
-        ),
-      ),
     );
   }
 
@@ -200,7 +203,7 @@ class DashboardScreen extends ConsumerWidget {
         title,
         style: TextStyle(
           fontSize: 17,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: AppTheme.getTextPrimary(context),
           letterSpacing: -0.3,
         ),
@@ -216,7 +219,6 @@ class DashboardScreen extends ConsumerWidget {
             : AppTheme.getTextSecondary(context);
 
     final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
@@ -224,8 +226,14 @@ class DashboardScreen extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: surf,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bdr, width: 0.8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -234,7 +242,7 @@ class DashboardScreen extends ConsumerWidget {
             height: 40,
             decoration: BoxDecoration(
               color: rateColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
             ),
             child: Icon(CupertinoIcons.chart_bar_alt_fill,
                 color: rateColor, size: 20),
@@ -271,7 +279,7 @@ class DashboardScreen extends ConsumerWidget {
             '$rate%',
             style: TextStyle(
               fontSize: 26,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: rateColor,
               letterSpacing: -0.5,
             ),
@@ -311,8 +319,8 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildMetricCard(BuildContext context, _MetricItem item) {
+    final isDark = AppTheme.isDark(context);
     final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
@@ -320,8 +328,14 @@ class DashboardScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: surf,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bdr, width: 0.8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,7 +357,7 @@ class DashboardScreen extends ConsumerWidget {
                 style: TextStyle(
                   color: item.color,
                   fontSize: 26,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   letterSpacing: -1,
                 ),
               ),
@@ -373,10 +387,9 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildSmartPasteCTA(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     final surf = AppTheme.getSurface(context);
-    final green = AppTheme.isDark(context)
-        ? AppTheme.systemGreen
-        : AppTheme.lSystemGreen;
+    final green = isDark ? AppTheme.systemGreen : AppTheme.lSystemGreen;
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
@@ -389,11 +402,18 @@ class DashboardScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: surf,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
           border: Border.all(
-            color: green.withValues(alpha: 0.35),
-            width: 0.8,
+            color: green.withValues(alpha: 0.3),
+            width: AppTheme.borderHairline,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -402,7 +422,7 @@ class DashboardScreen extends ConsumerWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: green.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               ),
               child: Icon(CupertinoIcons.bolt_fill,
                   color: green, size: 18),
@@ -423,7 +443,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Paste teks loker → form terisi otomatis',
+                    'Paste teks loker, form terisi otomatis',
                     style: TextStyle(
                         color: txtSec, fontSize: 12),
                     maxLines: 1,
@@ -442,8 +462,8 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildJobCard(
       BuildContext context, JobApplication job, WidgetRef ref) {
-    final statusColor = AppTheme.getStatusColor(job.status,
-        isDark: AppTheme.isDark(context));
+    final isDark = AppTheme.isDark(context);
+    final statusColor = AppTheme.getStatusColor(job.status, isDark: isDark);
     final daysAgo = DateTime.now().difference(job.appliedDate).inDays;
     final timeStr = daysAgo == 0
         ? 'Hari ini'
@@ -452,7 +472,6 @@ class DashboardScreen extends ConsumerWidget {
             : '$daysAgo hr lalu';
 
     final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
     final txtTer = AppTheme.getTextTertiary(context);
@@ -466,8 +485,14 @@ class DashboardScreen extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: surf,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: bdr, width: 0.8),
+          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -578,8 +603,8 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
     final txtTer = AppTheme.getTextTertiary(context);
@@ -589,8 +614,14 @@ class DashboardScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: surf,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bdr, width: 0.8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [

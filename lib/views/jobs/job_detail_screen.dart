@@ -10,6 +10,7 @@ import '../../services/salary_evaluator_service.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_sheet_window.dart';
+import '../../widgets/apple_toast.dart';
 import 'add_edit_job_screen.dart';
 
 class JobDetailScreen extends ConsumerStatefulWidget {
@@ -71,12 +72,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   void _updateStatus(JobApplication currentJob, String newStatus) {
     ref.read(jobProvider.notifier).updateStatus(currentJob.id, newStatus);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppTheme.systemGreen,
-        content: Text('Status berhasil diubah menjadi "$newStatus"'),
-      ),
-    );
+    AppleToast.success(context, 'Status berhasil diubah menjadi "$newStatus"');
   }
 
   void _deleteJob(JobApplication currentJob) async {
@@ -294,6 +290,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         : null;
 
     final surf = AppTheme.getSurface(context);
+    final surfSec = AppTheme.getSurfaceSecondary(context);
     final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
@@ -309,7 +306,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: surf,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               border:
                   Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
             ),
@@ -344,30 +341,39 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     ],
                   ),
                 ),
-                // Status dropdown
-                DropdownButton<String>(
-                  value: _statusOptions.contains(currentJob.status)
-                      ? currentJob.status
-                      : _statusOptions.first,
-                  underline: const SizedBox(),
-                  icon: Icon(CupertinoIcons.chevron_down,
-                      color: txtSec, size: 14),
-                  dropdownColor: surf,
-                  borderRadius: BorderRadius.circular(12),
-                  items: _statusOptions
-                      .map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(s,
-                                style: TextStyle(
-                                    color: AppTheme.getStatusColor(s,
-                                        isDark: AppTheme.isDark(context)),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13)),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) _updateStatus(currentJob, val);
+                // Status action sheet
+                GestureDetector(
+                  onTap: () {
+                    showCupertinoModalPopup(
+                      context: context,
+                      builder: (_) => CupertinoActionSheet(
+                        title: const Text('Ubah Status Lamaran'),
+                        actions: _statusOptions.map((s) {
+                          final sColor = AppTheme.getStatusColor(s, isDark: AppTheme.isDark(context));
+                          return CupertinoActionSheetAction(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _updateStatus(currentJob, s);
+                            },
+                            child: Text(s, style: TextStyle(color: sColor, fontWeight: FontWeight.w600)),
+                          );
+                        }).toList(),
+                        cancelButton: CupertinoActionSheetAction(
+                          isDefaultAction: true,
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                    );
                   },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: surfSec,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(CupertinoIcons.arrow_up_arrow_down, size: 14, color: txtSec),
+                  ),
                 ),
                 const SizedBox(width: 4),
                 // Favorite toggle (Instant reactive update)
@@ -401,7 +407,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: surf,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
               border: Border.all(color: bdr, width: 0.8),
             ),
             child: Column(
@@ -444,7 +450,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppTheme.systemOrange.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(
                     color: AppTheme.systemOrange.withValues(alpha: 0.3),
                     width: 1),
@@ -495,7 +501,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppTheme.systemBlue.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(
                     color: AppTheme.systemBlue.withValues(alpha: 0.25),
                     width: 1),
@@ -564,7 +570,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: surf,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(color: bdr, width: 0.8),
               ),
               child: Column(
@@ -605,7 +611,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: surf,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(color: bdr, width: 0.8),
               ),
               child: Column(
@@ -849,7 +855,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           selected ? FontWeight.bold : FontWeight.normal,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                     ),
                     onSelected: (_) {
                       setState(() {
@@ -941,7 +947,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppTheme.systemOrange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(
                   color: AppTheme.systemOrange.withValues(alpha: 0.3),
                 ),

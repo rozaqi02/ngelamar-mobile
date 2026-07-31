@@ -8,6 +8,7 @@ import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/apple_toast.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -129,12 +130,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showSnackbar(String msg, {required Color color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: color,
-        content: Text(msg, style: const TextStyle(color: Colors.white)),
-      ),
-    );
+    if (color == AppTheme.systemGreen) {
+      AppleToast.success(context, msg);
+    } else if (color == AppTheme.systemRed) {
+      AppleToast.error(context, msg);
+    } else {
+      AppleToast.warning(context, msg);
+    }
   }
 
   // ─────────────────────── UI ──────────────────────────────────────
@@ -180,7 +182,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           'Pengaturan',
                           style: TextStyle(
                             fontSize: 34,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             color: txtPri,
                             letterSpacing: -0.8,
                           ),
@@ -387,7 +389,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 8),
                 Center(
                   child: Text(
-                    '© 2024 Ngelamar App. All rights reserved.',
+                    '\u00a9 ${DateTime.now().year} Ngelamar App. All rights reserved.',
                     style: TextStyle(
                         color: txtTer, fontSize: 11),
                   ),
@@ -406,10 +408,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Text(
         label,
         style: TextStyle(
-          color: AppTheme.getTextSecondary(context),
+          color: AppTheme.getTextTertiary(context),
           fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.6,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -422,8 +424,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: surf,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: bdr, width: 0.8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSettings),
+        border: Border.all(color: bdr, width: AppTheme.borderHairline),
       ),
       child: Column(children: children),
     );
@@ -452,7 +454,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
             ),
             child: Center(
               child: Text(
@@ -554,10 +556,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              color: iconColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusBadge),
             ),
-            child: Icon(icon, color: iconColor, size: 16),
+            child: Icon(icon, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -608,10 +610,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
+                color: iconColor,
+                borderRadius: BorderRadius.circular(AppTheme.radiusBadge),
               ),
-              child: Icon(icon, color: iconColor, size: 16),
+              child: Icon(icon, color: Colors.white, size: 16),
             ),
             const SizedBox(width: 12),
             Expanded(
