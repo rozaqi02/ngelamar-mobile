@@ -20,8 +20,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
-  static const String _appVersion = '1.5.2';
-  static const String _buildNumber = '152';
+  static const String _appVersion = '1.6.0';
+  static const String _buildNumber = '160';
 
   @override
   void initState() {

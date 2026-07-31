@@ -1,4 +1,4 @@
-# Ngelamar App (v1.5.2)
+# Ngelamar App (v1.6.0)
 
 Aplikasi Personal Career CRM dan Penglacak Lamaran Kerja dengan Desain Modern Berstandar Apple iOS Human Interface Guidelines (HIG).
 
@@ -14,11 +14,11 @@ Dikembangkan oleh **idka-solutions team**.
    - Indikator Response Rate HRD dalam bentuk persentase.
    - Smart Auto-Fill CTA untuk mengisi form otomatis dari teks loker.
 
-2. **Manajemen Lamaran Kerja (Lamaran)**
-   - Pencarian cepat posisi, nama perusahaan, dan lokasi.
-   - Filter chip cepat untuk pekerjaan favorit dan WFH.
-   - Tab navigasi kategori status (Semua, Dikirim, Interview & Tes, Offering, Diterima, Ditolak).
-   - Tampilan tab dinamis dengan ikon dan jumlah lamaran.
+2. **Manajemen Lamaran Kerja Overhauled (Lamaran v1.6.0)**
+   - Pinned Cupertino Search Header dengan filter teks langsung.
+   - Monogram Avatar Perusahaan otomatis dengan gradien dinamis.
+   - Consolidated Apple Pill Status & Quick Filter Bar.
+   - Grouped Card layout dengan indikator status dot dan badge lokasi/tipe kerja.
 
 3. **Detail Lamaran Lengkap**
    - Informasi detail status, tanggal melamar, tipe kerja, lokasi, sumber loker, dan ekspektasi gaji.
