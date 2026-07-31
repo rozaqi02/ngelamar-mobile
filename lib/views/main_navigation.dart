@@ -37,12 +37,13 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   Widget build(BuildContext context) {
     final isDark = ref.watch(jobProvider).isDarkMode;
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    final bg = AppTheme.getBackground(context);
 
-    // Directional slide: going right → slide from right; going left → slide from left
+    // Directional slide animation
     final goingRight = _currentIndex > _previousIndex;
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.background : AppTheme.lBackground,
+      backgroundColor: bg,
       body: Stack(
         children: [
           // Directional animated tab switch
@@ -70,11 +71,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
             child: _screens[_currentIndex],
           ),
 
-          // Apple iOS Floating Tab Bar Dock
+          // Apple iOS Floating Tab Bar Dock (Light Mode aware)
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              // Respect Android system navigation bar height
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
@@ -84,18 +84,25 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                 borderRadius: BorderRadius.circular(34),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
                     height: 66,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1C1C1E),
+                      color: isDark
+                          ? const Color(0xFF1C1C1E)
+                          : Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(34),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.10),
                         width: 0.8,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.55),
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.55)
+                              : Colors.black.withValues(alpha: 0.10),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                         ),
@@ -107,11 +114,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildNavItem(0, CupertinoIcons.square_grid_2x2_fill,
-                            CupertinoIcons.square_grid_2x2, 'Beranda'),
+                            CupertinoIcons.square_grid_2x2, 'Beranda', isDark),
                         _buildNavItem(1, CupertinoIcons.briefcase_fill,
-                            CupertinoIcons.briefcase, 'Lamaran'),
+                            CupertinoIcons.briefcase, 'Lamaran', isDark),
                         _buildNavItem(2, CupertinoIcons.gear_alt_fill,
-                            CupertinoIcons.gear_alt, 'Pengaturan'),
+                            CupertinoIcons.gear_alt, 'Pengaturan', isDark),
                       ],
                     ),
                   ),
@@ -125,8 +132,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
   }
 
   Widget _buildNavItem(
-      int index, IconData selectedIcon, IconData unselectedIcon, String label) {
+      int index, IconData selectedIcon, IconData unselectedIcon, String label, bool isDark) {
     final isSelected = _currentIndex == index;
+    final blueColor = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
+    final txtSec = AppTheme.getTextSecondary(context);
 
     return GestureDetector(
       onTap: () => _onTabTap(index),
@@ -139,11 +148,15 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
           vertical: 8,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2C2C2E) : Colors.transparent,
+          color: isSelected
+              ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA))
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
           border: isSelected
               ? Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.black.withValues(alpha: 0.08),
                   width: 0.8,
                 )
               : null,
@@ -157,9 +170,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
               curve: Curves.easeOutBack,
               child: Icon(
                 isSelected ? selectedIcon : unselectedIcon,
-                color: isSelected
-                    ? AppTheme.systemBlue
-                    : AppTheme.textSecondary,
+                color: isSelected ? blueColor : txtSec,
                 size: 22,
               ),
             ),
@@ -172,8 +183,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation> {
                         const SizedBox(width: 7),
                         Text(
                           label,
-                          style: const TextStyle(
-                            color: AppTheme.systemBlue,
+                          style: TextStyle(
+                            color: blueColor,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             letterSpacing: -0.2,

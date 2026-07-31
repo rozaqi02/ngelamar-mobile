@@ -48,7 +48,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         ref
             .read(jobProvider.notifier)
             .setStatusFilter(_tabs[_tabController.index]);
-        setState(() {}); // Rebuild tab headers for active/inactive state
+        setState(() {});
       }
     });
   }
@@ -120,7 +120,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
-    final bdr = AppTheme.getBorder(context);
+
 
     return Scaffold(
       backgroundColor: bg,
@@ -253,16 +253,17 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             ),
           ),
 
-          // Filter chips
+          // Quick Filter Chips (Favorit & WFH)
           SliverToBoxAdapter(
             child: ColoredBox(
               color: bg,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
                 child: Row(
                   children: [
-                    _buildChip(
-                      label: 'Favorit (${state.favoriteCount})',
+                    _buildPillChip(
+                      label: 'Favorit',
+                      count: state.favoriteCount,
                       icon: state.onlyFavoritesFilter
                           ? CupertinoIcons.star_fill
                           : CupertinoIcons.star,
@@ -273,7 +274,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           .toggleOnlyFavoritesFilter(),
                     ),
                     const SizedBox(width: 8),
-                    _buildChip(
+                    _buildPillChip(
                       label: 'WFH',
                       icon: CupertinoIcons.house,
                       isActive: state.onlyWfhFilter,
@@ -287,60 +288,45 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             ),
           ),
 
-          // Tab bar: Inactive = Icon + (Count); Active = Icon + Name + (Count)
+          // Status Category Filter Bar (Pill Chip style matching top filters)
           SliverPersistentHeader(
             pinned: true,
             delegate: _FixedHeightDelegate(
-              height: 48,
+              height: 46,
               child: Container(
                 color: bg,
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                  splashFactory: NoSplash.splashFactory,
-                  dividerColor: bdr,
-                  dividerHeight: 0.5,
-                  indicator: const UnderlineTabIndicator(
-                    borderSide:
-                        BorderSide(color: AppTheme.systemBlue, width: 2.5),
-                    insets: EdgeInsets.symmetric(horizontal: 4),
-                  ),
-                  labelColor: AppTheme.systemBlue,
-                  unselectedLabelColor: AppTheme.getTextSecondary(context),
-                  labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
-                  unselectedLabelStyle: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 13),
-                  tabs: List.generate(_tabs.length, (i) {
-                    final isSelected = _tabController.index == i;
-                    final category = _tabs[i];
-                    final icon = _tabIcons[i];
-                    final count = _getCategoryCount(category, state);
+                  child: Row(
+                    children: List.generate(_tabs.length, (i) {
+                      final category = _tabs[i];
+                      final isSelected = _tabController.index == i;
+                      final icon = _tabIcons[i];
+                      final count = _getCategoryCount(category, state);
+                      final isDark = AppTheme.isDark(context);
+                      final statusColor = AppTheme.getStatusColor(category, isDark: isDark);
 
-                    return Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, size: 15),
-                          const SizedBox(width: 5),
-                          if (isSelected) ...[
-                            Text(category),
-                            const SizedBox(width: 4),
-                          ],
-                          Text('($count)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isSelected
-                                    ? AppTheme.systemBlue
-                                    : AppTheme.getTextTertiary(context),
-                              )),
-                        ],
-                      ),
-                    );
-                  }),
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: _buildPillChip(
+                          label: category,
+                          count: count,
+                          icon: icon,
+                          isActive: isSelected,
+                          activeColor: statusColor,
+                          onTap: () {
+                            _tabController.animateTo(i);
+                            ref
+                                .read(jobProvider.notifier)
+                                .setStatusFilter(category);
+                            setState(() {});
+                          },
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ),
             ),
@@ -382,8 +368,10 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     );
   }
 
-  Widget _buildChip({
+  // Unified Apple Pill Chip for both Status Tabs & Quick Filters
+  Widget _buildPillChip({
     required String label,
+    int? count,
     required IconData icon,
     required bool isActive,
     required Color activeColor,
@@ -392,6 +380,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     final surfSec = AppTheme.getSurfaceSecondary(context);
     final bdr = AppTheme.getBorder(context);
     final txtSec = AppTheme.getTextSecondary(context);
+    final txtTer = AppTheme.getTextTertiary(context);
 
     return GestureDetector(
       onTap: onTap,
@@ -399,8 +388,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 10 : 8,
-          vertical: 6,
+          horizontal: isActive ? 12 : 10,
+          vertical: 7,
         ),
         decoration: BoxDecoration(
           color: isActive ? activeColor : surfSec,
@@ -431,9 +420,34 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        if (count != null) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '($count)',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     )
-                  : const SizedBox.shrink(),
+                  : Row(
+                      children: [
+                        if (count != null) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '($count)',
+                            style: TextStyle(
+                              color: txtTer,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
             ),
           ],
         ),

@@ -936,6 +936,37 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (parsedSalary == 0) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.systemOrange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.systemOrange.withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(CupertinoIcons.info_circle_fill,
+                      color: AppTheme.systemOrange, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Gaji belum diisi atau berupa angka non-nominal (misal: "Negosiasi"). Edit data lamaran untuk hasil evaluasi yang akurat.',
+                      style: TextStyle(
+                        color: AppTheme.systemOrange,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // City & Kos options
           Container(
             padding: const EdgeInsets.all(16),
@@ -961,8 +992,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       .map((u) => DropdownMenuItem(
                             value: u.city,
                             child: Text(
-                              '${u.city} (UMR: Rp ${(u.umrAmount / 1000000).toStringAsFixed(1)} Jt)',
-                              style: TextStyle(color: txtPri),
+                              '${u.city} (UMR: ${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
+                              style: TextStyle(color: txtPri, fontSize: 13),
                             ),
                           ))
                       .toList(),
@@ -1032,15 +1063,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 const SizedBox(height: 16),
 
                 _evalRow('Estimasi Gaji Bersih',
-                    'Rp ${evaluation.estimatedNetTakeHomePay.toStringAsFixed(0)}'),
+                    SalaryEvaluatorService.formatRupiah(evaluation.estimatedNetTakeHomePay)),
                 _evalRow('UMR $_selectedCity',
-                    'Rp ${evaluation.umrAmount.toStringAsFixed(0)}'),
+                    SalaryEvaluatorService.formatRupiah(evaluation.umrAmount)),
                 _evalRow('Estimasi Biaya Hidup + Kos',
-                    'Rp ${evaluation.estimatedOperationalCost.toStringAsFixed(0)}'),
+                    SalaryEvaluatorService.formatRupiah(evaluation.estimatedOperationalCost)),
                 const Divider(height: 20),
                 _evalRow(
                   'Estimasi Tabungan / Bulan',
-                  'Rp ${evaluation.estimatedNetSavings.toStringAsFixed(0)}',
+                  SalaryEvaluatorService.formatRupiah(evaluation.estimatedNetSavings),
                   isBold: true,
                   color: evaluation.estimatedNetSavings >= 0
                       ? AppTheme.systemGreen

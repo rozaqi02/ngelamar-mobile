@@ -42,26 +42,30 @@ class TextParserService {
     String? salary;
     String? location;
 
-    // Detect Work Type
+    // Detect Work Type accurately
     final lowerText = text.toLowerCase();
-    if (lowerText.contains('wfh') ||
-        lowerText.contains('work from home') ||
-        lowerText.contains('remote')) {
-      workType = 'WFH';
-    } else if (lowerText.contains('hybrid')) {
+    if (lowerText.contains('hybrid') ||
+        lowerText.contains('hybridd') ||
+        lowerText.contains('fleksibel') ||
+        (lowerText.contains('wfh') && lowerText.contains('wfo'))) {
       workType = 'Hybrid';
+    } else if (lowerText.contains('wfh') ||
+        lowerText.contains('work from home') ||
+        lowerText.contains('remote') ||
+        lowerText.contains('kerja dari rumah') ||
+        lowerText.contains('telecommute')) {
+      workType = 'WFH';
     } else {
       workType = 'WFO';
     }
 
-    // Detect Company Name Patterns (Single line limit to prevent runaway regex matches)
+    // Detect Company Name Patterns
     final ptReg = RegExp(
         r'(pt\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|cv\.?\s+[a-zA-Z0-9\.\-\s]{2,30}|[a-zA-Z0-9\.\-\s]{2,30}\s+inc\.?|[a-zA-Z0-9\.\-\s]{2,30}\s+ltd\.?)',
         caseSensitive: false);
     final ptMatch = ptReg.firstMatch(text);
     if (ptMatch != null) {
       companyName = ptMatch.group(0)!.trim();
-      // Clean trailing newline if any
       if (companyName.contains('\n')) {
         companyName = companyName.split('\n').first.trim();
       }
@@ -93,7 +97,7 @@ class TextParserService {
       salary = salaryMatch.group(0)!.trim();
     }
 
-    // Detect Major Cities in Indonesia for Location
+    // Detect Major Cities for Location
     final cities = [
       'Jakarta',
       'Surabaya',
@@ -119,7 +123,7 @@ class TextParserService {
       }
     }
 
-    // Extract Key Tech / Skills keywords
+    // Extract Key Skills
     final skillKeywords = [
       'Flutter',
       'Dart',

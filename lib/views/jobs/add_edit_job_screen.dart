@@ -283,6 +283,25 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                 fontWeight: FontWeight.bold)),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(CupertinoIcons.info_circle_fill,
+                            size: 13, color: AppTheme.getTextTertiary(context)),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            'Smart Auto-Fill akan mendeteksi dan mengisi otomatis text box: Posisi, Perusahaan, Tipe Kerja (WFO/WFH/Hybrid), Gaji, Lokasi, dan Deskripsi.',
+                            style: TextStyle(
+                              color: AppTheme.getTextTertiary(context),
+                              fontSize: 11,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

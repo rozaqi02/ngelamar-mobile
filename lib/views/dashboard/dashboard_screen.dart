@@ -316,60 +316,58 @@ class DashboardScreen extends ConsumerWidget {
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
-    return AppleBouncyCard(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surf,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: bdr, width: 0.8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: item.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(item.icon, color: item.color, size: 15),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surf,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: bdr, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                Text(
-                  '${item.count}',
-                  style: TextStyle(
-                    color: item.color,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              item.title,
-              style: TextStyle(
-                color: txtPri,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
+                child: Icon(item.icon, color: item.color, size: 15),
               ),
+              Text(
+                '${item.count}',
+                style: TextStyle(
+                  color: item.color,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            item.title,
+            style: TextStyle(
+              color: txtPri,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
             ),
-            const SizedBox(height: 1),
-            Text(
-              item.subtitle,
-              style: TextStyle(
-                  color: txtSec, fontSize: 11),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            item.subtitle,
+            style: TextStyle(
+                color: txtSec, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

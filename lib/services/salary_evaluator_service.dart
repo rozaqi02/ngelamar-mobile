@@ -43,23 +43,42 @@ class SalaryEvaluatorService {
     UmrData('Malang', 3309144),
   ];
 
+  /// Formats currency with Indonesian Rupiah dot separators.
+  /// Examples:
+  ///   5067381 -> "Rp 5.067.381"
+  ///   -1500000 -> "-Rp 1.500.000"
+  static String formatRupiah(double amount) {
+    if (amount.isNaN || amount.isInfinite) return 'Rp 0';
+    final isNegative = amount < 0;
+    final absAmount = amount.abs().round();
+
+    final numStr = absAmount.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < numStr.length; i++) {
+      if (i > 0 && (numStr.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(numStr[i]);
+    }
+
+    final formatted = buffer.toString();
+    return isNegative ? '-Rp $formatted' : 'Rp $formatted';
+  }
+
   static double parseSalaryAmount(String? input) {
     if (input == null || input.trim().isEmpty) return 0.0;
     String clean = input.toLowerCase().replaceAll('rp', '').replaceAll('idr', '').trim();
 
-    // Handle range e.g., "5 - 8 juta" or "6.000.000 - 8.000.000" -> take first value
     if (clean.contains('-')) {
       clean = clean.split('-').first.trim();
     }
 
-    // Handle "5 jt" or "5.5 juta"
     if (clean.contains('jt') || clean.contains('juta')) {
       final numStr = clean.replaceAll('jt', '').replaceAll('juta', '').replaceAll(',', '.').trim();
       final parsed = double.tryParse(numStr);
       if (parsed != null) return parsed * 1000000;
     }
 
-    // Handle numeric with dots e.g. 6.000.000
     clean = clean.replaceAll('.', '').replaceAll(',', '').trim();
     return double.tryParse(clean) ?? 0.0;
   }
@@ -67,10 +86,9 @@ class SalaryEvaluatorService {
   static SalaryEvaluationResult evaluateSalary({
     required double grossSalary,
     required String city,
-    required String workType, // WFO, WFH, Hybrid
+    required String workType,
     bool needsKos = true,
   }) {
-    // BPJS Ketenagakerjaan + Kesehatan employee share ~ 4%
     final bpjs = grossSalary * 0.04;
     final netTakeHome = grossSalary - bpjs;
 
@@ -81,16 +99,12 @@ class SalaryEvaluatorService {
 
     final umrRatio = umrItem.umrAmount > 0 ? (grossSalary / umrItem.umrAmount) : 1.0;
 
-    // Estimate monthly operational cost (Kos + Transport + Meals)
     double operationalCost = 0.0;
     if (workType == 'WFH') {
-      // WFH: Electricity/Internet + Meals (No Kos needed unless relocation)
       operationalCost = needsKos ? 2000000 : 1200000;
     } else if (workType == 'Hybrid') {
-      // Hybrid: Transport + Kos
       operationalCost = needsKos ? 2800000 : 1800000;
     } else {
-      // WFO: Transport + Kos + Daily meals
       operationalCost = needsKos ? 3500000 : 2200000;
     }
 
