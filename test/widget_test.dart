@@ -1,30 +1,30 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:ngelamar/main.dart';
+import 'package:ngelamar/services/text_parser_service.dart';
+import 'package:ngelamar/services/salary_evaluator_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const NgelamarApp());
+  group('TextParserService Tests', () {
+    test('Should parse company, position, workType, and salary from job text', () {
+      const sampleText = '''
+We are hiring Flutter Developer at PT Tech Innovations.
+Work Location: Jakarta (WFH available).
+Salary: Rp 12.000.000 - Rp 15.000.000.
+Requirements: Flutter, Dart, Riverpod, Firebase.
+''';
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      final result = TextParserService.parseJobText(sampleText);
+      expect(result.position, contains('Flutter Developer'));
+      expect(result.companyName, contains('PT Tech Innovations'));
+      expect(result.workType, equals('WFH'));
+      expect(result.salary, equals('Rp 12.000.000'));
+    });
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  group('SalaryEvaluatorService Tests', () {
+    test('Should format Rupiah currency correctly', () {
+      expect(SalaryEvaluatorService.formatRupiah(10000000), equals('Rp 10.000.000'));
+      expect(SalaryEvaluatorService.formatRupiah(-500000), equals('-Rp 500.000'));
+      expect(SalaryEvaluatorService.formatRupiah(0), equals('Rp 0'));
+    });
   });
 }

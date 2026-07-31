@@ -1,4 +1,4 @@
-# Ngelamar App (v1.5.0)
+# Ngelamar App (v1.5.2)
 
 Aplikasi Personal Career CRM dan Penglacak Lamaran Kerja dengan Desain Modern Berstandar Apple iOS Human Interface Guidelines (HIG).
 
@@ -52,7 +52,7 @@ Dikembangkan oleh **idka-solutions team**.
 1. Pastikan Flutter SDK telah terinstall di komputer Anda.
 2. Clone repository ini:
    ```bash
-   git clone https://github.com/username/app-mobile-loker.git
+   git clone https://github.com/rozaqi02/ngelamar-mobile.git
    cd app-mobile-loker
    ```
 3. Unduh dependencies:

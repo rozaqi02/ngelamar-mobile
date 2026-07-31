@@ -6,6 +6,7 @@ import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
+import '../../widgets/apple_toast.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
 
@@ -43,19 +44,21 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        ref
-            .read(jobProvider.notifier)
-            .setStatusFilter(_tabs[_tabController.index]);
-        setState(() {});
-      }
-    });
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      ref
+          .read(jobProvider.notifier)
+          .setStatusFilter(_tabs[_tabController.index]);
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(() {});
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -187,10 +190,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       right: 16,
                       bottom: 12,
                       child: GestureDetector(
-                        onTap: () => AppleSheetWindow.showAppleModalSheet(
-                          context: context,
-                          child: const AddEditJobScreen(),
-                        ),
+                        onTap: () => _openAddJob(context),
                         child: Container(
                           width: 32,
                           height: 32,
@@ -470,7 +470,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       BuildContext context, JobApplication job, WidgetRef ref) {
     final statusColor = AppTheme.getStatusColor(job.status,
         isDark: AppTheme.isDark(context));
-    final daysAgo = DateTime.now().difference(job.appliedDate).inDays;
+    final diffDays = DateTime.now().difference(job.appliedDate).inDays;
+    final daysAgo = diffDays < 0 ? 0 : diffDays;
     final timeStr = daysAgo == 0
         ? 'Hari ini'
         : daysAgo == 1
@@ -676,6 +677,26 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         ],
       ),
     );
+  }
+
+  Future<void> _openAddJob(BuildContext context) async {
+    final savedJob = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
+      context: context,
+      child: const AddEditJobScreen(),
+    );
+
+    if (savedJob != null && context.mounted) {
+      AppleToast.success(
+        context,
+        'Lamaran Tersimpan',
+        subtitle: '${savedJob.position} @ ${savedJob.companyName}',
+        actionLabel: 'Lihat',
+        onAction: () => AppleSheetWindow.showAppleModalSheet(
+          context: context,
+          child: JobDetailScreen(job: savedJob),
+        ),
+      );
+    }
   }
 }
 

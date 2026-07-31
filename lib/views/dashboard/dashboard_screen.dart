@@ -6,11 +6,34 @@ import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
+import '../../widgets/apple_toast.dart';
 import '../jobs/job_detail_screen.dart';
 import '../jobs/add_edit_job_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
+
+  Future<void> _openAddJob(BuildContext context, {bool autoFocusPaste = false}) async {
+    final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
+      context: context,
+      child: AddEditJobScreen(autoFocusPaste: autoFocusPaste),
+    );
+
+    if (result != null && context.mounted) {
+      AppleToast.success(
+        context,
+        'Lamaran tersimpan!',
+        subtitle: '${result.position} di ${result.companyName}',
+        actionLabel: 'Lihat',
+        onAction: () {
+          AppleSheetWindow.showAppleModalSheet(
+            context: context,
+            child: JobDetailScreen(job: result),
+          );
+        },
+      );
+    }
+  }
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -115,10 +138,7 @@ class DashboardScreen extends ConsumerWidget {
                             right: 16,
                             bottom: 12,
                             child: GestureDetector(
-                              onTap: () => AppleSheetWindow.showAppleModalSheet(
-                                context: context,
-                                child: const AddEditJobScreen(),
-                              ),
+                              onTap: () => _openAddJob(context),
                               child: Container(
                                 width: 32,
                                 height: 32,
@@ -394,10 +414,7 @@ class DashboardScreen extends ConsumerWidget {
     final txtSec = AppTheme.getTextSecondary(context);
 
     return AppleBouncyCard(
-      onTap: () => AppleSheetWindow.showAppleModalSheet(
-        context: context,
-        child: const AddEditJobScreen(autoFocusPaste: true),
-      ),
+      onTap: () => _openAddJob(context, autoFocusPaste: true),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -464,7 +481,8 @@ class DashboardScreen extends ConsumerWidget {
       BuildContext context, JobApplication job, WidgetRef ref) {
     final isDark = AppTheme.isDark(context);
     final statusColor = AppTheme.getStatusColor(job.status, isDark: isDark);
-    final daysAgo = DateTime.now().difference(job.appliedDate).inDays;
+    final diffDays = DateTime.now().difference(job.appliedDate).inDays;
+    final daysAgo = diffDays < 0 ? 0 : diffDays;
     final timeStr = daysAgo == 0
         ? 'Hari ini'
         : daysAgo == 1

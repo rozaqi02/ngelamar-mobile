@@ -1,12 +1,39 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Apple iOS 18 Dynamic Capsule Toast Notification (Bottom Floating Dock style).
-/// Displays a sleek glassmorphic capsule above the bottom navigation bar
-/// with rich icon badges, titles, subtitles, and interactive action buttons.
+/// Data class representing a queued toast item.
+class _ToastItem {
+  final BuildContext context;
+  final String message;
+  final String? subtitle;
+  final IconData icon;
+  final Color color;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final Duration duration;
+
+  _ToastItem({
+    required this.context,
+    required this.message,
+    this.subtitle,
+    required this.icon,
+    required this.color,
+    this.actionLabel,
+    this.onAction,
+    required this.duration,
+  });
+}
+
+/// Apple iOS 18 Dynamic Capsule Toast Notification Bar with Queueing System.
+/// Floating glassmorphic capsule above the bottom navigation dock with support for
+/// titles, subtitles, interactive action buttons, and queueing consecutive notifications.
 class AppleToast {
+  static final List<_ToastItem> _queue = [];
+  static bool _isShowing = false;
+
   static void show(
     BuildContext context, {
     required String message,
@@ -17,26 +44,53 @@ class AppleToast {
     VoidCallback? onAction,
     Duration duration = const Duration(milliseconds: 3200),
   }) {
-    final overlay = Overlay.of(context);
-    final isDark = AppTheme.isDark(context);
-    final toastColor = color ?? AppTheme.systemGreen;
+    final item = _ToastItem(
+      context: context,
+      message: message,
+      subtitle: subtitle,
+      icon: icon ?? CupertinoIcons.checkmark_alt,
+      color: color ?? AppTheme.systemGreen,
+      actionLabel: actionLabel,
+      onAction: onAction,
+      duration: duration,
+    );
 
+    _queue.add(item);
+    _processQueue();
+  }
+
+  static void _processQueue() {
+    if (_isShowing || _queue.isEmpty) return;
+
+    _isShowing = true;
+    final item = _queue.removeAt(0);
+
+    // Verify overlay exists
+    final overlay = Overlay.maybeOf(item.context);
+    if (overlay == null) {
+      _isShowing = false;
+      _processQueue();
+      return;
+    }
+
+    final isDark = AppTheme.isDark(item.context);
     late OverlayEntry entry;
-    final controller = _ToastAnimController();
 
     entry = OverlayEntry(
       builder: (_) => _AppleToastWidget(
-        message: message,
-        subtitle: subtitle,
-        icon: icon ?? CupertinoIcons.checkmark_alt,
-        color: toastColor,
+        message: item.message,
+        subtitle: item.subtitle,
+        icon: item.icon,
+        color: item.color,
         isDark: isDark,
-        actionLabel: actionLabel,
-        onAction: onAction,
-        duration: duration,
-        controller: controller,
+        actionLabel: item.actionLabel,
+        onAction: item.onAction,
+        duration: item.duration,
         onDismiss: () {
           entry.remove();
+          _isShowing = false;
+          // Process next toast after short delay
+          Future.delayed(const Duration(milliseconds: 150), _processQueue);
         },
       ),
     );
@@ -44,7 +98,7 @@ class AppleToast {
     overlay.insert(entry);
   }
 
-  /// Shortcut for success toast with optional subtitle & action
+  /// Shortcut for success toast
   static void success(
     BuildContext context,
     String message, {
@@ -121,10 +175,6 @@ class AppleToast {
   }
 }
 
-class _ToastAnimController {
-  VoidCallback? dismiss;
-}
-
 class _AppleToastWidget extends StatefulWidget {
   final String message;
   final String? subtitle;
@@ -134,7 +184,6 @@ class _AppleToastWidget extends StatefulWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
   final Duration duration;
-  final _ToastAnimController controller;
   final VoidCallback onDismiss;
 
   const _AppleToastWidget({
@@ -146,7 +195,6 @@ class _AppleToastWidget extends StatefulWidget {
     this.actionLabel,
     this.onAction,
     required this.duration,
-    required this.controller,
     required this.onDismiss,
   });
 
@@ -159,6 +207,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
   late AnimationController _animController;
   late Animation<Offset> _slideAnim;
   late Animation<double> _fadeAnim;
+  Timer? _dismissTimer;
 
   @override
   void initState() {
@@ -169,7 +218,6 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
       reverseDuration: const Duration(milliseconds: 220),
     );
 
-    // Slide up from bottom (+1.2 -> 0)
     _slideAnim = Tween<Offset>(
       begin: const Offset(0, 1.2),
       end: Offset.zero,
@@ -186,13 +234,12 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
       ),
     );
 
-    widget.controller.dismiss = _dismiss;
-
     _animController.forward();
-    Future.delayed(widget.duration, _dismiss);
+    _dismissTimer = Timer(widget.duration, _dismiss);
   }
 
   void _dismiss() {
+    _dismissTimer?.cancel();
     if (!mounted) return;
     _animController.reverse().then((_) {
       if (mounted) widget.onDismiss();
@@ -201,6 +248,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
 
   @override
   void dispose() {
+    _dismissTimer?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -214,7 +262,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
         : Colors.black.withValues(alpha: 0.55);
 
     return Positioned(
-      bottom: bottomInset + 76, // Floating above bottom navbar dock
+      bottom: bottomInset + 88, // Floating above bottom navbar dock
       left: 16,
       right: 16,
       child: SlideTransition(
@@ -227,7 +275,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
               if (details.velocity.pixelsPerSecond.dy > 100) _dismiss();
             },
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(22),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
@@ -237,7 +285,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                     color: widget.isDark
                         ? const Color(0xFF1E1E20).withValues(alpha: 0.90)
                         : Colors.white.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(
                       color: widget.isDark
                           ? Colors.white.withValues(alpha: 0.12)
@@ -255,7 +303,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                   ),
                   child: Row(
                     children: [
-                      // Glowing circular icon badge
+                      // Icon Badge
                       Container(
                         width: 34,
                         height: 34,
@@ -268,7 +316,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                       ),
                       const SizedBox(width: 12),
 
-                      // Text message & optional subtitle
+                      // Text message & subtitle
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -302,7 +350,7 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
                         ),
                       ),
 
-                      // Optional Action Button (e.g. "Lihat", "Buka", "Urungkan")
+                      // Action button
                       if (widget.actionLabel != null && widget.onAction != null) ...[
                         const SizedBox(width: 8),
                         GestureDetector(
