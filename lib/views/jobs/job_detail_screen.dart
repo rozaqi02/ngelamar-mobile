@@ -117,7 +117,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     final surfSec = AppTheme.getSurfaceSecondary(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
-    final bdr = AppTheme.getBorder(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -201,19 +200,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     controller: _tabController,
                     isScrollable: true,
                     tabAlignment: TabAlignment.start,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    labelPadding:
-                        const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     splashFactory: NoSplash.splashFactory,
-                    indicator: const UnderlineTabIndicator(
-                      borderSide: BorderSide(
-                          color: AppTheme.systemBlue, width: 2.5),
-                      insets: EdgeInsets.symmetric(horizontal: 4),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     labelColor: AppTheme.systemBlue,
                     unselectedLabelColor: txtSec,
-                    dividerColor: bdr,
-                    dividerHeight: 0.5,
+                    dividerColor: Colors.transparent,
+                    dividerHeight: 0,
                     labelStyle: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 13),
                     tabs: const [
@@ -990,22 +988,48 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         fontSize: 14,
                         color: txtPri)),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedCity,
-                  decoration: const InputDecoration(labelText: 'Kota Penempatan'),
-                  dropdownColor: surf,
-                  items: SalaryEvaluatorService.umrList
-                      .map((u) => DropdownMenuItem(
-                            value: u.city,
+                InkWell(
+                  onTap: () {
+                    showCupertinoModalPopup(
+                      context: context,
+                      builder: (_) => CupertinoActionSheet(
+                        title: const Text('Pilih Kota Penempatan'),
+                        actions: SalaryEvaluatorService.umrList.map((u) {
+                          final isSelected = u.city == _selectedCity;
+                          return CupertinoActionSheetAction(
+                            onPressed: () {
+                              setState(() => _selectedCity = u.city);
+                              Navigator.pop(context);
+                            },
                             child: Text(
                               '${u.city} (UMR: ${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
-                              style: TextStyle(color: txtPri, fontSize: 13),
+                              style: TextStyle(
+                                color: AppTheme.systemBlue,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 14,
+                              ),
                             ),
-                          ))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedCity = val);
+                          );
+                        }).toList(),
+                        cancelButton: CupertinoActionSheetAction(
+                          isDefaultAction: true,
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                    );
                   },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Kota Penempatan',
+                      prefixIcon: Icon(CupertinoIcons.building_2_fill, size: 18),
+                      suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
+                    ),
+                    child: Text(
+                      '$_selectedCity (UMR: ${SalaryEvaluatorService.formatRupiah(SalaryEvaluatorService.umrList.firstWhere((u) => u.city == _selectedCity, orElse: () => SalaryEvaluatorService.umrList.first).umrAmount)})',
+                      style: TextStyle(fontSize: 13, color: txtPri),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(

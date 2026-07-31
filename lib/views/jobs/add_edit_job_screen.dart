@@ -169,7 +169,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
-    final surf = AppTheme.getSurface(context);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -354,49 +353,42 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _status,
-                          dropdownColor: surf,
-                          style: TextStyle(color: txtPri),
-                          decoration: const InputDecoration(
-                            labelText: 'Status Lamaran',
-                            prefixIcon: Icon(CupertinoIcons.flag, size: 18),
+                        child: InkWell(
+                          onTap: () => _showAppleOptionPicker(
+                            context: context,
+                            title: 'Pilih Status Lamaran',
+                            options: _statusOptions,
+                            currentValue: _status,
+                            onSelected: (val) => setState(() => _status = val),
                           ),
-                          items: _statusOptions
-                              .map((s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(s,
-                                        style: TextStyle(
-                                            fontSize: 13, color: txtPri)),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _status = val);
-                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Status Lamaran',
+                              prefixIcon: Icon(CupertinoIcons.flag, size: 18),
+                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
+                            ),
+                            child: Text(_status, style: TextStyle(fontSize: 13, color: txtPri)),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _workType,
-                          dropdownColor: surf,
-                          style: TextStyle(color: txtPri),
-                          decoration: const InputDecoration(
-                            labelText: 'Tipe Kerja',
-                            prefixIcon:
-                                Icon(CupertinoIcons.desktopcomputer, size: 18),
+                        child: InkWell(
+                          onTap: () => _showAppleOptionPicker(
+                            context: context,
+                            title: 'Pilih Tipe Kerja',
+                            options: _workTypeOptions,
+                            currentValue: _workType,
+                            onSelected: (val) => setState(() => _workType = val),
                           ),
-                          items: _workTypeOptions
-                              .map((w) => DropdownMenuItem(
-                                    value: w,
-                                    child: Text(w,
-                                        style: TextStyle(
-                                            fontSize: 13, color: txtPri)),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _workType = val);
-                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Tipe Kerja',
+                              prefixIcon: Icon(CupertinoIcons.desktopcomputer, size: 18),
+                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
+                            ),
+                            child: Text(_workType, style: TextStyle(fontSize: 13, color: txtPri)),
+                          ),
                         ),
                       ),
                     ],
@@ -437,41 +429,32 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _jobSource,
-                          dropdownColor: surf,
-                          style: TextStyle(color: txtPri),
-                          decoration: const InputDecoration(
-                            labelText: 'Sumber Loker',
-                            prefixIcon: Icon(CupertinoIcons.link, size: 18),
+                        child: InkWell(
+                          onTap: () => _showAppleOptionPicker(
+                            context: context,
+                            title: 'Pilih Sumber Loker',
+                            options: _sourceOptions,
+                            currentValue: _jobSource,
+                            onSelected: (val) => setState(() => _jobSource = val),
                           ),
-                          items: _sourceOptions
-                              .map((s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(s,
-                                        style: TextStyle(
-                                            fontSize: 13, color: txtPri)),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _jobSource = val);
-                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Sumber Loker',
+                              prefixIcon: Icon(CupertinoIcons.link, size: 18),
+                              suffixIcon: Icon(CupertinoIcons.chevron_down, size: 14),
+                            ),
+                            child: Text(_jobSource, style: TextStyle(fontSize: 13, color: txtPri)),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: InkWell(
-                          onTap: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _appliedDate,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2030),
-                            );
-                            if (picked != null) {
-                              setState(() => _appliedDate = picked);
-                            }
-                          },
+                          onTap: () => _showAppleDatePicker(
+                            context: context,
+                            initialDate: _appliedDate,
+                            onDateSelected: (val) => setState(() => _appliedDate = val),
+                          ),
                           child: InputDecorator(
                             decoration: const InputDecoration(
                               labelText: 'Tanggal Melamar',
@@ -505,7 +488,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: surfSec,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                 border: Border.all(color: bdr),
               ),
               child: Column(
@@ -522,17 +505,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   const SizedBox(height: 14),
 
                   InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _interviewDate ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) {
-                        setState(() => _interviewDate = picked);
-                      }
-                    },
+                    onTap: () => _showAppleDatePicker(
+                      context: context,
+                      initialDate: _interviewDate ?? DateTime.now(),
+                      onDateSelected: (val) => setState(() => _interviewDate = val),
+                    ),
                     child: InputDecorator(
                       decoration: InputDecoration(
                         labelText: 'Jadwal Interview (Opsional)',
@@ -628,6 +605,98 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               ),
             ),
             const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAppleOptionPicker({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+    required String currentValue,
+    required ValueChanged<String> onSelected,
+  }) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => CupertinoActionSheet(
+        title: Text(title),
+        actions: options.map((opt) {
+          final isSelected = opt == currentValue;
+          return CupertinoActionSheetAction(
+            onPressed: () {
+              onSelected(opt);
+              Navigator.pop(context);
+            },
+            child: Text(
+              opt,
+              style: TextStyle(
+                color: AppTheme.systemBlue,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+      ),
+    );
+  }
+
+  void _showAppleDatePicker({
+    required BuildContext context,
+    required DateTime initialDate,
+    required ValueChanged<DateTime> onDateSelected,
+  }) {
+    DateTime tempDate = initialDate;
+    final surf = AppTheme.getSurface(context);
+    final surfSec = AppTheme.getSurfaceSecondary(context);
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => Container(
+        height: 280,
+        color: surf,
+        child: Column(
+          children: [
+            Container(
+              color: surfSec,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Text('Batal',
+                        style: TextStyle(color: AppTheme.systemRed, fontSize: 16)),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      onDateSelected(tempDate);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Selesai',
+                        style: TextStyle(
+                            color: AppTheme.systemBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: initialDate,
+                minimumYear: 2020,
+                maximumYear: 2030,
+                onDateTimeChanged: (val) => tempDate = val,
+              ),
+            ),
           ],
         ),
       ),
