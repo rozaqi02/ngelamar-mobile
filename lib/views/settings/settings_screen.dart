@@ -268,7 +268,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   _divider(),
                   _buildIdentityRow(
-                    icon: CupertinoIcons.mail_fill,
+                    icon: CupertinoIcons.mail,
                     iconColor: AppTheme.systemTeal,
                     title: 'Email',
                     value: state.userEmail.isEmpty ? 'Belum diisi' : state.userEmail,
