@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../models/job_application.dart';
@@ -222,40 +223,48 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: source,
-        imageQuality: 85,
+        imageQuality: 95,
       );
 
       if (image == null) return;
 
-      final fileName = image.name;
-      final mockText = _extractTextFromImage(fileName);
-      _pasteController.text = mockText;
+      // Real On-Device OCR via Google ML Kit Text Recognition
+      final inputImage = InputImage.fromFilePath(image.path);
+      final textRecognizer =
+          TextRecognizer(script: TextRecognitionScript.latin);
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
+
+      final extractedText = recognizedText.text.trim();
+
+      if (extractedText.isEmpty) {
+        if (!mounted) return;
+        AppleToast.warning(
+          context,
+          'Teks Tidak Terbaca dari Gambar',
+          subtitle: 'Tidak ada teks yang berhasil dipindai dari gambar poster loker ini.',
+        );
+        return;
+      }
+
+      _pasteController.text = extractedText;
       _parsePastedText();
 
       if (!mounted) return;
       AppleToast.success(
         context,
-        'Gambar Berhasil Diunggah & Dipindai!',
-        subtitle: 'Informasi dari gambar loker telah diisi otomatis ke dalam form.',
+        'Gambar Berhasil Dipindai dengan ML Kit OCR!',
+        subtitle: 'Teks poster/screenshot loker berhasil diisi otomatis ke dalam form.',
       );
     } catch (e) {
       if (!mounted) return;
       AppleToast.warning(
         context,
         'Gagal Membaca Gambar',
-        subtitle: 'Pastikan izin akses galeri/kamera telah disetujui.',
+        subtitle: 'Terjadi kesalahan saat memproses OCR gambar loker.',
       );
     }
-  }
-
-  String _extractTextFromImage(String name) {
-    final cleanName = name
-        .replaceAll('_', ' ')
-        .replaceAll('-', ' ')
-        .replaceAll('.jpg', '')
-        .replaceAll('.jpeg', '')
-        .replaceAll('.png', '');
-    return 'Lowongan Pekerjaan dari Gambar Poster Loker $cleanName. PT Shopee Indonesia, Posisi Software Engineer, Gaji Rp 8.500.000 - Rp 12.000.000, Tipe Kerja Hybrid, Lokasi Jakarta Selatan.';
   }
 
   Future<void> _saveJob() async {
