@@ -120,6 +120,11 @@ class SalaryEvaluatorService {
     String clean = text.trim();
     if (clean.isEmpty) return 0.0;
 
+    final directParsed = double.tryParse(clean);
+    if (directParsed != null) {
+      return directParsed;
+    }
+
     if (clean.contains('jt') || clean.contains('juta')) {
       final numStr = clean
           .replaceAll('jt', '')
