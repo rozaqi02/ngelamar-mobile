@@ -593,7 +593,7 @@ class DashboardScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Smart Auto-Fill',
+                    'Isi Otomatis',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,

@@ -24,7 +24,9 @@ class JobListScreen extends ConsumerStatefulWidget {
 class _JobListScreenState extends ConsumerState<JobListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final _scrollController = ScrollController();
   final _searchController = TextEditingController();
+  int _lastIndex = 0;
 
   // Status Tabs (Tanpa HR Screening)
   final List<String> _tabs = const [
@@ -53,8 +55,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    // Real-time animation listener agar pill aktif berpindah TANPA DELAY saat tab digeser
     _tabController.animation?.addListener(_handleTabAnimationTick);
+    _tabController.addListener(_handleTabChangeScrollToTop);
   }
 
   void _handleTabAnimationTick() {
@@ -63,10 +65,21 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     }
   }
 
+  void _handleTabChangeScrollToTop() {
+    if (_tabController.index != _lastIndex) {
+      _lastIndex = _tabController.index;
+      if (_scrollController.hasClients && _scrollController.offset > 0) {
+        _scrollController.jumpTo(0);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _tabController.animation?.removeListener(_handleTabAnimationTick);
+    _tabController.removeListener(_handleTabChangeScrollToTop);
     _tabController.dispose();
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -203,6 +216,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     return Scaffold(
       backgroundColor: bg,
       body: NestedScrollView(
+        controller: _scrollController,
         physics: const BouncingScrollPhysics(),
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           // 1. Apple Large Navigation Bar Title

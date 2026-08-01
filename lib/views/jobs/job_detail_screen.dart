@@ -39,6 +39,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   // Salary Evaluator State
   String _selectedCity = 'Jakarta';
   bool _needsKos = true;
+  late TextEditingController _customKosController;
 
   // Follow-up State
   int _selectedTemplateIndex = 0;
@@ -48,6 +49,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _customKosController = TextEditingController(text: '1500000');
 
     if (widget.job.location != null && widget.job.location!.isNotEmpty) {
       final match = SalaryEvaluatorService.umrList.firstWhere(
@@ -59,13 +61,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
     final templates = FollowupService.generateTemplates(widget.job);
     _followupContentController = TextEditingController(
-      text: templates[_selectedTemplateIndex].content,
+      text: templates.isNotEmpty ? templates[0].content : '',
     );
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _customKosController.dispose();
     _followupContentController.dispose();
     super.dispose();
   }
@@ -1176,11 +1179,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   // TAB 4: SALARY & OFFER EVALUATOR
   Widget _buildAppleSalaryEvaluatorTab(JobApplication currentJob) {
+    final customKos = _needsKos
+        ? SalaryEvaluatorService.parseSalaryAmount(_customKosController.text)
+        : 0.0;
+
     final evaluation = SalaryEvaluatorService.evaluateSalaryRange(
       rawSalaryInput: currentJob.salaryOffered,
       city: _selectedCity,
       workType: currentJob.workType,
       needsKos: _needsKos,
+      customKosCost: customKos > 0 ? customKos : null,
     );
 
     final isFeasible = evaluation.maxSavings >= 0;
@@ -1314,7 +1322,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Menambahkan estimasi kos ke biaya hidup minimal',
+                            'Isi biaya kos sendiri di bawah ini',
                             style: TextStyle(fontSize: 11, color: txtSec),
                           ),
                         ],
@@ -1327,6 +1335,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     ),
                   ],
                 ),
+                if (_needsKos) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _customKosController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    style: TextStyle(fontSize: 13, color: txtPri),
+                    decoration: const InputDecoration(
+                      labelText: 'Biaya Kos / Kontrakan Per Bulan',
+                      hintText: 'Misal: 1.500.000',
+                      prefixIcon: Icon(CupertinoIcons.house_fill, size: 18),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

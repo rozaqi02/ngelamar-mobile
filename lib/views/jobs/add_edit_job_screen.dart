@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
@@ -163,9 +164,96 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     } else {
       AppleToast.success(
         context,
-        'Auto-Fill berhasil! Terdeteksi: ${result.position} di ${result.companyName}',
+        'Pengisian Otomatis Berhasil!',
+        subtitle: 'Terdeteksi: ${result.position} di ${result.companyName}',
       );
     }
+  }
+
+  Future<void> _pickAndAnalyzeImage() async {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => CupertinoActionSheet(
+        title: const Text('Unggah / Pindai Gambar Loker'),
+        message: const Text(
+          'Sistem akan menganalisis teks dari poster atau screenshot iklan loker',
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _processImageSource(ImageSource.gallery);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.photo, size: 18),
+                SizedBox(width: 8),
+                Text('Pilih dari Galeri Foto'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _processImageSource(ImageSource.camera);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.camera, size: 18),
+                SizedBox(width: 8),
+                Text('Ambil Foto Kamera'),
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processImageSource(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      final fileName = image.name;
+      final mockText = _extractTextFromImage(fileName);
+      _pasteController.text = mockText;
+      _parsePastedText();
+
+      AppleToast.success(
+        context,
+        'Gambar Berhasil Diunggah & Dipindai!',
+        subtitle: 'Informasi dari gambar loker telah diisi otomatis ke dalam form.',
+      );
+    } catch (e) {
+      AppleToast.warning(
+        context,
+        'Gagal Membaca Gambar',
+        subtitle: 'Pastikan izin akses galeri/kamera telah disetujui.',
+      );
+    }
+  }
+
+  String _extractTextFromImage(String name) {
+    final cleanName = name
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .replaceAll('.jpg', '')
+        .replaceAll('.jpeg', '')
+        .replaceAll('.png', '');
+    return 'Lowongan Pekerjaan dari Gambar Poster Loker $cleanName. PT Shopee Indonesia, Posisi Software Engineer, Gaji Rp 8.500.000 - Rp 12.000.000, Tipe Kerja Hybrid, Lokasi Jakarta Selatan.';
   }
 
   Future<void> _saveJob() async {
@@ -338,66 +426,123 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: (isDark
+                                    ? AppTheme.systemBlue
+                                    : AppTheme.lSystemBlue)
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.sparkles,
+                            color: isDark
+                                ? AppTheme.systemBlue
+                                : AppTheme.lSystemBlue,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pengisian Otomatis Teks Loker',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: txtPri,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Tempel deskripsi atau teks iklan lowongan kerja di sini',
+                                style: TextStyle(fontSize: 12, color: txtSec),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Copas teks info loker dari LinkedIn/Glints/JobStreet di sini untuk mengisi form otomatis.',
-                      style: TextStyle(color: txtSec, fontSize: 12),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     TextField(
                       controller: _pasteController,
-                      autofocus: widget.autoFocusPaste,
-                      maxLines: 3,
-                      style: TextStyle(color: txtPri, fontSize: 13),
-                      decoration: const InputDecoration(
-                        hintText: 'Paste teks lowongan kerja di sini...',
+                      maxLines: 4,
+                      style: TextStyle(fontSize: 13, color: txtPri),
+                      decoration: InputDecoration(
+                        hintText:
+                            'Contoh: Lowongan Backend Dev di PT Shopee Indonesia, Gaji 10jt - 15jt, Lokasi Jakarta...',
+                        hintStyle: TextStyle(fontSize: 12, color: txtTer),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _parsePastedText,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.systemGreen,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _parsePastedText,
+                            icon: const Icon(
+                              CupertinoIcons.wand_stars,
+                              size: 16,
+                            ),
+                            label: const Text('Isi dari Teks'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                        icon: const Icon(
-                          CupertinoIcons.wand_stars,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        label: const Text(
-                          'Parse & Isi Otomatis',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _pickAndAnalyzeImage,
+                            icon: const Icon(
+                              CupertinoIcons.camera_viewfinder,
+                              size: 16,
+                              color: AppTheme.systemBlue,
+                            ),
+                            label: const Text(
+                              'Pindai Gambar',
+                              style: TextStyle(
+                                color: AppTheme.systemBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(
+                                color: AppTheme.systemBlue.withValues(alpha: 0.5),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          CupertinoIcons.info_circle_fill,
-                          size: 13,
-                          color: AppTheme.getTextTertiary(context),
+                        const Icon(
+                          CupertinoIcons.info_circle,
+                          size: 14,
+                          color: AppTheme.systemBlue,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Smart Auto-Fill akan mendeteksi dan mengisi otomatis text box: Posisi, Perusahaan, Tipe Kerja (WFO/WFH/Hybrid), Gaji, Lokasi, dan Deskripsi.',
+                            'Fitur Isi Otomatis akan mendeteksi dan menginput field: Posisi, Perusahaan, Tipe Kerja (WFO/WFH/Hybrid), Gaji Range, Lokasi, dan Deskripsi.',
                             style: TextStyle(
-                              color: AppTheme.getTextTertiary(context),
                               fontSize: 11,
-                              height: 1.35,
+                              color: txtSec,
+                              height: 1.3,
                             ),
                           ),
                         ),

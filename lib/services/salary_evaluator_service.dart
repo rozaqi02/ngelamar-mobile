@@ -144,6 +144,7 @@ class SalaryEvaluatorService {
     required String city,
     required String workType,
     bool needsKos = true,
+    double? customKosCost,
   }) {
     final range = parseSalaryRange(rawSalaryInput);
     final minGross = range.min;
@@ -162,7 +163,9 @@ class SalaryEvaluatorService {
     final maxUmrRatio = umrItem.umrAmount > 0 ? (maxGross / umrItem.umrAmount) : 1.0;
 
     double operationalCost = 0.0;
-    if (workType == 'WFH') {
+    if (needsKos && customKosCost != null && customKosCost > 0) {
+      operationalCost = customKosCost;
+    } else if (workType == 'WFH') {
       operationalCost = needsKos ? 2000000 : 1200000;
     } else if (workType == 'Hybrid') {
       operationalCost = needsKos ? 2800000 : 1800000;
