@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Centralized service for persisting user preferences and settings.
 class PrefsService {
   static const _keyUserName = 'user_name';
+  static const _keyUserEmail = 'user_email';
   static const _keyThemeMode = 'theme_mode'; // 'dark' | 'light'
   static const _keyOnboardingDone = 'onboarding_done';
 
@@ -16,6 +17,18 @@ class PrefsService {
   static Future<void> setUserName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUserName, name);
+  }
+
+  /// Returns stored user email, or null if not set.
+  static Future<String?> getUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserEmail);
+  }
+
+  /// Saves user email persistently.
+  static Future<void> setUserEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserEmail, email);
   }
 
   /// Returns 'dark' or 'light'. Defaults to 'dark'.

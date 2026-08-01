@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
@@ -13,8 +14,6 @@ import 'add_edit_job_screen.dart';
 import '../prep/fresh_grad_prep_screen.dart';
 
 /// Overhauled Apple iOS 18 JobListScreen layout.
-/// Features iOS native search header, company monogram avatar badges,
-/// consolidated status & quick filter pill bar, and grouped card list architecture.
 class JobListScreen extends ConsumerStatefulWidget {
   const JobListScreen({super.key});
 
@@ -27,23 +26,24 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   late TabController _tabController;
   final _searchController = TextEditingController();
 
-  final List<String> _tabs = [
+  // Status Tabs (Tanpa HR Screening)
+  final List<String> _tabs = const [
     'Semua',
-    'Favorit',
-    'WFH',
     'Dikirim',
-    'Interview & Tes',
+    'Tes / Psikotes',
+    'Interview HR',
+    'Interview User',
     'Offering',
     'Diterima',
     'Ditolak',
   ];
 
-  final List<IconData> _tabIcons = [
+  final List<IconData> _tabIcons = const [
     CupertinoIcons.square_grid_2x2,
-    CupertinoIcons.star_fill,
-    CupertinoIcons.house_fill,
     CupertinoIcons.paperplane_fill,
+    CupertinoIcons.doc_checkmark_fill,
     CupertinoIcons.mic_fill,
+    CupertinoIcons.person_2_fill,
     CupertinoIcons.gift_fill,
     CupertinoIcons.checkmark_seal_fill,
     CupertinoIcons.xmark_seal_fill,
@@ -53,16 +53,19 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabController.addListener(_onTabChanged);
+    // Real-time animation listener agar pill aktif berpindah TANPA DELAY saat tab digeser
+    _tabController.animation?.addListener(_handleTabAnimationTick);
   }
 
-  void _onTabChanged() {
-    setState(() {});
+  void _handleTabAnimationTick() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
+    _tabController.animation?.removeListener(_handleTabAnimationTick);
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -83,19 +86,21 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
       if (!matchesSearch) return false;
 
+      // Quick Filters (WFH & Favorit)
+      if (state.onlyFavoritesFilter && !job.isFavorite) return false;
+      if (state.onlyWfhFilter && job.workType != 'WFH') return false;
+
       switch (category) {
         case 'Semua':
           return true;
-        case 'Favorit':
-          return job.isFavorite;
-        case 'WFH':
-          return job.workType == 'WFH';
         case 'Dikirim':
           return job.status == 'Dikirim';
-        case 'Interview & Tes':
-          return job.status == 'HR Screening' ||
-              job.status == 'Tes / Psikotes' ||
-              job.status.contains('Interview');
+        case 'Tes / Psikotes':
+          return job.status == 'Tes / Psikotes';
+        case 'Interview HR':
+          return job.status == 'Interview HR';
+        case 'Interview User':
+          return job.status == 'Interview User';
         case 'Offering':
           return job.status == 'Offering';
         case 'Diterima':
@@ -108,24 +113,30 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     }).toList();
   }
 
-  int _getCategoryCount(String category, JobState state) {
+  int _getStatusCount(String category, JobState state) {
+    final jobs = state.jobs.where((job) {
+      if (state.onlyFavoritesFilter && !job.isFavorite) return false;
+      if (state.onlyWfhFilter && job.workType != 'WFH') return false;
+      return true;
+    });
+
     switch (category) {
       case 'Semua':
-        return state.totalCount;
-      case 'Favorit':
-        return state.favoriteCount;
-      case 'WFH':
-        return state.jobs.where((j) => j.workType == 'WFH').length;
+        return jobs.length;
       case 'Dikirim':
-        return state.appliedCount;
-      case 'Interview & Tes':
-        return state.interviewCount;
+        return jobs.where((j) => j.status == 'Dikirim').length;
+      case 'Tes / Psikotes':
+        return jobs.where((j) => j.status == 'Tes / Psikotes').length;
+      case 'Interview HR':
+        return jobs.where((j) => j.status == 'Interview HR').length;
+      case 'Interview User':
+        return jobs.where((j) => j.status == 'Interview User').length;
       case 'Offering':
-        return state.offeringCount;
+        return jobs.where((j) => j.status == 'Offering').length;
       case 'Diterima':
-        return state.acceptedCount;
+        return jobs.where((j) => j.status == 'Diterima').length;
       case 'Ditolak':
-        return state.rejectedCount;
+        return jobs.where((j) => j.status == 'Ditolak').length;
       default:
         return 0;
     }
@@ -176,15 +187,25 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     final compact =
         MediaQuery.sizeOf(context).width < 390 ||
         MediaQuery.textScalerOf(context).scale(1) > 1.25;
+
     final hasActiveFilter =
-        state.searchQuery.isNotEmpty || _tabController.index != 0;
+        state.searchQuery.isNotEmpty ||
+        state.onlyFavoritesFilter ||
+        state.onlyWfhFilter ||
+        _tabController.index != 0;
+
+    // Indeks tab aktif real-time (tanpa delay saat swipe)
+    final activeIndex =
+        (_tabController.animation?.value ?? _tabController.index.toDouble())
+            .round()
+            .clamp(0, _tabs.length - 1);
 
     return Scaffold(
       backgroundColor: bg,
       body: NestedScrollView(
         physics: const BouncingScrollPhysics(),
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Apple iOS 18 Navigation Header
+          // 1. Apple Large Navigation Bar Title
           SliverAppBar(
             backgroundColor: bg,
             surfaceTintColor: Colors.transparent,
@@ -207,7 +228,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                 return Stack(
                   children: [
-                    // Large title (fades out on scroll)
+                    // Large title
                     Positioned(
                       left: 16,
                       bottom: 12,
@@ -225,7 +246,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         ),
                       ),
                     ),
-                    // Collapsed small title (fades in on scroll)
+                    // Collapsed title
                     Positioned(
                       left: 16,
                       bottom: 14,
@@ -242,7 +263,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         ),
                       ),
                     ),
-                    // Top-Right Actions (Reset + Offer Comparison + Add Button)
+                    // Top-Right Actions
                     Positioned(
                       right: 16,
                       bottom: 12,
@@ -271,14 +292,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       CupertinoIcons.gift_fill,
                                       color: AppTheme.systemPurple,
                                       size: 13,
                                     ),
-                                    SizedBox(width: 4),
+                                    const SizedBox(width: 4),
                                     if (!compact)
-                                      Text(
+                                      const Text(
                                         'Bandingkan',
                                         style: TextStyle(
                                           color: AppTheme.systemPurple,
@@ -301,12 +322,12 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                               child: Padding(
                                 padding: const EdgeInsets.only(right: 12),
                                 child: compact
-                                    ? Icon(
+                                    ? const Icon(
                                         CupertinoIcons.arrow_counterclockwise,
                                         color: AppTheme.systemBlue,
                                         size: 18,
                                       )
-                                    : Text(
+                                    : const Text(
                                         'Reset',
                                         style: TextStyle(
                                           color: AppTheme.systemBlue,
@@ -348,15 +369,47 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             ),
           ),
 
-          // Pinned Cupertino Search Header
+          // 2. Quick Pill Bar (WFH & Favorit) DI ATAS Search Box (Permintaan #4)
+          SliverToBoxAdapter(
+            child: Container(
+              color: bg,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              child: Row(
+                children: [
+                  _buildQuickPill(
+                    label: 'Favorit',
+                    count: state.favoriteCount,
+                    icon: CupertinoIcons.star_fill,
+                    isSelected: state.onlyFavoritesFilter,
+                    activeColor: AppTheme.systemOrange,
+                    onTap: () => ref
+                        .read(jobProvider.notifier)
+                        .toggleOnlyFavoritesFilter(),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildQuickPill(
+                    label: 'WFH Only',
+                    count: state.jobs.where((j) => j.workType == 'WFH').length,
+                    icon: CupertinoIcons.house_fill,
+                    isSelected: state.onlyWfhFilter,
+                    activeColor: AppTheme.systemGreen,
+                    onTap: () =>
+                        ref.read(jobProvider.notifier).toggleOnlyWfhFilter(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. Pinned Cupertino Search Box
           SliverPersistentHeader(
             pinned: true,
             delegate: _FixedHeightDelegate(
-              height: 54,
+              height: 52,
               child: ColoredBox(
                 color: bg,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
                   child: CupertinoSearchTextField(
                     controller: _searchController,
                     onChanged: (v) =>
@@ -375,11 +428,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             ),
           ),
 
-          // Consolidated Status & Category Filter Bar
+          // 4. Consolidated Status Filter Bar DI BAWAH Search Box
           SliverPersistentHeader(
             pinned: true,
             delegate: _FixedHeightDelegate(
-              height: 48,
+              height: 46,
               child: Container(
                 color: bg,
                 child: SingleChildScrollView(
@@ -389,14 +442,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   child: Row(
                     children: List.generate(_tabs.length, (i) {
                       final category = _tabs[i];
-                      final isSelected = _tabController.index == i;
+                      // Aktif secara INSTAN & REAL-TIME tanpa delay saat swipe (Permintaan #5)
+                      final isSelected = activeIndex == i;
                       final icon = _tabIcons[i];
-                      final count = _getCategoryCount(category, state);
-                      final statusColor = category == 'Favorit'
-                          ? AppTheme.systemOrange
-                          : category == 'WFH'
-                          ? AppTheme.systemGreen
-                          : AppTheme.getStatusColor(category, isDark: isDark);
+                      final count = _getStatusCount(category, state);
+                      final statusColor = AppTheme.getStatusColor(
+                        category,
+                        isDark: isDark,
+                      );
 
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
@@ -408,7 +461,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           activeColor: statusColor,
                           onTap: () {
                             _tabController.animateTo(i);
-                            setState(() {});
                           },
                         ),
                       );
@@ -440,7 +492,76 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     );
   }
 
-  // Apple iOS 18 Pill Filter Chip
+  // Quick Pill Filter (Favorit & WFH) di atas Search Box
+  Widget _buildQuickPill({
+    required String label,
+    required int count,
+    required IconData icon,
+    required bool isSelected,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    final surfSec = AppTheme.getSurfaceSecondary(context);
+    final bdr = AppTheme.getBorder(context);
+    final txtSec = AppTheme.getTextSecondary(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.18) : surfSec,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? activeColor : bdr,
+            width: AppTheme.borderHairline,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 12,
+              color: isSelected ? activeColor : txtSec,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? activeColor : txtSec,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? activeColor
+                    : AppTheme.getTextTertiary(context).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : AppTheme.getTextSecondary(context),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Status Tab Pill Chip (di bawah Search Box)
   Widget _buildCategoryPill({
     required String label,
     required int count,
@@ -456,12 +577,12 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? activeColor : surfSec,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected ? activeColor : bdr,
             width: AppTheme.borderHairline,
@@ -475,13 +596,13 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
               size: 13,
               color: isSelected ? Colors.white : activeColor,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : txtSec,
                 fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
             const SizedBox(width: 5),
@@ -508,7 +629,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     );
   }
 
-  // 40x Better Apple Grouped Job Card
+  // Apple Grouped Job Card dengan Range Gaji & Tanggal Psikotes
   Widget _buildOverhauledJobCard(
     BuildContext context,
     JobApplication job,
@@ -535,6 +656,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         job.interviewDate != null &&
         job.interviewDate!.isAfter(DateTime.now()) &&
         job.interviewDate!.difference(DateTime.now()).inDays <= 3;
+
+    final isTestSoon =
+        job.testDate != null &&
+        job.testDate!.isAfter(DateTime.now()) &&
+        job.testDate!.difference(DateTime.now()).inDays <= 3;
 
     return RepaintBoundary(
       child: AppleBouncyCard(
@@ -590,7 +716,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     ),
                     const SizedBox(width: 12),
 
-                    // Position & Company
+                    // Position & Company Name
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,13 +790,74 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   ],
                 ),
 
-                // Interview Reminder Banner if soon
-                if (isInterviewSoon) ...[
-                  const SizedBox(height: 10),
+                // Range Gaji jika ada
+                if (job.salaryOffered != null && job.salaryOffered!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.money_dollar_circle_fill,
+                        size: 14,
+                        color: AppTheme.systemGreen,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        job.salaryOffered!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.systemGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Jadwal Psikotes Reminder Banner if soon
+                if (isTestSoon) ...[
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 5,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.systemPurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.systemPurple.withValues(alpha: 0.25),
+                        width: AppTheme.borderHairline,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          CupertinoIcons.doc_checkmark_fill,
+                          color: AppTheme.systemPurple,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Psikotes ${job.testDate!.difference(DateTime.now()).inDays == 0 ? "hari ini!" : "${job.testDate!.difference(DateTime.now()).inDays} hr lagi"} (${DateFormat('dd MMM, HH:mm').format(job.testDate!)})',
+                          style: const TextStyle(
+                            color: AppTheme.systemPurple,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Interview Reminder Banner if soon
+                if (isInterviewSoon) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: AppTheme.systemOrange.withValues(alpha: 0.1),
@@ -690,7 +877,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          'Interview ${job.interviewDate!.difference(DateTime.now()).inDays == 0 ? "hari ini!" : "${job.interviewDate!.difference(DateTime.now()).inDays} hr lagi"}',
+                          'Interview ${job.interviewDate!.difference(DateTime.now()).inDays == 0 ? "hari ini!" : "${job.interviewDate!.difference(DateTime.now()).inDays} hr lagi"} (${DateFormat('dd MMM, HH:mm').format(job.interviewDate!)})',
                           style: const TextStyle(
                             color: AppTheme.systemOrange,
                             fontSize: 11,
@@ -702,7 +889,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   ),
                 ],
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 const Divider(height: 1),
                 const SizedBox(height: 10),
 
@@ -773,7 +960,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     );
   }
 
-  // Apple Contextual Empty State
+  // Contextual Empty State
   Widget _buildEmptyState(String category) {
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
@@ -844,8 +1031,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       'Tambah Lamaran',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -885,16 +1072,21 @@ class _FixedHeightDelegate extends SliverPersistentHeaderDelegate {
   _FixedHeightDelegate({required this.height, required this.child});
 
   @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+
+  @override
   Widget build(
     BuildContext context,
     double shrinkOffset,
     bool overlapsContent,
-  ) => child;
+  ) {
+    return child;
+  }
+
   @override
-  double get maxExtent => height;
-  @override
-  double get minExtent => height;
-  @override
-  bool shouldRebuild(covariant _FixedHeightDelegate old) =>
-      old.height != height || old.child != child;
+  bool shouldRebuild(_FixedHeightDelegate oldDelegate) {
+    return oldDelegate.height != height || oldDelegate.child != child;
+  }
 }

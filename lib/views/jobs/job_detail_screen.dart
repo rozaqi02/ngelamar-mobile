@@ -28,7 +28,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   final List<String> _statusOptions = [
     'Dikirim',
-    'HR Screening',
     'Tes / Psikotes',
     'Interview HR',
     'Interview User',
@@ -335,8 +334,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   // TAB 1: DETAIL (Comprehensive)
   Widget _buildAppleDetailTab(JobApplication currentJob, Color statusColor) {
     final dateStr = DateFormat('dd MMMM yyyy').format(currentJob.appliedDate);
+    final testStr = currentJob.testDate != null
+        ? DateFormat('EEEE, dd MMMM yyyy HH:mm').format(currentJob.testDate!)
+        : null;
     final interviewStr = currentJob.interviewDate != null
-        ? DateFormat('EEEE, dd MMMM yyyy').format(currentJob.interviewDate!)
+        ? DateFormat('EEEE, dd MMMM yyyy HH:mm').format(currentJob.interviewDate!)
         : null;
 
     final surf = AppTheme.getSurface(context);
@@ -401,26 +403,64 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 // Status action sheet
                 GestureDetector(
                   onTap: () {
+                    final isDark = AppTheme.isDark(context);
                     showCupertinoModalPopup(
                       context: context,
                       builder: (_) => CupertinoActionSheet(
-                        title: const Text('Ubah Status Lamaran'),
+                        title: const Text(
+                          'Ubah Status Lamaran',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         actions: _statusOptions.map((s) {
                           final sColor = AppTheme.getStatusColor(
                             s,
-                            isDark: AppTheme.isDark(context),
+                            isDark: isDark,
                           );
+                          final isCurrent = s == currentJob.status;
+
                           return CupertinoActionSheetAction(
                             onPressed: () {
                               Navigator.pop(context);
                               _updateStatus(currentJob, s);
                             },
-                            child: Text(
-                              s,
-                              style: TextStyle(
-                                color: sColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: sColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  s,
+                                  style: TextStyle(
+                                    color: isCurrent
+                                        ? (isDark ? Colors.white : Colors.black)
+                                        : AppTheme.getTextPrimary(context),
+                                    fontWeight: isCurrent
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                if (isCurrent) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    CupertinoIcons.checkmark_alt,
+                                    size: 16,
+                                    color: isDark
+                                        ? AppTheme.systemBlue
+                                        : AppTheme.lSystemBlue,
+                                  ),
+                                ],
+                              ],
                             ),
                           );
                         }).toList(),
@@ -509,7 +549,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   _divider(),
                   _infoRow(
                     CupertinoIcons.money_dollar_circle,
-                    'Ekspektasi / Gaji Ditawarkan',
+                    'Estimasi Range Gaji',
                     currentJob.salaryOffered!,
                   ),
                 ],
@@ -517,6 +557,64 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
+
+          // Jadwal Psikotes / Tes
+          if (testStr != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.systemPurple.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                border: Border.all(
+                  color: AppTheme.systemPurple.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.systemPurple.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.doc_checkmark_fill,
+                      color: AppTheme.systemPurple,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Jadwal Psikotes / Tes',
+                          style: TextStyle(
+                            color: AppTheme.systemPurple,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          testStr,
+                          style: TextStyle(
+                            color: txtPri,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Jadwal Interview
           if (interviewStr != null)

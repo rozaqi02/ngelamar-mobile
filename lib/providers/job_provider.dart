@@ -13,6 +13,7 @@ class JobState {
   final bool onlyWfhFilter;
   final bool isLoading;
   final String userName;
+  final String userEmail;
   final bool isDarkMode;
 
   JobState({
@@ -23,6 +24,7 @@ class JobState {
     this.onlyWfhFilter = false,
     this.isLoading = false,
     this.userName = '',
+    this.userEmail = '',
     this.isDarkMode = true,
   });
 
@@ -34,6 +36,7 @@ class JobState {
     bool? onlyWfhFilter,
     bool? isLoading,
     String? userName,
+    String? userEmail,
     bool? isDarkMode,
   }) {
     return JobState(
@@ -44,6 +47,7 @@ class JobState {
       onlyWfhFilter: onlyWfhFilter ?? this.onlyWfhFilter,
       isLoading: isLoading ?? this.isLoading,
       userName: userName ?? this.userName,
+      userEmail: userEmail ?? this.userEmail,
       isDarkMode: isDarkMode ?? this.isDarkMode,
     );
   }
@@ -55,7 +59,6 @@ class JobState {
       .where(
         (j) =>
             j.status.contains('Interview') ||
-            j.status == 'HR Screening' ||
             j.status == 'Tes / Psikotes',
       )
       .length;
@@ -99,12 +102,14 @@ class JobNotifier extends StateNotifier<JobState> {
 
     // Muat preferensi pengguna
     final name = await PrefsService.getUserName() ?? '';
+    final email = await PrefsService.getUserEmail() ?? '';
     final theme = await PrefsService.getThemeMode();
 
     state = state.copyWith(
       jobs: loaded,
       isLoading: false,
       userName: name,
+      userEmail: email,
       isDarkMode: theme == 'dark',
     );
 
@@ -260,6 +265,12 @@ class JobNotifier extends StateNotifier<JobState> {
   Future<void> setUserName(String name) async {
     await PrefsService.setUserName(name);
     state = state.copyWith(userName: name);
+  }
+
+  /// Save user email to prefs and update state.
+  Future<void> setUserEmail(String email) async {
+    await PrefsService.setUserEmail(email);
+    state = state.copyWith(userEmail: email);
   }
 
   /// Toggle dark/light mode and persist to prefs.

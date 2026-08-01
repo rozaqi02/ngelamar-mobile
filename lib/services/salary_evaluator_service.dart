@@ -67,15 +67,31 @@ class SalaryEvaluatorService {
 
   static double parseSalaryAmount(String? input) {
     if (input == null || input.trim().isEmpty) return 0.0;
-    String clean = input
+    final clean = input
         .toLowerCase()
         .replaceAll('rp', '')
         .replaceAll('idr', '')
         .trim();
 
     if (clean.contains('-')) {
-      clean = clean.split('-').first.trim();
+      final parts = clean.split('-');
+      final val1 = _parseSingleSalary(parts[0]);
+      final val2 = _parseSingleSalary(parts[1]);
+      if (val1 > 0 && val2 > 0) {
+        return (val1 + val2) / 2.0; // Ambil nilai tengah dari range gaji
+      } else if (val2 > 0) {
+        return val2;
+      } else {
+        return val1;
+      }
     }
+
+    return _parseSingleSalary(clean);
+  }
+
+  static double _parseSingleSalary(String text) {
+    String clean = text.trim();
+    if (clean.isEmpty) return 0.0;
 
     if (clean.contains('jt') || clean.contains('juta')) {
       final numStr = clean

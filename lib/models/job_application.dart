@@ -5,16 +5,17 @@ class JobApplication {
   final String companyName;
   final String position;
   final String
-  status; // 'Dikirim', 'HR Screening', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
+  status; // 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
   final DateTime appliedDate;
-  final String? salaryOffered;
+  final String? salaryOffered; // Range estimasi gaji (contoh: "Rp 8.000.000 - Rp 12.000.000")
   final String workType; // 'WFO', 'WFH', 'Hybrid'
   final String? location;
   final String?
   jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
   final String jobDescription; // Snapshot deskripsi/kualifikasi awal
   final String? hrContact; // Nomor WA atau email HR
-  final DateTime? interviewDate;
+  final DateTime? testDate; // Tanggal Tes / Psikotes
+  final DateTime? interviewDate; // Tanggal Wawancara / Interview
   final String? notes;
   final bool isFavorite;
 
@@ -30,6 +31,7 @@ class JobApplication {
     this.jobSource,
     required this.jobDescription,
     this.hrContact,
+    this.testDate,
     this.interviewDate,
     this.notes,
     this.isFavorite = false,
@@ -47,6 +49,7 @@ class JobApplication {
     String? jobSource,
     String? jobDescription,
     String? hrContact,
+    DateTime? testDate,
     DateTime? interviewDate,
     String? notes,
     bool? isFavorite,
@@ -63,6 +66,7 @@ class JobApplication {
       jobSource: jobSource ?? this.jobSource,
       jobDescription: jobDescription ?? this.jobDescription,
       hrContact: hrContact ?? this.hrContact,
+      testDate: testDate ?? this.testDate,
       interviewDate: interviewDate ?? this.interviewDate,
       notes: notes ?? this.notes,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -74,7 +78,7 @@ class JobApplication {
       'id': id,
       'companyName': companyName,
       'position': position,
-      'status': status,
+      'status': status == 'HR Screening' ? 'Interview HR' : status,
       'appliedDate': appliedDate.toIso8601String(),
       'salaryOffered': salaryOffered,
       'workType': workType,
@@ -82,6 +86,7 @@ class JobApplication {
       'jobSource': jobSource,
       'jobDescription': jobDescription,
       'hrContact': hrContact,
+      'testDate': testDate?.toIso8601String(),
       'interviewDate': interviewDate?.toIso8601String(),
       'notes': notes,
       'isFavorite': isFavorite,
@@ -89,11 +94,14 @@ class JobApplication {
   }
 
   factory JobApplication.fromMap(Map<String, dynamic> map) {
+    final rawStatus = map['status'] ?? 'Dikirim';
+    final cleanStatus = rawStatus == 'HR Screening' ? 'Interview HR' : rawStatus;
+
     return JobApplication(
       id: map['id'] ?? '',
       companyName: map['companyName'] ?? '',
       position: map['position'] ?? '',
-      status: map['status'] ?? 'Dikirim',
+      status: cleanStatus,
       appliedDate: map['appliedDate'] != null
           ? DateTime.parse(map['appliedDate'])
           : DateTime.now(),
@@ -103,6 +111,7 @@ class JobApplication {
       jobSource: map['jobSource'],
       jobDescription: map['jobDescription'] ?? '',
       hrContact: map['hrContact'],
+      testDate: map['testDate'] != null ? DateTime.parse(map['testDate']) : null,
       interviewDate: map['interviewDate'] != null
           ? DateTime.parse(map['interviewDate'])
           : null,

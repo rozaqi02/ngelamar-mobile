@@ -145,36 +145,36 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                     final navHeight = showLabels ? 66.0 : 56.0;
 
                     return ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
+                      borderRadius: BorderRadius.circular(32),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
                         child: Container(
                           height: navHeight,
                           decoration: BoxDecoration(
                             // Dual layer glass: translucent bg + specular shine
                             color: isDark
-                                ? const Color(0xD4141416)
-                                : const Color(0xEEF8F8FA),
-                            borderRadius: BorderRadius.circular(36),
+                                ? const Color(0xDC161618)
+                                : const Color(0xF2F9F9FB),
+                            borderRadius: BorderRadius.circular(32),
                             border: Border.all(
                               color: isDark
-                                  ? Colors.white.withValues(alpha: 0.14)
-                                  : Colors.black.withValues(alpha: 0.07),
+                                  ? Colors.white.withValues(alpha: 0.16)
+                                  : Colors.black.withValues(alpha: 0.08),
                               width: AppTheme.borderHairline,
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                  alpha: isDark ? 0.55 : 0.10,
+                                  alpha: isDark ? 0.45 : 0.08,
                                 ),
-                                blurRadius: 32,
-                                offset: const Offset(0, 10),
+                                blurRadius: 28,
+                                offset: const Offset(0, 8),
                               ),
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                  alpha: isDark ? 0.20 : 0.04,
+                                  alpha: isDark ? 0.15 : 0.03,
                                 ),
-                                blurRadius: 8,
+                                blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
                             ],
@@ -185,16 +185,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                               // -- Glass specular highlight strip (top rim) --
                               Positioned(
                                 top: 0,
-                                left: 12,
-                                right: 12,
-                                height: 1,
+                                left: 14,
+                                right: 14,
+                                height: 1.2,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
                                         Colors.white.withValues(alpha: 0.0),
                                         Colors.white.withValues(
-                                          alpha: isDark ? 0.22 : 0.55,
+                                          alpha: isDark ? 0.28 : 0.65,
                                         ),
                                         Colors.white.withValues(alpha: 0.0),
                                       ],
@@ -204,14 +204,13 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                               ),
 
                               // -- Liquid Sliding Active Pill --
-                              // TweenAnimationBuilder untuk spring-like smooth interpolasi
                               AnimatedPositioned(
-                                duration: const Duration(milliseconds: 420),
-                                curve: Curves.easeOutBack,
-                                left: _currentIndex * itemW + 5,
-                                top: 5,
-                                bottom: 5,
-                                width: itemW - 10,
+                                duration: const Duration(milliseconds: 380),
+                                curve: Curves.easeOutCubic,
+                                left: _currentIndex * itemW + 4,
+                                top: 4,
+                                bottom: 4,
+                                width: itemW - 8,
                                 child: _buildActivePill(isDark),
                               ),
 

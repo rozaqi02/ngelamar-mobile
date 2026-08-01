@@ -39,12 +39,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   String _workType = 'WFO';
   String _jobSource = 'LinkedIn';
   DateTime _appliedDate = DateTime.now();
+  DateTime? _testDate;
   DateTime? _interviewDate;
   bool _isSaving = false;
 
   final List<String> _statusOptions = [
     'Dikirim',
-    'HR Screening',
     'Tes / Psikotes',
     'Interview HR',
     'Interview User',
@@ -81,10 +81,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _notesController = TextEditingController(text: j?.notes ?? '');
 
     if (j != null) {
-      _status = j.status;
+      _status = j.status == 'HR Screening' ? 'Interview HR' : j.status;
       _workType = j.workType;
       _jobSource = j.jobSource ?? 'LinkedIn';
       _appliedDate = j.appliedDate;
+      _testDate = j.testDate;
       _interviewDate = j.interviewDate;
     }
   }
@@ -169,6 +170,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       hrContact: _hrContactController.text.trim().isEmpty
           ? null
           : _hrContactController.text.trim(),
+      testDate: _testDate,
       interviewDate: _interviewDate,
       notes: _notesController.text.trim().isEmpty
           ? null
@@ -485,8 +487,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       controller: _salaryController,
                       style: TextStyle(color: txtPri),
                       decoration: const InputDecoration(
-                        labelText: 'Ekspektasi / Gaji Ditawarkan',
-                        hintText: 'Contoh: Rp 6.000.000',
+                        labelText: 'Estimasi Range Gaji',
+                        hintText: 'Contoh: Rp 8.000.000 - Rp 12.000.000',
                         prefixIcon: Icon(CupertinoIcons.money_dollar, size: 18),
                       ),
                     ),
@@ -551,7 +553,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Grouped Contact Card
+            // Grouped Contact & Schedule Card
             Text(
               'Kontak HR & Jadwal',
               style: TextStyle(
@@ -583,6 +585,44 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   ),
                   const SizedBox(height: 14),
 
+                  // Tanggal Psikotes / Tes
+                  InkWell(
+                    onTap: () => _showAppleDatePicker(
+                      context: context,
+                      initialDate: _testDate ?? DateTime.now(),
+                      includeTime: true,
+                      onDateSelected: (val) => setState(() => _testDate = val),
+                    ),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Jadwal Psikotes / Tes (Opsional)',
+                        prefixIcon: const Icon(
+                          CupertinoIcons.doc_checkmark,
+                          size: 18,
+                        ),
+                        suffixIcon: _testDate != null
+                            ? IconButton(
+                                icon: const Icon(
+                                  CupertinoIcons.xmark_circle,
+                                  size: 18,
+                                ),
+                                onPressed: () {
+                                  setState(() => _testDate = null);
+                                },
+                              )
+                            : null,
+                      ),
+                      child: Text(
+                        _testDate != null
+                            ? DateFormat('dd MMMM yyyy, HH:mm').format(_testDate!)
+                            : 'Belum ada jadwal tes / psikotes',
+                        style: TextStyle(fontSize: 13, color: txtPri),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Tanggal Wawancara / Interview
                   InkWell(
                     onTap: () => _showAppleDatePicker(
                       context: context,
@@ -593,7 +633,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                     ),
                     child: InputDecorator(
                       decoration: InputDecoration(
-                        labelText: 'Jadwal Interview (Opsional)',
+                        labelText: 'Jadwal Wawancara / Interview (Opsional)',
                         prefixIcon: const Icon(CupertinoIcons.time, size: 18),
                         suffixIcon: _interviewDate != null
                             ? IconButton(
@@ -717,23 +757,55 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     required String currentValue,
     required ValueChanged<String> onSelected,
   }) {
+    final isDark = AppTheme.isDark(context);
+
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: Text(title),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
         actions: options.map((opt) {
           final isSelected = opt == currentValue;
+          final statusColor = AppTheme.getStatusColor(opt, isDark: isDark);
+
           return CupertinoActionSheetAction(
             onPressed: () {
               onSelected(opt);
               Navigator.pop(context);
             },
-            child: Text(
-              opt,
-              style: TextStyle(
-                color: AppTheme.systemBlue,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  opt,
+                  style: TextStyle(
+                    color: isSelected
+                        ? (isDark ? Colors.white : Colors.black)
+                        : AppTheme.getTextPrimary(context),
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontSize: 16,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.checkmark_alt,
+                    size: 16,
+                    color: isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue,
+                  ),
+                ],
+              ],
             ),
           );
         }).toList(),

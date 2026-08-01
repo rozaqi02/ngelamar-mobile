@@ -23,6 +23,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   static const String _appVersion = '1.7.4';
   static const String _buildNumber = '174';
 
@@ -30,12 +31,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _nameController.text = ref.read(jobProvider).userName;
+    _emailController.text = ref.read(jobProvider).userEmail;
   }
 
   @override
   void dispose() {
     _importController.dispose();
     _nameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -253,9 +256,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // ── Profil ──────────────────────────────────────────
-                _sectionLabel('PROFIL'),
-                _settingsCard([_buildProfileRow(state)]),
+                // ── Identitas Diri ──────────────────────────────────
+                _sectionLabel('IDENTITAS'),
+                _settingsCard([
+                  _buildIdentityRow(
+                    icon: CupertinoIcons.person_fill,
+                    iconColor: AppTheme.systemBlue,
+                    title: 'Nama Panjang',
+                    value: state.userName.isEmpty ? 'Belum diisi' : state.userName,
+                    onTap: () => _showEditIdentityDialog(isName: true),
+                  ),
+                  _divider(),
+                  _buildIdentityRow(
+                    icon: CupertinoIcons.mail_fill,
+                    iconColor: AppTheme.systemTeal,
+                    title: 'Email',
+                    value: state.userEmail.isEmpty ? 'Belum diisi' : state.userEmail,
+                    onTap: () => _showEditIdentityDialog(isName: false),
+                  ),
+                ]),
                 const SizedBox(height: 24),
 
                 // ── Fitur Unggulan Pembeda ────────────────────────────
@@ -524,98 +543,105 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     color: AppTheme.getBorder(context),
   );
 
-  Widget _buildProfileRow(JobState state) {
+  Widget _buildIdentityRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required VoidCallback onTap,
+  }) {
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.systemBlue, AppTheme.systemIndigo],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: iconColor,
+                borderRadius: BorderRadius.circular(6),
               ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+              child: Icon(icon, color: Colors.white, size: 16),
             ),
-            child: Center(
-              child: Text(
-                state.userName.isEmpty ? 'J' : state.userName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  state.userName.isEmpty ? 'Job Seeker' : state.userName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: txtPri,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w400,
+                      fontSize: 13,
+                      color: txtSec,
+                    ),
                   ),
-                ),
-                Text(
-                  'Ketuk untuk mengubah nama',
-                  style: TextStyle(color: txtSec, fontSize: 12),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: txtPri,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          GestureDetector(
-            onTap: _showEditNameDialog,
-            child: const Icon(
+            const Icon(
               CupertinoIcons.pencil,
               color: AppTheme.systemBlue,
-              size: 18,
+              size: 16,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  void _showEditNameDialog() {
+  void _showEditIdentityDialog({required bool isName}) {
+    final controller = isName ? _nameController : _emailController;
+    if (isName) {
+      _nameController.text = ref.read(jobProvider).userName;
+    } else {
+      _emailController.text = ref.read(jobProvider).userEmail;
+    }
+
     showCupertinoDialog(
       context: context,
       builder: (_) => CupertinoAlertDialog(
-        title: const Text('Ubah Nama'),
+        title: Text(isName ? 'Ubah Nama Panjang' : 'Ubah Email'),
         content: Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: 12),
           child: CupertinoTextField(
-            controller: _nameController,
-            placeholder: 'Nama kamu...',
+            controller: controller,
+            placeholder: isName ? 'Nama Panjang kamu...' : 'contoh@email.com',
             autofocus: true,
-            textCapitalization: TextCapitalization.words,
+            keyboardType: isName ? TextInputType.name : TextInputType.emailAddress,
+            textCapitalization: isName ? TextCapitalization.words : TextCapitalization.none,
           ),
         ),
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: true,
             child: const Text('Batal'),
-            onPressed: () {
-              _nameController.text = ref.read(jobProvider).userName;
-              Navigator.pop(context);
-            },
+            onPressed: () => Navigator.pop(context),
           ),
           CupertinoDialogAction(
             child: const Text('Simpan'),
             onPressed: () async {
-              await ref
-                  .read(jobProvider.notifier)
-                  .setUserName(_nameController.text.trim());
+              final val = controller.text.trim();
+              if (isName) {
+                await ref.read(jobProvider.notifier).setUserName(val);
+              } else {
+                await ref.read(jobProvider.notifier).setUserEmail(val);
+              }
               if (mounted) Navigator.pop(context);
             },
           ),
