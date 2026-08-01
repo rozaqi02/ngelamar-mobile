@@ -85,7 +85,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           'Status berhasil diubah menjadi "$newStatus"',
         );
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Error saat mengubah status: $error\n$stackTrace');
       if (mounted) {
         AppleToast.error(context, 'Status gagal disimpan. Coba lagi.');
       }

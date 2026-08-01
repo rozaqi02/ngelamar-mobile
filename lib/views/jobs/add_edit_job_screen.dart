@@ -177,17 +177,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
 
     try {
-      if (newJob.interviewDate != null) {
-        await NotificationService.requestPermission();
-      }
+      // Simpan data ke Hive terlebih dahulu - ini operasi utama.
       if (isEdit) {
         await ref.read(jobProvider.notifier).updateJob(newJob);
       } else {
         await ref.read(jobProvider.notifier).addJob(newJob);
       }
+
+      // Minta izin notifikasi SETELAH data berhasil disimpan.
+      // Kegagalan minta izin tidak membatalkan penyimpanan data.
+      if (newJob.interviewDate != null && mounted) {
+        NotificationService.requestPermission().catchError((Object error) {
+          debugPrint('Permintaan izin notifikasi gagal (diabaikan): $error');
+          return false;
+        });
+      }
+
       if (!mounted) return;
       Navigator.pop(context, newJob);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Error saat menyimpan lamaran: $error\n$stackTrace');
       if (!mounted) return;
       setState(() => _isSaving = false);
       AppleToast.error(

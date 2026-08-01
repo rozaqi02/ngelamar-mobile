@@ -89,7 +89,7 @@ class JobNotifier extends StateNotifier<JobState> {
         try {
           loaded.add(JobApplication.fromJson(jsonStr));
         } catch (error) {
-          // Keep valid records available even when one local entry is damaged.
+          // Data korup diabaikan agar data lain tetap dapat dibaca.
           debugPrint('Gagal membaca data lamaran dengan key $key: $error');
         }
       }
@@ -97,7 +97,7 @@ class JobNotifier extends StateNotifier<JobState> {
 
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
-    // Load user prefs
+    // Muat preferensi pengguna
     final name = await PrefsService.getUserName() ?? '';
     final theme = await PrefsService.getThemeMode();
 
@@ -107,8 +107,39 @@ class JobNotifier extends StateNotifier<JobState> {
       userName: name,
       isDarkMode: theme == 'dark',
     );
-    await NotificationService.syncAll(loaded);
+
+    // Sinkronisasi notifikasi dijalankan terpisah - kegagalan notifikasi
+    // TIDAK boleh menggagalkan _boxReady sehingga seluruh CRUD tetap berfungsi.
+    _syncNotificationsQuietly(loaded);
+
     return box;
+  }
+
+  /// Sinkronisasi pengingat notifikasi secara diam-diam (fire-and-forget).
+  /// Kegagalan notifikasi tidak berdampak pada operasi penyimpanan data.
+  void _syncNotificationsQuietly(Iterable<JobApplication> jobs) {
+    NotificationService.syncAll(jobs).catchError((Object error) {
+      debugPrint('Sinkronisasi notifikasi gagal (diabaikan): $error');
+      return null;
+    });
+  }
+
+  /// Jadwalkan pengingat notifikasi untuk satu lamaran secara diam-diam.
+  void _scheduleReminderQuietly(JobApplication job) {
+    NotificationService.syncInterviewReminder(job).catchError((Object error) {
+      debugPrint('Penjadwalan notifikasi gagal (diabaikan): $error');
+      return null;
+    });
+  }
+
+  /// Batalkan pengingat notifikasi secara diam-diam.
+  void _cancelReminderQuietly(String jobId) {
+    NotificationService.cancelInterviewReminder(jobId).catchError(
+      (Object error) {
+        debugPrint('Pembatalan notifikasi gagal (diabaikan): $error');
+        return null;
+      },
+    );
   }
 
   List<JobApplication> _normalizedJobs(Iterable<JobApplication> jobs) {
@@ -129,7 +160,7 @@ class JobNotifier extends StateNotifier<JobState> {
     });
     final updatedJobs = _normalizedJobs([...state.jobs, ...samples]);
     state = state.copyWith(jobs: updatedJobs);
-    await NotificationService.syncAll(updatedJobs);
+    _syncNotificationsQuietly(updatedJobs);
   }
 
   Future<void> addJob(JobApplication job) async {
@@ -137,7 +168,9 @@ class JobNotifier extends StateNotifier<JobState> {
     await box.put(job.id, job.toJson());
     final newJobs = _normalizedJobs([...state.jobs, job]);
     state = state.copyWith(jobs: newJobs);
-    await NotificationService.syncInterviewReminder(job);
+    // Notifikasi dijalankan setelah state berhasil diperbarui - kegagalan tidak
+    // membatalkan penyimpanan data.
+    _scheduleReminderQuietly(job);
   }
 
   Future<void> updateJob(JobApplication job) async {
@@ -148,7 +181,8 @@ class JobNotifier extends StateNotifier<JobState> {
       job,
     ]);
     state = state.copyWith(jobs: newJobs);
-    await NotificationService.syncInterviewReminder(job);
+    // Notifikasi diperbarui setelah state berhasil diperbarui.
+    _scheduleReminderQuietly(job);
   }
 
   Future<void> toggleFavorite(String jobId) async {
@@ -174,7 +208,7 @@ class JobNotifier extends StateNotifier<JobState> {
     await box.delete(jobId);
     final newJobs = state.jobs.where((j) => j.id != jobId).toList();
     state = state.copyWith(jobs: newJobs);
-    await NotificationService.cancelInterviewReminder(jobId);
+    _cancelReminderQuietly(jobId);
   }
 
   Future<void> importJobs(List<JobApplication> importedJobs) async {
@@ -182,14 +216,19 @@ class JobNotifier extends StateNotifier<JobState> {
     final normalized = _normalizedJobs([...state.jobs, ...importedJobs]);
     await box.putAll({for (final job in normalized) job.id: job.toJson()});
     state = state.copyWith(jobs: normalized);
-    await NotificationService.syncAll(normalized);
+    _syncNotificationsQuietly(normalized);
   }
 
   Future<void> clearAllJobs() async {
     final box = await _boxReady;
     await box.clear();
     state = state.copyWith(jobs: []);
-    await NotificationService.cancelAllInterviewReminders();
+    NotificationService.cancelAllInterviewReminders().catchError(
+      (Object error) {
+        debugPrint('Pembatalan semua notifikasi gagal (diabaikan): $error');
+        return null;
+      },
+    );
   }
 
   void setSearchQuery(String query) {
