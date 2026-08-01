@@ -478,9 +478,12 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             final jobs = _filterJobs(state.jobs, category, state);
             if (jobs.isEmpty) return _buildEmptyState(category);
 
+            final isShortContent = jobs.length <= 3;
             return ListView.builder(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 100),
-              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 90),
+              physics: isShortContent
+                  ? const NeverScrollableScrollPhysics()
+                  : const BouncingScrollPhysics(),
               itemCount: jobs.length,
               itemBuilder: (_, i) => RepaintBoundary(
                 child: _buildOverhauledJobCard(context, jobs[i], ref),

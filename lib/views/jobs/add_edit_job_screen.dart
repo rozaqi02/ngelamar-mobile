@@ -29,7 +29,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   late TextEditingController _pasteController;
   late TextEditingController _companyController;
   late TextEditingController _positionController;
-  late TextEditingController _salaryController;
+  late TextEditingController _minSalaryController;
+  late TextEditingController _maxSalaryController;
   late TextEditingController _locationController;
   late TextEditingController _descriptionController;
   late TextEditingController _hrContactController;
@@ -72,7 +73,22 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _pasteController = TextEditingController();
     _companyController = TextEditingController(text: j?.companyName ?? '');
     _positionController = TextEditingController(text: j?.position ?? '');
-    _salaryController = TextEditingController(text: j?.salaryOffered ?? '');
+
+    String minSal = '';
+    String maxSal = '';
+    if (j?.salaryOffered != null && j!.salaryOffered!.isNotEmpty) {
+      final salText = j.salaryOffered!;
+      if (salText.contains('-')) {
+        final parts = salText.split('-');
+        minSal = parts[0].trim();
+        maxSal = parts[1].trim();
+      } else {
+        minSal = salText.trim();
+      }
+    }
+    _minSalaryController = TextEditingController(text: minSal);
+    _maxSalaryController = TextEditingController(text: maxSal);
+
     _locationController = TextEditingController(text: j?.location ?? '');
     _descriptionController = TextEditingController(
       text: j?.jobDescription ?? '',
@@ -95,7 +111,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _pasteController.dispose();
     _companyController.dispose();
     _positionController.dispose();
-    _salaryController.dispose();
+    _minSalaryController.dispose();
+    _maxSalaryController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
     _hrContactController.dispose();
@@ -114,7 +131,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _companyController.text = result.companyName;
       _workType = result.workType;
       if (result.salary != null) {
-        _salaryController.text = result.salary!;
+        final sal = result.salary!;
+        if (sal.contains('-')) {
+          final parts = sal.split('-');
+          _minSalaryController.text = parts[0].trim();
+          _maxSalaryController.text = parts[1].trim();
+        } else {
+          _minSalaryController.text = sal;
+          _maxSalaryController.clear();
+        }
       }
       if (result.location != null) _locationController.text = result.location!;
       _descriptionController.text = text;
@@ -152,15 +177,24 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         ? widget.jobToEdit!.id
         : DateTime.now().microsecondsSinceEpoch.toString();
 
+    String? finalSalary;
+    final minVal = _minSalaryController.text.trim();
+    final maxVal = _maxSalaryController.text.trim();
+    if (minVal.isNotEmpty && maxVal.isNotEmpty) {
+      finalSalary = '$minVal - $maxVal';
+    } else if (minVal.isNotEmpty) {
+      finalSalary = minVal;
+    } else if (maxVal.isNotEmpty) {
+      finalSalary = maxVal;
+    }
+
     final newJob = JobApplication(
       id: id,
       companyName: _companyController.text.trim(),
       position: _positionController.text.trim(),
       status: _status,
       appliedDate: _appliedDate,
-      salaryOffered: _salaryController.text.trim().isEmpty
-          ? null
-          : _salaryController.text.trim(),
+      salaryOffered: finalSalary,
       workType: _workType,
       location: _locationController.text.trim().isEmpty
           ? null
@@ -484,14 +518,27 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                   responsivePair(
                     TextFormField(
-                      controller: _salaryController,
+                      controller: _minSalaryController,
                       style: TextStyle(color: txtPri),
                       decoration: const InputDecoration(
-                        labelText: 'Estimasi Range Gaji',
-                        hintText: 'Contoh: Rp 8.000.000 - Rp 12.000.000',
+                        labelText: 'Gaji Min (Opsional)',
+                        hintText: 'Cth: Rp 8.000.000',
                         prefixIcon: Icon(CupertinoIcons.money_dollar, size: 18),
                       ),
                     ),
+                    TextFormField(
+                      controller: _maxSalaryController,
+                      style: TextStyle(color: txtPri),
+                      decoration: const InputDecoration(
+                        labelText: 'Gaji Max (Opsional)',
+                        hintText: 'Cth: Rp 12.000.000',
+                        prefixIcon: Icon(CupertinoIcons.money_dollar_circle, size: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  responsivePair(
                     TextFormField(
                       controller: _locationController,
                       textCapitalization: TextCapitalization.words,
@@ -502,10 +549,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                         prefixIcon: Icon(CupertinoIcons.location, size: 18),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  responsivePair(
                     InkWell(
                       onTap: () => _showAppleOptionPicker(
                         context: context,
@@ -529,6 +572,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                         ),
                       ),
                     ),
+                  ),
+                  responsivePair(
                     InkWell(
                       onTap: () => _showAppleDatePicker(
                         context: context,
@@ -547,6 +592,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox.shrink(),
                   ),
                 ],
               ),

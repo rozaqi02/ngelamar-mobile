@@ -5,25 +5,33 @@ class UmrData {
   const UmrData(this.city, this.umrAmount);
 }
 
-class SalaryEvaluationResult {
-  final double grossSalary;
-  final double estimatedBpjsDeduction;
-  final double estimatedNetTakeHomePay;
+class SalaryRangeEvaluationResult {
+  final double minGross;
+  final double maxGross;
+  final bool isRange;
+  final double minNetTakeHome;
+  final double maxNetTakeHome;
   final double umrAmount;
   final String city;
-  final double umrRatio; // Gross / UMR
+  final double minUmrRatio;
+  final double maxUmrRatio;
   final double estimatedOperationalCost;
-  final double estimatedNetSavings;
+  final double minSavings;
+  final double maxSavings;
 
-  SalaryEvaluationResult({
-    required this.grossSalary,
-    required this.estimatedBpjsDeduction,
-    required this.estimatedNetTakeHomePay,
+  SalaryRangeEvaluationResult({
+    required this.minGross,
+    required this.maxGross,
+    required this.isRange,
+    required this.minNetTakeHome,
+    required this.maxNetTakeHome,
     required this.umrAmount,
     required this.city,
-    required this.umrRatio,
+    required this.minUmrRatio,
+    required this.maxUmrRatio,
     required this.estimatedOperationalCost,
-    required this.estimatedNetSavings,
+    required this.minSavings,
+    required this.maxSavings,
   });
 }
 
@@ -44,9 +52,6 @@ class SalaryEvaluatorService {
   ];
 
   /// Formats currency with Indonesian Rupiah dot separators.
-  /// Examples:
-  ///   5067381 -> "Rp 5.067.381"
-  ///   -1500000 -> "-Rp 1.500.000"
   static String formatRupiah(double amount) {
     if (amount.isNaN || amount.isInfinite) return 'Rp 0';
     final isNegative = amount < 0;
@@ -65,8 +70,19 @@ class SalaryEvaluatorService {
     return isNegative ? '-Rp $formatted' : 'Rp $formatted';
   }
 
-  static double parseSalaryAmount(String? input) {
-    if (input == null || input.trim().isEmpty) return 0.0;
+  /// Format range Rupiah (misal "Rp 8.000.000 - Rp 12.000.000" atau "Rp 8.000.000")
+  static String formatRupiahRange(double min, double max, {bool isRange = true}) {
+    if (!isRange || (min - max).abs() < 1) {
+      return formatRupiah(min);
+    }
+    return '${formatRupiah(min)} - ${formatRupiah(max)}';
+  }
+
+  static ({double min, double max, bool isRange}) parseSalaryRange(String? input) {
+    if (input == null || input.trim().isEmpty) {
+      return (min: 0.0, max: 0.0, isRange: false);
+    }
+
     final clean = input
         .toLowerCase()
         .replaceAll('rp', '')
@@ -78,15 +94,26 @@ class SalaryEvaluatorService {
       final val1 = _parseSingleSalary(parts[0]);
       final val2 = _parseSingleSalary(parts[1]);
       if (val1 > 0 && val2 > 0) {
-        return (val1 + val2) / 2.0; // Ambil nilai tengah dari range gaji
+        final minVal = val1 < val2 ? val1 : val2;
+        final maxVal = val1 > val2 ? val1 : val2;
+        return (min: minVal, max: maxVal, isRange: minVal != maxVal);
       } else if (val2 > 0) {
-        return val2;
+        return (min: val2, max: val2, isRange: false);
       } else {
-        return val1;
+        return (min: val1, max: val1, isRange: false);
       }
     }
 
-    return _parseSingleSalary(clean);
+    final val = _parseSingleSalary(clean);
+    return (min: val, max: val, isRange: false);
+  }
+
+  static double parseSalaryAmount(String? input) {
+    final range = parseSalaryRange(input);
+    if (range.isRange) {
+      return (range.min + range.max) / 2.0;
+    }
+    return range.min;
   }
 
   static double _parseSingleSalary(String text) {
@@ -107,23 +134,27 @@ class SalaryEvaluatorService {
     return double.tryParse(clean) ?? 0.0;
   }
 
-  static SalaryEvaluationResult evaluateSalary({
-    required double grossSalary,
+  static SalaryRangeEvaluationResult evaluateSalaryRange({
+    required String? rawSalaryInput,
     required String city,
     required String workType,
     bool needsKos = true,
   }) {
-    final bpjs = grossSalary * 0.04;
-    final netTakeHome = grossSalary - bpjs;
+    final range = parseSalaryRange(rawSalaryInput);
+    final minGross = range.min;
+    final maxGross = range.max;
+    final isRange = range.isRange;
+
+    final minNetTHP = minGross * 0.96;
+    final maxNetTHP = maxGross * 0.96;
 
     final umrItem = umrList.firstWhere(
       (element) => element.city.toLowerCase() == city.toLowerCase(),
       orElse: () => const UmrData('Nasional (Rata-rata)', 3500000),
     );
 
-    final umrRatio = umrItem.umrAmount > 0
-        ? (grossSalary / umrItem.umrAmount)
-        : 1.0;
+    final minUmrRatio = umrItem.umrAmount > 0 ? (minGross / umrItem.umrAmount) : 1.0;
+    final maxUmrRatio = umrItem.umrAmount > 0 ? (maxGross / umrItem.umrAmount) : 1.0;
 
     double operationalCost = 0.0;
     if (workType == 'WFH') {
@@ -134,17 +165,68 @@ class SalaryEvaluatorService {
       operationalCost = needsKos ? 3500000 : 2200000;
     }
 
-    final savings = netTakeHome - operationalCost;
+    final minSavings = minNetTHP - operationalCost;
+    final maxSavings = maxNetTHP - operationalCost;
 
-    return SalaryEvaluationResult(
-      grossSalary: grossSalary,
-      estimatedBpjsDeduction: bpjs,
-      estimatedNetTakeHomePay: netTakeHome,
+    return SalaryRangeEvaluationResult(
+      minGross: minGross,
+      maxGross: maxGross,
+      isRange: isRange,
+      minNetTakeHome: minNetTHP,
+      maxNetTakeHome: maxNetTHP,
       umrAmount: umrItem.umrAmount,
       city: umrItem.city,
-      umrRatio: umrRatio,
+      minUmrRatio: minUmrRatio,
+      maxUmrRatio: maxUmrRatio,
       estimatedOperationalCost: operationalCost,
-      estimatedNetSavings: savings,
+      minSavings: minSavings,
+      maxSavings: maxSavings,
     );
   }
+
+  static SalaryEvaluationResult evaluateSalary({
+    required double grossSalary,
+    required String city,
+    required String workType,
+    bool needsKos = true,
+  }) {
+    final res = evaluateSalaryRange(
+      rawSalaryInput: grossSalary.toString(),
+      city: city,
+      workType: workType,
+      needsKos: needsKos,
+    );
+    return SalaryEvaluationResult(
+      grossSalary: res.minGross,
+      estimatedBpjsDeduction: res.minGross * 0.04,
+      estimatedNetTakeHomePay: res.minNetTakeHome,
+      umrAmount: res.umrAmount,
+      city: res.city,
+      umrRatio: res.minUmrRatio,
+      estimatedOperationalCost: res.estimatedOperationalCost,
+      estimatedNetSavings: res.minSavings,
+    );
+  }
+}
+
+class SalaryEvaluationResult {
+  final double grossSalary;
+  final double estimatedBpjsDeduction;
+  final double estimatedNetTakeHomePay;
+  final double umrAmount;
+  final String city;
+  final double umrRatio;
+  final double estimatedOperationalCost;
+  final double estimatedNetSavings;
+
+  SalaryEvaluationResult({
+    required this.grossSalary,
+    required this.estimatedBpjsDeduction,
+    required this.estimatedNetTakeHomePay,
+    required this.umrAmount,
+    required this.city,
+    required this.umrRatio,
+    required this.estimatedOperationalCost,
+    required this.estimatedNetSavings,
+  });
 }

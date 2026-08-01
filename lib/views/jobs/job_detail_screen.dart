@@ -1176,17 +1176,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   // TAB 4: SALARY & OFFER EVALUATOR
   Widget _buildAppleSalaryEvaluatorTab(JobApplication currentJob) {
-    final parsedSalary = SalaryEvaluatorService.parseSalaryAmount(
-      currentJob.salaryOffered,
-    );
-    final evaluation = SalaryEvaluatorService.evaluateSalary(
-      grossSalary: parsedSalary,
+    final evaluation = SalaryEvaluatorService.evaluateSalaryRange(
+      rawSalaryInput: currentJob.salaryOffered,
       city: _selectedCity,
       workType: currentJob.workType,
       needsKos: _needsKos,
     );
 
-    final isFeasible = evaluation.estimatedNetSavings >= 0;
+    final isFeasible = evaluation.maxSavings >= 0;
     final surf = AppTheme.getSurface(context);
     final bdr = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
@@ -1198,7 +1195,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (parsedSalary == 0) ...[
+          if (evaluation.minGross == 0 && evaluation.maxGross == 0) ...[
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -1382,13 +1379,21 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
                 _evalRow(
                   'Estimasi Gaji Bersih',
-                  SalaryEvaluatorService.formatRupiah(
-                    evaluation.estimatedNetTakeHomePay,
+                  SalaryEvaluatorService.formatRupiahRange(
+                    evaluation.minNetTakeHome,
+                    evaluation.maxNetTakeHome,
+                    isRange: evaluation.isRange,
                   ),
                 ),
                 _evalRow(
                   'UMR $_selectedCity',
                   SalaryEvaluatorService.formatRupiah(evaluation.umrAmount),
+                ),
+                _evalRow(
+                  'Perbandingan vs UMR',
+                  evaluation.isRange
+                      ? '${evaluation.minUmrRatio.toStringAsFixed(1)}x - ${evaluation.maxUmrRatio.toStringAsFixed(1)}x UMR'
+                      : '${evaluation.minUmrRatio.toStringAsFixed(1)}x UMR',
                 ),
                 _evalRow(
                   'Estimasi Biaya Hidup + Kos',
@@ -1399,11 +1404,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 const Divider(height: 20),
                 _evalRow(
                   'Estimasi Tabungan / Bulan',
-                  SalaryEvaluatorService.formatRupiah(
-                    evaluation.estimatedNetSavings,
+                  SalaryEvaluatorService.formatRupiahRange(
+                    evaluation.minSavings,
+                    evaluation.maxSavings,
+                    isRange: evaluation.isRange,
                   ),
                   isBold: true,
-                  color: evaluation.estimatedNetSavings >= 0
+                  color: isFeasible
                       ? AppTheme.systemGreen
                       : AppTheme.systemRed,
                 ),

@@ -289,7 +289,7 @@ class JobNotifier extends StateNotifier<JobState> {
         position: 'Junior Software Engineer',
         status: 'Interview HR',
         appliedDate: now.subtract(const Duration(days: 2)),
-        salaryOffered: 'Rp 8.500.000 – Rp 12.000.000',
+        salaryOffered: 'Rp 8.500.000 - Rp 12.000.000', // Contoh Range 2 Angka
         workType: 'Hybrid',
         location: 'Jakarta Selatan',
         jobSource: 'LinkedIn',
@@ -306,7 +306,7 @@ class JobNotifier extends StateNotifier<JobState> {
         position: 'Frontend Developer Intern',
         status: 'Offering',
         appliedDate: now.subtract(const Duration(days: 6)),
-        salaryOffered: 'Rp 6.000.000',
+        salaryOffered: 'Rp 6.000.000', // Contoh 1 Angka
         workType: 'WFH',
         location: 'Jakarta',
         jobSource: 'Glints',
@@ -322,13 +322,14 @@ class JobNotifier extends StateNotifier<JobState> {
         position: 'Management Trainee IT',
         status: 'Tes / Psikotes',
         appliedDate: now.subtract(const Duration(days: 4)),
-        salaryOffered: 'Rp 9.000.000',
+        salaryOffered: 'Rp 9.000.000 - Rp 11.500.000', // Contoh Range 2 Angka
         workType: 'WFO',
         location: 'Tangerang / BSD',
         jobSource: 'Kalibrr',
         jobDescription:
             'Program MT IT BCA. Tes logika, algoritma dasar, dan Bahasa Inggris.',
         hrContact: '+6281987654321',
+        testDate: now.add(const Duration(days: 1)),
       ),
     ];
   }
