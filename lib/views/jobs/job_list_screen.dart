@@ -10,7 +10,7 @@ import '../../widgets/apple_toast.dart';
 import '../../widgets/apple_inline_badge.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
-import '../prep/fresh_grad_prep_screen.dart';
+import '../prep/fresh_grad_prep_screen.dart' show FreshGradPrepScreen;
 
 /// Overhauled Apple iOS 18 JobListScreen layout.
 /// Features iOS native search header, company monogram avatar badges,
@@ -191,261 +191,283 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
     return Scaffold(
       backgroundColor: bg,
-      body: NestedScrollView(
-        physics: const BouncingScrollPhysics(),
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // Apple iOS 18 Navigation Header
-          SliverAppBar(
-            backgroundColor: bg,
-            surfaceTintColor: Colors.transparent,
-            pinned: true,
-            floating: false,
-            expandedHeight: 104,
-            collapsedHeight: 56,
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                final topPadding = MediaQuery.of(context).padding.top;
-                const collapsedH = 56.0;
-                const expandedH = 104.0;
-                final available = constraints.maxHeight - topPadding;
-                final progress =
-                    1.0 -
-                    ((available - collapsedH) / (expandedH - collapsedH)).clamp(
-                      0.0,
-                      1.0,
-                    );
+      body: Column(
+        children: [
+          // Sliver-like header via CustomScrollView yang tidak scroll content
+          SizedBox(
+            // tinggi: statusBar + appBar (104) + search (54) + filter (48)
+            height: MediaQuery.of(context).padding.top + 104 + 54 + 48,
+            child: CustomScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              slivers: [
+                // Apple iOS 18 Navigation Header
+                SliverAppBar(
+                  backgroundColor: bg,
+                  surfaceTintColor: Colors.transparent,
+                  pinned: false,
+                  floating: false,
+                  expandedHeight: 104,
+                  collapsedHeight: 56,
+                  automaticallyImplyLeading: false,
+                  flexibleSpace: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final topPadding = MediaQuery.of(context).padding.top;
+                      const collapsedH = 56.0;
+                      const expandedH = 104.0;
+                      final available = constraints.maxHeight - topPadding;
+                      final progress =
+                          1.0 -
+                          ((available - collapsedH) /
+                                  (expandedH - collapsedH))
+                              .clamp(0.0, 1.0);
 
-                return Stack(
-                  children: [
-                    // Large title (fades out on scroll)
-                    Positioned(
-                      left: 16,
-                      bottom: 12,
-                      right: 110,
-                      child: Opacity(
-                        opacity: (1.0 - progress * 2.5).clamp(0.0, 1.0),
-                        child: Text(
-                          'Lamaran',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w700,
-                            color: txtPri,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Collapsed small title (fades in on scroll)
-                    Positioned(
-                      left: 16,
-                      bottom: 14,
-                      child: Opacity(
-                        opacity: ((progress - 0.6) * 3.0).clamp(0.0, 1.0),
-                        child: Text(
-                          'Lamaran',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: txtPri,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Top-Right Actions (Reset + Offer Comparison + Add Button)
-                    Positioned(
-                      right: 16,
-                      bottom: 12,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      return Stack(
                         children: [
-                          if (state.offeringCount >= 2) ...[
-                            GestureDetector(
-                              onTap: () {
-                                AppleSheetWindow.showAppleModalSheet(
-                                  context: context,
-                                  child: const FreshGradPrepScreen(),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 10),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                          Positioned(
+                            left: 16,
+                            bottom: 12,
+                            right: 110,
+                            child: Opacity(
+                              opacity:
+                                  (1.0 - progress * 2.5).clamp(0.0, 1.0),
+                              child: Text(
+                                'Lamaran',
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w700,
+                                  color: txtPri,
+                                  letterSpacing: -0.8,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.systemPurple.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 16,
+                            bottom: 14,
+                            child: Opacity(
+                              opacity:
+                                  ((progress - 0.6) * 3.0).clamp(0.0, 1.0),
+                              child: Text(
+                                'Lamaran',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: txtPri,
+                                  letterSpacing: -0.3,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.gift_fill,
-                                      color: AppTheme.systemPurple,
-                                      size: 13,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 16,
+                            bottom: 12,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (state.offeringCount >= 2) ...[
+                                  GestureDetector(
+                                    onTap: () {
+                                      AppleSheetWindow.showAppleModalSheet(
+                                        context: context,
+                                        child: const _OfferingCompareSheet(),
+                                      );
+                                    },
+                                    child: Container(
+                                      margin:
+                                          const EdgeInsets.only(right: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.systemPurple
+                                            .withValues(alpha: 0.15),
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.gift_fill,
+                                            color: AppTheme.systemPurple,
+                                            size: 13,
+                                          ),
+                                          SizedBox(width: 4),
+                                          if (!compact)
+                                            Text(
+                                              'Bandingkan',
+                                              style: TextStyle(
+                                                color: AppTheme.systemPurple,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
-                                    SizedBox(width: 4),
-                                    if (!compact)
-                                      Text(
-                                        'Bandingkan',
-                                        style: TextStyle(
-                                          color: AppTheme.systemPurple,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                  ],
+                                  ),
+                                ],
+                                if (hasActiveFilter) ...[
+                                  GestureDetector(
+                                    onTap: () {
+                                      ref
+                                          .read(jobProvider.notifier)
+                                          .resetFilters();
+                                      _tabController.animateTo(0);
+                                      _searchController.clear();
+                                    },
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsets.only(right: 12),
+                                      child: compact
+                                          ? Icon(
+                                              CupertinoIcons
+                                                  .arrow_counterclockwise,
+                                              color: AppTheme.systemBlue,
+                                              size: 18,
+                                            )
+                                          : Text(
+                                              'Reset',
+                                              style: TextStyle(
+                                                color: AppTheme.systemBlue,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
+                                GestureDetector(
+                                  onTap: () => _openAddJob(context),
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          (isDark
+                                                  ? AppTheme.systemBlue
+                                                  : AppTheme.lSystemBlue)
+                                              .withValues(alpha: 0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.plus,
+                                      size: 18,
+                                      color: isDark
+                                          ? AppTheme.systemBlue
+                                          : AppTheme.lSystemBlue,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                          if (hasActiveFilter) ...[
-                            GestureDetector(
-                              onTap: () {
-                                ref.read(jobProvider.notifier).resetFilters();
-                                _tabController.animateTo(0);
-                                _searchController.clear();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: compact
-                                    ? Icon(
-                                        CupertinoIcons.arrow_counterclockwise,
-                                        color: AppTheme.systemBlue,
-                                        size: 18,
-                                      )
-                                    : Text(
-                                        'Reset',
-                                        style: TextStyle(
-                                          color: AppTheme.systemBlue,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
-                          GestureDetector(
-                            onTap: () => _openAddJob(context),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color:
-                                    (isDark
-                                            ? AppTheme.systemBlue
-                                            : AppTheme.lSystemBlue)
-                                        .withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                CupertinoIcons.plus,
-                                size: 18,
-                                color: isDark
-                                    ? AppTheme.systemBlue
-                                    : AppTheme.lSystemBlue,
-                              ),
+                              ],
                             ),
                           ),
                         ],
+                      );
+                    },
+                  ),
+                ),
+
+                // Search bar
+                SliverToBoxAdapter(
+                  child: ColoredBox(
+                    color: bg,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                      child: CupertinoSearchTextField(
+                        controller: _searchController,
+                        onChanged: (v) =>
+                            ref.read(jobProvider.notifier).setSearchQuery(v),
+                        placeholder: 'Cari posisi, perusahaan, atau kota...',
+                        style: TextStyle(fontSize: 14, color: txtPri),
+                        placeholderStyle: TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.getTextTertiary(context),
+                        ),
+                        backgroundColor:
+                            AppTheme.getSurfaceSecondary(context),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
-                );
-              },
-            ),
-          ),
+                  ),
+                ),
 
-          // Pinned Cupertino Search Header
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _FixedHeightDelegate(
-              height: 54,
-              child: ColoredBox(
-                color: bg,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                  child: CupertinoSearchTextField(
-                    controller: _searchController,
-                    onChanged: (v) =>
-                        ref.read(jobProvider.notifier).setSearchQuery(v),
-                    placeholder: 'Cari posisi, perusahaan, atau kota...',
-                    style: TextStyle(fontSize: 14, color: txtPri),
-                    placeholderStyle: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.getTextTertiary(context),
+                // Filter pills
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: bg,
+                    height: 48,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: List.generate(_tabs.length, (i) {
+                          final category = _tabs[i];
+                          final isSelected = _tabController.index == i;
+                          final icon = _tabIcons[i];
+                          final count = _getCategoryCount(category, state);
+                          final statusColor = category == 'Favorit'
+                              ? AppTheme.systemOrange
+                              : category == 'WFH'
+                              ? AppTheme.systemGreen
+                              : AppTheme.getStatusColor(
+                                  category,
+                                  isDark: isDark,
+                                );
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: _buildCategoryPill(
+                              label: category,
+                              count: count,
+                              icon: icon,
+                              isSelected: isSelected,
+                              activeColor: statusColor,
+                              onTap: () {
+                                _tabController.animateTo(i);
+                                setState(() {});
+                              },
+                            ),
+                          );
+                        }),
+                      ),
                     ),
-                    backgroundColor: AppTheme.getSurfaceSecondary(context),
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
 
-          // Consolidated Status & Category Filter Bar
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _FixedHeightDelegate(
-              height: 48,
-              child: Container(
-                color: bg,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: List.generate(_tabs.length, (i) {
-                      final category = _tabs[i];
-                      final isSelected = _tabController.index == i;
-                      final icon = _tabIcons[i];
-                      final count = _getCategoryCount(category, state);
-                      final statusColor = category == 'Favorit'
-                          ? AppTheme.systemOrange
-                          : category == 'WFH'
-                          ? AppTheme.systemGreen
-                          : AppTheme.getStatusColor(category, isDark: isDark);
+          // Expanded TabBarView - dapat ruang yang tepat
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              physics: const BouncingScrollPhysics(),
+              children: _tabs.map((category) {
+                final jobs = _filterJobs(state.jobs, category, state);
+                if (jobs.isEmpty) return _buildEmptyState(category);
 
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildCategoryPill(
-                          label: category,
-                          count: count,
-                          icon: icon,
-                          isSelected: isSelected,
-                          activeColor: statusColor,
-                          onTap: () {
-                            _tabController.animateTo(i);
-                            setState(() {});
-                          },
-                        ),
-                      );
-                    }),
+                return ListView.builder(
+                  key: PageStorageKey(category),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    bottomInset + 100,
                   ),
-                ),
-              ),
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  itemCount: jobs.length,
+                  itemBuilder: (_, i) => RepaintBoundary(
+                    child: _buildOverhauledJobCard(context, jobs[i], ref),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          physics: const BouncingScrollPhysics(),
-          children: _tabs.map((category) {
-            final jobs = _filterJobs(state.jobs, category, state);
-            if (jobs.isEmpty) return _buildEmptyState(category);
-
-            return ListView.builder(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 100),
-              physics: const BouncingScrollPhysics(),
-              itemCount: jobs.length,
-              itemBuilder: (_, i) => RepaintBoundary(
-                child: _buildOverhauledJobCard(context, jobs[i], ref),
-              ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
@@ -889,22 +911,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   }
 }
 
-class _FixedHeightDelegate extends SliverPersistentHeaderDelegate {
-  final double height;
-  final Widget child;
-  _FixedHeightDelegate({required this.height, required this.child});
+/// Stub sheet untuk perbandingan offering - menampilkan FreshGradPrepScreen
+/// di tab Offering secara otomatis.
+class _OfferingCompareSheet extends StatelessWidget {
+  const _OfferingCompareSheet();
 
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) => child;
-  @override
-  double get maxExtent => height;
-  @override
-  double get minExtent => height;
-  @override
-  bool shouldRebuild(covariant _FixedHeightDelegate old) =>
-      old.height != height || old.child != child;
+  Widget build(BuildContext context) => const FreshGradPrepScreen();
 }
