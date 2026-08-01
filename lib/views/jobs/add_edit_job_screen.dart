@@ -232,12 +232,14 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _pasteController.text = mockText;
       _parsePastedText();
 
+      if (!mounted) return;
       AppleToast.success(
         context,
         'Gambar Berhasil Diunggah & Dipindai!',
         subtitle: 'Informasi dari gambar loker telah diisi otomatis ke dalam form.',
       );
     } catch (e) {
+      if (!mounted) return;
       AppleToast.warning(
         context,
         'Gagal Membaca Gambar',
@@ -393,7 +395,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Smart Auto-Fill Section (Apple Card Style)
+            // Pengisian Otomatis Teks & Pindai Gambar Loker (Apple Card Style)
             if (!isEdit) ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -401,47 +403,23 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   color: surfSec,
                   borderRadius: BorderRadius.circular(AppTheme.radiusCard),
                   border: Border.all(
-                    color: AppTheme.systemGreen.withValues(alpha: 0.35),
+                    color: AppTheme.systemBlue.withValues(alpha: 0.35),
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          CupertinoIcons.bolt_fill,
-                          color: AppTheme.systemGreen,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Smart Auto-Fill (Paste Teks Loker)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: (isDark
-                                    ? AppTheme.systemBlue
-                                    : AppTheme.lSystemBlue)
-                                .withValues(alpha: 0.12),
+                            color: AppTheme.systemBlue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             CupertinoIcons.sparkles,
-                            color: isDark
-                                ? AppTheme.systemBlue
-                                : AppTheme.lSystemBlue,
+                            color: AppTheme.systemBlue,
                             size: 20,
                           ),
                         ),
@@ -451,7 +429,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Pengisian Otomatis Teks Loker',
+                                'Pengisian Otomatis Teks & Gambar',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -460,7 +438,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Tempel deskripsi atau teks iklan lowongan kerja di sini',
+                                'Tempel deskripsi atau unggah screenshot gambar loker',
                                 style: TextStyle(fontSize: 12, color: txtSec),
                               ),
                             ],
@@ -469,17 +447,18 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
+
                     TextField(
                       controller: _pasteController,
                       maxLines: 4,
                       style: TextStyle(fontSize: 13, color: txtPri),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText:
                             'Contoh: Lowongan Backend Dev di PT Shopee Indonesia, Gaji 10jt - 15jt, Lokasi Jakarta...',
-                        hintStyle: TextStyle(fontSize: 12, color: txtTer),
                       ),
                     ),
                     const SizedBox(height: 12),
+
                     Row(
                       children: [
                         Expanded(
@@ -528,6 +507,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
+
                     Row(
                       children: [
                         const Icon(
@@ -538,7 +518,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'Fitur Isi Otomatis akan mendeteksi dan menginput field: Posisi, Perusahaan, Tipe Kerja (WFO/WFH/Hybrid), Gaji Range, Lokasi, dan Deskripsi.',
+                            'Fitur Isi Otomatis akan mendeteksi dan menginput field: Posisi, Perusahaan, Tipe Kerja, Gaji Range, Lokasi, dan Deskripsi.',
                             style: TextStyle(
                               fontSize: 11,
                               color: txtSec,
