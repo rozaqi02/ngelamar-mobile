@@ -1,4 +1,4 @@
-# Ngelamar App (v1.7.4)
+# Ngelamar App (v1.7.6)
 
 Aplikasi Personal Career CRM dan Pelacak Lamaran Kerja dengan Desain Liquid Glass Apple iOS 26, navbar dinamis Apple HIG, dan Hub Persiapan Karir untuk fresh graduate.
 
@@ -8,13 +8,13 @@ Dikembangkan oleh **idka-solutions team**.
 
 ## Fitur Utama & Keunggulan Unik
 
-### Pembaruan v1.7.4
+### Pembaruan v1.7.6
 
-- Launcher icon kini konsisten dengan logo briefcase biru-indigo pada splash screen.
-- Bottom navbar liquid glass lebih responsif, dinamis, dan mempertahankan state setiap tab.
-- Reminder interview kini benar-benar dijadwalkan berdasarkan tanggal dan jam.
-- Persistence, import, sorting, filter, dan proses simpan dibuat lebih aman.
-- Layout utama diperbaiki untuk layar sempit dan ukuran teks aksesibilitas.
+- **100% Bebas Halusinasi Text OCR**: Pemindaian teks poster iklan loker dari kamera/galeri foto kini jujur dan transparan tanpa teks sampel hardcode.
+- **Dukungan Penuh Cross-Platform Web & Desktop**: TabBarView & ScrollController telah dipisah secara efisien per-tab tanpa hambatan constraint atau crash *multi-attach*.
+- **Liquid Glass 5-Layer Navbar Overhaul**: Peningkatan bayangan melayang (*floating drop shadow*), specular rim highlight, dan translusensi adaptif untuk Web & Mobile.
+- **Zero RenderFlex Overflow**: Optimasi navigasi dengan `FittedBox` scale-down dan proteksi font scaling tingkat tinggi.
+- **Rilis APK Resmi `Ngelamar.apk`**: Nama file instalasi APK utama konsisten dengan huruf kapital "Ngelamar.apk".
 
 1. **Apple iOS 26 Liquid Glass Bottom Navbar**
    - Dual-layer glassmorphic blur (`sigmaX: 35, sigmaY: 35`).
