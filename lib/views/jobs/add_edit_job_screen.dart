@@ -280,21 +280,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   }
 
   String _smartFallbackImageTextExtractor(XFile image) {
-    final cleanName = image.name
-        .replaceAll('_', ' ')
-        .replaceAll('-', ' ')
-        .replaceAll('.jpg', '')
-        .replaceAll('.jpeg', '')
-        .replaceAll('.png', '')
-        .replaceAll('Screenshot', '')
-        .replaceAll('IMG', '')
-        .trim();
-
-    if (cleanName.isNotEmpty && cleanName.length > 3) {
-      return 'Lowongan Pekerjaan dari Gambar Poster $cleanName. Posisi Software Developer / Staff IT di PT Industri Digital, Gaji Rp 8.000.000 - Rp 12.000.000, Tipe Kerja Hybrid, Lokasi Jakarta.';
-    }
-
-    return 'Lowongan Pekerjaan dari Gambar Poster Loker. Posisi Mobile Developer di PT Teknologi Indonesia, Gaji Rp 8.000.000 - Rp 12.000.000, Tipe Kerja Hybrid, Lokasi Jakarta.';
+    // Tanpa halusinasi: jika OCR native tidak menemukan teks, kembalikan string kosong
+    // agar aplikasi secara jujur menginfokan ke pengguna bahwa gambar tidak mengandung teks terbaca.
+    return '';
   }
 
   Future<void> _saveJob() async {

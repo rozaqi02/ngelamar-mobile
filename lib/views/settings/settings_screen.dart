@@ -24,8 +24,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _importController = TextEditingController();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  static const String _appVersion = '1.7.4';
-  static const String _buildNumber = '174';
+  static const String _appVersion = '1.7.5';
+  static const String _buildNumber = '175';
 
   @override
   void initState() {

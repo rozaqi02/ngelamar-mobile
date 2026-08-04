@@ -136,123 +136,126 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                   builder: (context, constraints) {
                     final navWidth = constraints.maxWidth;
                     final itemW = navWidth / _items.length;
-                    const navHeight = 64.0;
+                    const navHeight = 66.0;
 
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
-                      child: Stack(
-                        children: [
-                          // Layer 1: Real Backdrop Frosted Blur
-                          Positioned.fill(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                              child: Container(
-                                color: isDark
-                                    ? const Color(0xA0141418)
-                                    : const Color(0xAAF2F2F6),
-                              ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.45 : 0.12,
                             ),
+                            blurRadius: 28,
+                            spreadRadius: -2,
+                            offset: const Offset(0, 10),
                           ),
-
-                          // Layer 2: Inner glass gradient sheen
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: isDark
-                                      ? [
-                                          Colors.white.withValues(alpha: 0.08),
-                                          Colors.white.withValues(alpha: 0.02),
-                                        ]
-                                      : [
-                                          Colors.white.withValues(alpha: 0.65),
-                                          Colors.white.withValues(alpha: 0.30),
-                                        ],
-                                ),
-                                borderRadius: BorderRadius.circular(32),
-                                border: Border.all(
+                          BoxShadow(
+                            color: (isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue)
+                                .withValues(alpha: isDark ? 0.15 : 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: Stack(
+                          children: [
+                            // Layer 1: Real Backdrop Frosted Blur + Fallback Translucency
+                            Positioned.fill(
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
+                                child: Container(
                                   color: isDark
-                                      ? Colors.white.withValues(alpha: 0.20)
-                                      : Colors.white.withValues(alpha: 0.80),
-                                  width: 1.0,
+                                      ? const Color(0xD816161A)
+                                      : const Color(0xECF4F4F8),
                                 ),
                               ),
                             ),
-                          ),
 
-                          // Layer 3: Drop shadow (rendered via decoration, not blur)
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(32),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.50 : 0.10,
+                            // Layer 2: Inner glass gradient sheen
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: isDark
+                                        ? [
+                                            Colors.white.withValues(alpha: 0.10),
+                                            Colors.white.withValues(alpha: 0.02),
+                                          ]
+                                        : [
+                                            Colors.white.withValues(alpha: 0.70),
+                                            Colors.white.withValues(alpha: 0.35),
+                                          ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(32),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.22)
+                                        : Colors.white.withValues(alpha: 0.85),
+                                    width: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Layer 3: Specular Top Rim Highlight (Apple Glass Polish)
+                            Positioned(
+                              top: 0,
+                              left: 20,
+                              right: 20,
+                              height: 1.2,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.0),
+                                      Colors.white.withValues(
+                                        alpha: isDark ? 0.70 : 1.0,
+                                      ),
+                                      Colors.white.withValues(alpha: 0.0),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Layer 4: Content (Pill + Icons)
+                            SizedBox(
+                              height: navHeight,
+                              child: Stack(
+                                children: [
+                                  // Fluid Liquid Sliding Active Pill
+                                  AnimatedPositioned(
+                                    duration: const Duration(milliseconds: 380),
+                                    curve: Curves.easeOutCubic,
+                                    left: _currentIndex * itemW + 5,
+                                    top: 5,
+                                    bottom: 5,
+                                    width: itemW - 10,
+                                    child: _buildActivePill(isDark),
+                                  ),
+
+                                  // Tab Items Row
+                                  Row(
+                                    children: List.generate(
+                                      _items.length,
+                                      (i) => Expanded(
+                                        child: SizedBox(
+                                          height: navHeight,
+                                          child: _buildTabItem(i, isDark),
+                                        ),
+                                      ),
                                     ),
-                                    blurRadius: 32,
-                                    offset: const Offset(0, 12),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-
-                          // Layer 4: Specular Top Rim Highlight (Apple Glass Polish)
-                          Positioned(
-                            top: 0,
-                            left: 20,
-                            right: 20,
-                            height: 1.0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.0),
-                                    Colors.white.withValues(
-                                      alpha: isDark ? 0.60 : 1.0,
-                                    ),
-                                    Colors.white.withValues(alpha: 0.0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Layer 5: Content (Pill + Icons)
-                          SizedBox(
-                            height: navHeight,
-                            child: Stack(
-                              children: [
-                                // Fluid Liquid Sliding Active Pill
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 380),
-                                  curve: Curves.easeOutCubic,
-                                  left: _currentIndex * itemW + 5,
-                                  top: 5,
-                                  bottom: 5,
-                                  width: itemW - 10,
-                                  child: _buildActivePill(isDark),
-                                ),
-
-                                // Tab Items Row
-                                Row(
-                                  children: List.generate(
-                                    _items.length,
-                                    (i) => Expanded(
-                                      child: SizedBox(
-                                        height: navHeight,
-                                        child: _buildTabItem(i, isDark),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -326,42 +329,46 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                 child: child,
               );
             },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                // Icon dengan smooth scale/fade swap
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: FadeTransition(opacity: anim, child: child),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon dengan smooth scale/fade swap
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: anim,
+                      child: FadeTransition(opacity: anim, child: child),
+                    ),
+                    child: Icon(
+                      isSelected ? item.activeIcon : item.inactiveIcon,
+                      key: ValueKey('${index}_$isSelected'),
+                      color: isSelected ? activeColor : inactiveColor,
+                      size: 21,
+                    ),
                   ),
-                  child: Icon(
-                    isSelected ? item.activeIcon : item.inactiveIcon,
-                    key: ValueKey('${index}_$isSelected'),
-                    color: isSelected ? activeColor : inactiveColor,
-                    size: 22,
+                  const SizedBox(height: 2),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 180),
+                    style: TextStyle(
+                      color: isSelected ? activeColor : inactiveColor,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 10,
+                      letterSpacing: -0.2,
+                      height: 1.0,
+                    ),
+                    child: Text(
+                      item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 180),
-                  style: TextStyle(
-                    color: isSelected ? activeColor : inactiveColor,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 10,
-                    letterSpacing: -0.2,
-                    height: 1.0,
-                  ),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

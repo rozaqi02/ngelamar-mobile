@@ -24,7 +24,7 @@ class JobListScreen extends ConsumerStatefulWidget {
 class _JobListScreenState extends ConsumerState<JobListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _scrollController = ScrollController();
+  late List<ScrollController> _scrollControllers;
   final _searchController = TextEditingController();
   int _lastIndex = 0;
 
@@ -55,6 +55,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _scrollControllers = List.generate(_tabs.length, (_) => ScrollController());
     _tabController.animation?.addListener(_handleTabAnimationTick);
     _tabController.addListener(_handleTabChangeScrollToTop);
   }
@@ -72,8 +73,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void _handleTabChangeScrollToTop() {
     if (_tabController.index != _lastIndex) {
       _lastIndex = _tabController.index;
-      if (_scrollController.hasClients && _scrollController.offset > 0) {
-        _scrollController.jumpTo(0);
+      if (_tabController.index >= 0 && _tabController.index < _scrollControllers.length) {
+        final currentCtrl = _scrollControllers[_tabController.index];
+        if (currentCtrl.hasClients && currentCtrl.offset > 0) {
+          currentCtrl.jumpTo(0);
+        }
       }
     }
   }
@@ -83,7 +87,9 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     _tabController.animation?.removeListener(_handleTabAnimationTick);
     _tabController.removeListener(_handleTabChangeScrollToTop);
     _tabController.dispose();
-    _scrollController.dispose();
+    for (final ctrl in _scrollControllers) {
+      ctrl.dispose();
+    }
     _searchController.dispose();
     super.dispose();
   }
@@ -434,12 +440,13 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             child: TabBarView(
               controller: _tabController,
               physics: const BouncingScrollPhysics(),
-              children: _tabs.map((category) {
+              children: List.generate(_tabs.length, (tabIdx) {
+                final category = _tabs[tabIdx];
                 final jobs = _filterJobs(state.jobs, category, state);
                 if (jobs.isEmpty) return _buildEmptyState(category);
 
                 return ListView.builder(
-                  controller: _scrollController,
+                  controller: _scrollControllers[tabIdx],
                   padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 90),
                   physics: const BouncingScrollPhysics(),
                   itemCount: jobs.length,
@@ -447,7 +454,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     child: _buildOverhauledJobCard(context, jobs[i], ref),
                   ),
                 );
-              }).toList(),
+              }),
             ),
           ),
         ],
