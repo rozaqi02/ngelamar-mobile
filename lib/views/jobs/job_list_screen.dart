@@ -212,231 +212,172 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         _tabController.index != 0;
 
     final rawAnim = _tabController.animation?.value;
-    final animVal = (rawAnim != null && !rawAnim.isNaN)
-        ? rawAnim
-        : _tabController.index.toDouble();
-
+    final animVal =
+        (rawAnim != null && rawAnim.isFinite) ? rawAnim : _tabController.index.toDouble();
     final activeIndex = animVal.round().clamp(0, _tabs.length - 1);
 
     return Scaffold(
       backgroundColor: bg,
-      body: NestedScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(),
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // 1. Apple Large Navigation Bar Title
-          SliverAppBar(
-            backgroundColor: bg,
-            surfaceTintColor: Colors.transparent,
-            pinned: true,
-            floating: false,
-            expandedHeight: 104,
-            collapsedHeight: 56,
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                final topPadding = MediaQuery.of(context).padding.top;
-                const collapsedH = 56.0;
-                const expandedH = 104.0;
-                final maxHeight = constraints.maxHeight;
+      body: Column(
+        children: [
+          // ── Pinned Header (AppBar + Pills + Search + Status Filter) ──
+          Material(
+            color: bg,
+            elevation: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Status bar padding
+                SizedBox(height: MediaQuery.of(context).padding.top),
 
-                double progress = 0.0;
-                if (!maxHeight.isInfinite && !maxHeight.isNaN && maxHeight > 0) {
-                  final available = maxHeight - topPadding;
-                  progress = (1.0 -
-                          ((available - collapsedH) / (expandedH - collapsedH)))
-                      .clamp(0.0, 1.0);
-                }
-                if (progress.isNaN || progress.isInfinite) {
-                  progress = 0.0;
-                }
-
-                final largeOpacity = (1.0 - progress * 2.5).clamp(0.0, 1.0);
-                final collapsedOpacity = ((progress - 0.6) * 3.0).clamp(0.0, 1.0);
-
-                return Stack(
-                  children: [
-                    // Large title
-                    Positioned(
-                      left: 16,
-                      bottom: 12,
-                      right: 110,
-                      child: Opacity(
-                        opacity: largeOpacity,
+                // Apple Large Title row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
                         child: Text(
                           'Lamaran',
                           style: TextStyle(
-                            fontSize: 34,
+                            fontSize: 28,
                             fontWeight: FontWeight.w700,
                             color: txtPri,
                             letterSpacing: -0.8,
                           ),
                         ),
                       ),
-                    ),
-                    // Collapsed title
-                    Positioned(
-                      left: 16,
-                      bottom: 14,
-                      child: Opacity(
-                        opacity: collapsedOpacity,
-                        child: Text(
-                          'Lamaran',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: txtPri,
-                            letterSpacing: -0.3,
+                      if (state.offeringCount >= 2) ...[
+                        GestureDetector(
+                          onTap: () {
+                            AppleSheetWindow.showAppleModalSheet(
+                              context: context,
+                              child: const FreshGradPrepScreen(),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.systemOrange.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.systemOrange.withValues(alpha: 0.3),
+                                width: AppTheme.borderHairline,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.flame_fill,
+                                  color: AppTheme.systemOrange,
+                                  size: 13,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Persiapan',
+                                  style: TextStyle(
+                                    color: AppTheme.systemOrange,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (hasActiveFilter)
+                        GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            ref.read(jobProvider.notifier)
+                              ..setSearchQuery('')
+                              ..resetFilters();
+                            _tabController.animateTo(0);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: compact
+                                ? const Icon(
+                                    CupertinoIcons.arrow_counterclockwise,
+                                    color: AppTheme.systemBlue,
+                                    size: 18,
+                                  )
+                                : const Text(
+                                    'Reset',
+                                    style: TextStyle(
+                                      color: AppTheme.systemBlue,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      GestureDetector(
+                        onTap: () => _openAddJob(context),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: (isDark
+                                    ? AppTheme.systemBlue
+                                    : AppTheme.lSystemBlue)
+                                .withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            CupertinoIcons.plus,
+                            size: 18,
+                            color: isDark
+                                ? AppTheme.systemBlue
+                                : AppTheme.lSystemBlue,
                           ),
                         ),
                       ),
-                    ),
-                    // Top-Right Actions
-                    Positioned(
-                      right: 16,
-                      bottom: 12,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (state.offeringCount >= 2) ...[
-                            GestureDetector(
-                              onTap: () {
-                                AppleSheetWindow.showAppleModalSheet(
-                                  context: context,
-                                  child: const FreshGradPrepScreen(),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 10),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.systemPurple.withValues(
-                                    alpha: 0.15,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      CupertinoIcons.gift_fill,
-                                      color: AppTheme.systemPurple,
-                                      size: 13,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    if (!compact)
-                                      const Text(
-                                        'Bandingkan',
-                                        style: TextStyle(
-                                          color: AppTheme.systemPurple,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          if (hasActiveFilter) ...[
-                            GestureDetector(
-                              onTap: () {
-                                ref.read(jobProvider.notifier).resetFilters();
-                                _tabController.animateTo(0);
-                                _searchController.clear();
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: compact
-                                    ? const Icon(
-                                        CupertinoIcons.arrow_counterclockwise,
-                                        color: AppTheme.systemBlue,
-                                        size: 18,
-                                      )
-                                    : const Text(
-                                        'Reset',
-                                        style: TextStyle(
-                                          color: AppTheme.systemBlue,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
-                          GestureDetector(
-                            onTap: () => _openAddJob(context),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color:
-                                    (isDark
-                                            ? AppTheme.systemBlue
-                                            : AppTheme.lSystemBlue)
-                                        .withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                CupertinoIcons.plus,
-                                size: 18,
-                                color: isDark
-                                    ? AppTheme.systemBlue
-                                    : AppTheme.lSystemBlue,
-                              ),
-                            ),
-                          ),
-                        ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Quick Pills (WFH & Favorit)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  child: Row(
+                    children: [
+                      _buildQuickPill(
+                        label: 'Favorit',
+                        count: state.favoriteCount,
+                        icon: CupertinoIcons.star_fill,
+                        isSelected: state.onlyFavoritesFilter,
+                        activeColor: AppTheme.systemOrange,
+                        onTap: () => ref
+                            .read(jobProvider.notifier)
+                            .toggleOnlyFavoritesFilter(),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          // 2. Quick Pill Bar (WFH & Favorit) DI ATAS Search Box (Permintaan #4)
-          SliverToBoxAdapter(
-            child: Container(
-              color: bg,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-              child: Row(
-                children: [
-                  _buildQuickPill(
-                    label: 'Favorit',
-                    count: state.favoriteCount,
-                    icon: CupertinoIcons.star_fill,
-                    isSelected: state.onlyFavoritesFilter,
-                    activeColor: AppTheme.systemOrange,
-                    onTap: () => ref
-                        .read(jobProvider.notifier)
-                        .toggleOnlyFavoritesFilter(),
+                      const SizedBox(width: 8),
+                      _buildQuickPill(
+                        label: 'WFH Only',
+                        count: state.jobs.where((j) => j.workType == 'WFH').length,
+                        icon: CupertinoIcons.house_fill,
+                        isSelected: state.onlyWfhFilter,
+                        activeColor: AppTheme.systemGreen,
+                        onTap: () => ref
+                            .read(jobProvider.notifier)
+                            .toggleOnlyWfhFilter(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildQuickPill(
-                    label: 'WFH Only',
-                    count: state.jobs.where((j) => j.workType == 'WFH').length,
-                    icon: CupertinoIcons.house_fill,
-                    isSelected: state.onlyWfhFilter,
-                    activeColor: AppTheme.systemGreen,
-                    onTap: () =>
-                        ref.read(jobProvider.notifier).toggleOnlyWfhFilter(),
-                  ),
-                ],
-              ),
-            ),
-          ),
+                ),
 
-          // 3. Pinned Cupertino Search Box
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _FixedHeightDelegate(
-              height: 52,
-              child: ColoredBox(
-                color: bg,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                // Search Box
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                   child: CupertinoSearchTextField(
                     controller: _searchController,
                     onChanged: (v) =>
@@ -451,72 +392,65 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
+
+                // Status Filter Pill Bar
+                SizedBox(
+                  height: 46,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: List.generate(_tabs.length, (i) {
+                        final category = _tabs[i];
+                        final isSelected = activeIndex == i;
+                        final icon = _tabIcons[i];
+                        final count = _getStatusCount(category, state);
+                        final statusColor = AppTheme.getStatusColor(
+                          category,
+                          isDark: isDark,
+                        );
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildCategoryPill(
+                            label: category,
+                            count: count,
+                            icon: icon,
+                            isSelected: isSelected,
+                            activeColor: statusColor,
+                            onTap: () => _tabController.animateTo(i),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // 4. Consolidated Status Filter Bar DI BAWAH Search Box
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _FixedHeightDelegate(
-              height: 46,
-              child: Container(
-                color: bg,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: List.generate(_tabs.length, (i) {
-                      final category = _tabs[i];
-                      // Aktif secara INSTAN & REAL-TIME tanpa delay saat swipe (Permintaan #5)
-                      final isSelected = activeIndex == i;
-                      final icon = _tabIcons[i];
-                      final count = _getStatusCount(category, state);
-                      final statusColor = AppTheme.getStatusColor(
-                        category,
-                        isDark: isDark,
-                      );
+          // ── Scrollable Job List (TabBarView fills remaining height) ──
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              physics: const BouncingScrollPhysics(),
+              children: _tabs.map((category) {
+                final jobs = _filterJobs(state.jobs, category, state);
+                if (jobs.isEmpty) return _buildEmptyState(category);
 
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildCategoryPill(
-                          label: category,
-                          count: count,
-                          icon: icon,
-                          isSelected: isSelected,
-                          activeColor: statusColor,
-                          onTap: () {
-                            _tabController.animateTo(i);
-                          },
-                        ),
-                      );
-                    }),
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 90),
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: jobs.length,
+                  itemBuilder: (_, i) => RepaintBoundary(
+                    child: _buildOverhauledJobCard(context, jobs[i], ref),
                   ),
-                ),
-              ),
+                );
+              }).toList(),
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          physics: const BouncingScrollPhysics(),
-          children: _tabs.map((category) {
-            final jobs = _filterJobs(state.jobs, category, state);
-            if (jobs.isEmpty) return _buildEmptyState(category);
-
-            return ListView.builder(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 90),
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              itemCount: jobs.length,
-              itemBuilder: (_, i) => RepaintBoundary(
-                child: _buildOverhauledJobCard(context, jobs[i], ref),
-              ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
@@ -1095,27 +1029,3 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   }
 }
 
-class _FixedHeightDelegate extends SliverPersistentHeaderDelegate {
-  final double height;
-  final Widget child;
-  _FixedHeightDelegate({required this.height, required this.child});
-
-  @override
-  double get minExtent => height;
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return child;
-  }
-
-  @override
-  bool shouldRebuild(_FixedHeightDelegate oldDelegate) {
-    return oldDelegate.height != height || oldDelegate.child != child;
-  }
-}

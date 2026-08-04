@@ -140,89 +140,119 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
 
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(32),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
-                        child: Container(
-                          height: navHeight,
-                          decoration: BoxDecoration(
-                            // Authentic Translucent Specular Glass Surface
-                            color: isDark
-                                ? const Color(0xD0161619)
-                                : const Color(0xD8F6F6F9),
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.18)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              width: AppTheme.borderHairline,
+                      child: Stack(
+                        children: [
+                          // Layer 1: Real Backdrop Frosted Blur
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                              child: Container(
+                                color: isDark
+                                    ? const Color(0xA0141418)
+                                    : const Color(0xAAF2F2F6),
+                              ),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.50 : 0.09,
-                                ),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
-                              ),
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.20 : 0.03,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              // Specular Top Rim Highlight (Apple Glass Polish)
-                              Positioned(
-                                top: 0,
-                                left: 16,
-                                right: 16,
-                                height: 1.2,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.white.withValues(alpha: 0.0),
-                                        Colors.white.withValues(
-                                          alpha: isDark ? 0.35 : 0.85,
-                                        ),
-                                        Colors.white.withValues(alpha: 0.0),
-                                      ],
+
+                          // Layer 2: Inner glass gradient sheen
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: isDark
+                                      ? [
+                                          Colors.white.withValues(alpha: 0.08),
+                                          Colors.white.withValues(alpha: 0.02),
+                                        ]
+                                      : [
+                                          Colors.white.withValues(alpha: 0.65),
+                                          Colors.white.withValues(alpha: 0.30),
+                                        ],
+                                ),
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.20)
+                                      : Colors.white.withValues(alpha: 0.80),
+                                  width: 1.0,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Layer 3: Drop shadow (rendered via decoration, not blur)
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(32),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.50 : 0.10,
+                                    ),
+                                    blurRadius: 32,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Layer 4: Specular Top Rim Highlight (Apple Glass Polish)
+                          Positioned(
+                            top: 0,
+                            left: 20,
+                            right: 20,
+                            height: 1.0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.0),
+                                    Colors.white.withValues(
+                                      alpha: isDark ? 0.60 : 1.0,
+                                    ),
+                                    Colors.white.withValues(alpha: 0.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Layer 5: Content (Pill + Icons)
+                          SizedBox(
+                            height: navHeight,
+                            child: Stack(
+                              children: [
+                                // Fluid Liquid Sliding Active Pill
+                                AnimatedPositioned(
+                                  duration: const Duration(milliseconds: 380),
+                                  curve: Curves.easeOutCubic,
+                                  left: _currentIndex * itemW + 5,
+                                  top: 5,
+                                  bottom: 5,
+                                  width: itemW - 10,
+                                  child: _buildActivePill(isDark),
+                                ),
+
+                                // Tab Items Row
+                                Row(
+                                  children: List.generate(
+                                    _items.length,
+                                    (i) => Expanded(
+                                      child: SizedBox(
+                                        height: navHeight,
+                                        child: _buildTabItem(i, isDark),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-
-                              // Fluid Liquid Sliding Active Pill
-                              AnimatedPositioned(
-                                duration: const Duration(milliseconds: 380),
-                                curve: Curves.easeOutCubic,
-                                left: _currentIndex * itemW + 4,
-                                top: 4,
-                                bottom: 4,
-                                width: itemW - 8,
-                                child: _buildActivePill(isDark),
-                              ),
-
-                              // Tab Items Row
-                              Row(
-                                children: List.generate(
-                                  _items.length,
-                                  (i) => Expanded(
-                                    child: SizedBox(
-                                      height: navHeight,
-                                      child: _buildTabItem(i, isDark),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     );
                   },
