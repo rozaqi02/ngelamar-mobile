@@ -1,0 +1,236 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 3686 >>
+stream
+BT
+/F2 16 Tf
+36 740 Td
+(PANDUAN & STRATEGI RILIS APLIKASI NGELAMAR) Tj
+ET
+BT
+/F1 10 Tf
+36 720 Td
+(IDKA Solutions - Career CRM & Mobile Development Business) Tj
+ET
+BT
+/F2 10 Tf
+36 705 Td
+(==========================================================================) Tj
+ET
+BT
+/F1 9 Tf
+36 691 Td
+() Tj
+ET
+BT
+/F2 10 Tf
+36 677 Td
+(1. STRATEGI SALURAN DISTRIBUSI \(DI MANA USER MENGUNDUH?\)) Tj
+ET
+BT
+/F1 9 Tf
+36 663 Td
+(   A. Google Play Store \(Saluran Utama - Rekomendasi 100%\):) Tj
+ET
+BT
+/F1 9 Tf
+36 649 Td
+(      - Pengguna Android percaya 100% \(bebas peringatan 'Sumber Tidak Dikenal'\).) Tj
+ET
+BT
+/F1 9 Tf
+36 635 Td
+(      - Mendapat jangkauan organik \(ASO\) saat pencari kerja mencari aplikasi lamaran.) Tj
+ET
+BT
+/F1 9 Tf
+36 621 Td
+(      - Pembaruan aplikasi berjalan otomatis di HP pengguna.) Tj
+ET
+BT
+/F1 9 Tf
+36 607 Td
+(      - Syarat: Mendaftar Akun Google Play Console \($25 USD sekali bayar seumur hidup\).) Tj
+ET
+BT
+/F1 9 Tf
+36 593 Td
+() Tj
+ET
+BT
+/F1 9 Tf
+36 579 Td
+(   B. Direct Download di Website IDKA Solutions \(idka-solutions.com\):) Tj
+ET
+BT
+/F1 9 Tf
+36 565 Td
+(      - File Ngelamar.apk dipasang langsung di website bisnis IDKA Solutions.) Tj
+ET
+BT
+/F1 9 Tf
+36 551 Td
+(      - Mendorong traffic pengunjung dari media sosial langsung ke domain IDKA.) Tj
+ET
+BT
+/F1 9 Tf
+36 537 Td
+(      - Bebas biaya pendaftaran dan langsung aktif hari ini.) Tj
+ET
+BT
+/F1 9 Tf
+36 523 Td
+() Tj
+ET
+BT
+/F2 10 Tf
+36 509 Td
+(2. MEMANFAATKAN APLIKASI UNTUK BISNIS JASA IDKA SOLUTIONS) Tj
+ET
+BT
+/F1 9 Tf
+36 495 Td
+(   - Flagship Portfolio: Membuktikan kemampuan IDKA membangun app standar Apple iOS 26) Tj
+ET
+BT
+/F1 9 Tf
+36 481 Td
+(     Liquid Glass, ML Kit OCR On-Device, dan offline database.) Tj
+ET
+BT
+/F1 9 Tf
+36 467 Td
+(   - In-App Lead Generator: Banner di menu Pengaturan / About:) Tj
+ET
+BT
+/F1 9 Tf
+36 453 Td
+(     'Dikembangkan oleh IDKA Solutions - Ingin Punya Aplikasi Custom? [Hubungi WA]') Tj
+ET
+BT
+/F1 9 Tf
+36 439 Td
+(   - Landing Page Section: Memajang Ngelamar App di bagian Featured Projects website IDKA.) Tj
+ET
+BT
+/F1 9 Tf
+36 425 Td
+() Tj
+ET
+BT
+/F2 10 Tf
+36 411 Td
+(3. CHECKLIST TEKNIS PERSIAPAN PUBLISH) Tj
+ET
+BT
+/F1 9 Tf
+36 397 Td
+(   [x] Generasi Release APK: File Ngelamar.apk \(v1.7.6+176\) siap di root folder.) Tj
+ET
+BT
+/F1 9 Tf
+36 383 Td
+(   [ ] Akun Play Console: Mendaftar di play.google.com/console \($25 USD\).) Tj
+ET
+BT
+/F1 9 Tf
+36 369 Td
+(   [ ] Build App Bundle: Jalankan 'flutter build appbundle --release' \(.aab file\).) Tj
+ET
+BT
+/F1 9 Tf
+36 355 Td
+(   [ ] Asset Store Listing: Icon \(512x512\), Feature Graphic \(1024x500\), UI Screenshots.) Tj
+ET
+BT
+/F1 9 Tf
+36 341 Td
+(   [ ] Privacy Policy URL: Membuat halaman Kebijakan Privasi di idka-solutions.com/privacy.) Tj
+ET
+BT
+/F1 9 Tf
+36 327 Td
+(   [ ] Direct Download: Memasang Ngelamar.apk di folder public/downloads website IDKA.) Tj
+ET
+BT
+/F1 9 Tf
+36 313 Td
+() Tj
+ET
+BT
+/F2 10 Tf
+36 299 Td
+(4. ROADMAP EKSEKUSI STEP-BY-STEP) Tj
+ET
+BT
+/F1 9 Tf
+36 285 Td
+(   Fase 1: Pasang landing page & link download APK di website D:\\Projek\\idka-solutions.) Tj
+ET
+BT
+/F1 9 Tf
+36 271 Td
+(   Fase 2: Registrasi akun developer Google Play Console \($25 USD\).) Tj
+ET
+BT
+/F1 9 Tf
+36 257 Td
+(   Fase 3: Build format .aab, siapkan Keystore rilis, dan buat screenshot promo.) Tj
+ET
+BT
+/F1 9 Tf
+36 243 Td
+(   Fase 4: Submit aplikasi ke Google Play Store untuk proses peninjauan \(1-3 hari kerja\).) Tj
+ET
+BT
+/F1 9 Tf
+36 229 Td
+() Tj
+ET
+BT
+/F2 10 Tf
+36 215 Td
+(==========================================================================) Tj
+ET
+BT
+/F1 9 Tf
+36 201 Td
+(Dokumen ini disusun secara otomatis untuk IDKA Solutions.) Tj
+ET
+BT
+/F1 9 Tf
+36 187 Td
+(Tanggal Rilis Dokumen: 4 Agustus 2026 | Versi Rilis: v1.7.6+176) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000003989 00000 n 
+0000004059 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+4134
+%%EOF
