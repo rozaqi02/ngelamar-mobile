@@ -61,7 +61,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
   void _handleTabAnimationTick() {
     if (mounted) {
-      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
     }
   }
 
@@ -207,11 +211,12 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         state.onlyWfhFilter ||
         _tabController.index != 0;
 
-    // Indeks tab aktif real-time (tanpa delay saat swipe)
-    final activeIndex =
-        (_tabController.animation?.value ?? _tabController.index.toDouble())
-            .round()
-            .clamp(0, _tabs.length - 1);
+    final rawAnim = _tabController.animation?.value;
+    final animVal = (rawAnim != null && !rawAnim.isNaN)
+        ? rawAnim
+        : _tabController.index.toDouble();
+
+    final activeIndex = animVal.round().clamp(0, _tabs.length - 1);
 
     return Scaffold(
       backgroundColor: bg,
@@ -232,13 +237,21 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 final topPadding = MediaQuery.of(context).padding.top;
                 const collapsedH = 56.0;
                 const expandedH = 104.0;
-                final available = constraints.maxHeight - topPadding;
-                final progress =
-                    1.0 -
-                    ((available - collapsedH) / (expandedH - collapsedH)).clamp(
-                      0.0,
-                      1.0,
-                    );
+                final maxHeight = constraints.maxHeight;
+
+                double progress = 0.0;
+                if (!maxHeight.isInfinite && !maxHeight.isNaN && maxHeight > 0) {
+                  final available = maxHeight - topPadding;
+                  progress = (1.0 -
+                          ((available - collapsedH) / (expandedH - collapsedH)))
+                      .clamp(0.0, 1.0);
+                }
+                if (progress.isNaN || progress.isInfinite) {
+                  progress = 0.0;
+                }
+
+                final largeOpacity = (1.0 - progress * 2.5).clamp(0.0, 1.0);
+                final collapsedOpacity = ((progress - 0.6) * 3.0).clamp(0.0, 1.0);
 
                 return Stack(
                   children: [
@@ -248,7 +261,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       bottom: 12,
                       right: 110,
                       child: Opacity(
-                        opacity: (1.0 - progress * 2.5).clamp(0.0, 1.0),
+                        opacity: largeOpacity,
                         child: Text(
                           'Lamaran',
                           style: TextStyle(
@@ -265,7 +278,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       left: 16,
                       bottom: 14,
                       child: Opacity(
-                        opacity: ((progress - 0.6) * 3.0).clamp(0.0, 1.0),
+                        opacity: collapsedOpacity,
                         child: Text(
                           'Lamaran',
                           style: TextStyle(
@@ -492,12 +505,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             final jobs = _filterJobs(state.jobs, category, state);
             if (jobs.isEmpty) return _buildEmptyState(category);
 
-            final isShortContent = jobs.length <= 3;
             return ListView.builder(
               padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 90),
-              physics: isShortContent
-                  ? const NeverScrollableScrollPhysics()
-                  : const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               itemCount: jobs.length,
               itemBuilder: (_, i) => RepaintBoundary(
                 child: _buildOverhauledJobCard(context, jobs[i], ref),

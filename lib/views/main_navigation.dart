@@ -218,13 +218,14 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                               Row(
                                 children: List.generate(
                                   _items.length,
-                                  (i) => SizedBox(
-                                    width: itemW,
-                                    height: navHeight,
-                                    child: _buildTabItem(
-                                      i,
-                                      isDark,
-                                      showLabel: showLabels,
+                                  (i) => Expanded(
+                                    child: SizedBox(
+                                      height: navHeight,
+                                      child: _buildTabItem(
+                                        i,
+                                        isDark,
+                                        showLabel: showLabels,
+                                      ),
                                     ),
                                   ),
                                 ),

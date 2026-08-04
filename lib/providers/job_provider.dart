@@ -98,6 +98,20 @@ class JobNotifier extends StateNotifier<JobState> {
       }
     }
 
+    // Jika penyimpan data masih kosong (misal pertama kali di-run di Flutter Web),
+    // muat data sampel awal secara otomatis agar pengguna tidak mendapatkan tampilan kosong.
+    if (loaded.isEmpty && box.isEmpty) {
+      final samples = _generateSampleJobs();
+      for (final sample in samples) {
+        try {
+          await box.put(sample.id, sample.toJson());
+          loaded.add(sample);
+        } catch (error) {
+          debugPrint('Gagal menyimpan data sampel awal: $error');
+        }
+      }
+    }
+
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
     // Muat preferensi pengguna
