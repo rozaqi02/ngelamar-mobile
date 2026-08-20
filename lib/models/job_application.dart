@@ -4,14 +4,16 @@ class JobApplication {
   final String id;
   final String companyName;
   final String position;
-  final String
-  status; // 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
+  final String status; // 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
   final DateTime appliedDate;
-  final String? salaryOffered; // Range estimasi gaji (contoh: "Rp 8.000.000 - Rp 12.000.000")
+  final String? salaryOffered; // Contoh: "Rp 18.000.000 - Rp 25.000.000"
+  final int? minSalary; // Numeric value untuk sorting / filtering
+  final int? maxSalary;
   final String workType; // 'WFO', 'WFH', 'Hybrid'
   final String? location;
-  final String?
-  jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
+  final String? jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
+  final String sourcePlatform; // 'Manual', 'Glints', 'JobStreet', 'LinkedIn'
+  final String? jobUrl; // URL postingan asli dari portal lowongan
   final String jobDescription; // Snapshot deskripsi/kualifikasi awal
   final String? hrContact; // Nomor WA atau email HR
   final DateTime? testDate; // Tanggal Tes / Psikotes
@@ -26,9 +28,13 @@ class JobApplication {
     required this.status,
     required this.appliedDate,
     this.salaryOffered,
+    this.minSalary,
+    this.maxSalary,
     required this.workType,
     this.location,
     this.jobSource,
+    this.sourcePlatform = 'Manual',
+    this.jobUrl,
     required this.jobDescription,
     this.hrContact,
     this.testDate,
@@ -44,9 +50,13 @@ class JobApplication {
     String? status,
     DateTime? appliedDate,
     String? salaryOffered,
+    int? minSalary,
+    int? maxSalary,
     String? workType,
     String? location,
     String? jobSource,
+    String? sourcePlatform,
+    String? jobUrl,
     String? jobDescription,
     String? hrContact,
     DateTime? testDate,
@@ -61,9 +71,13 @@ class JobApplication {
       status: status ?? this.status,
       appliedDate: appliedDate ?? this.appliedDate,
       salaryOffered: salaryOffered ?? this.salaryOffered,
+      minSalary: minSalary ?? this.minSalary,
+      maxSalary: maxSalary ?? this.maxSalary,
       workType: workType ?? this.workType,
       location: location ?? this.location,
       jobSource: jobSource ?? this.jobSource,
+      sourcePlatform: sourcePlatform ?? this.sourcePlatform,
+      jobUrl: jobUrl ?? this.jobUrl,
       jobDescription: jobDescription ?? this.jobDescription,
       hrContact: hrContact ?? this.hrContact,
       testDate: testDate ?? this.testDate,
@@ -81,9 +95,13 @@ class JobApplication {
       'status': status == 'HR Screening' ? 'Interview HR' : status,
       'appliedDate': appliedDate.toIso8601String(),
       'salaryOffered': salaryOffered,
+      'minSalary': minSalary,
+      'maxSalary': maxSalary,
       'workType': workType,
       'location': location,
       'jobSource': jobSource,
+      'sourcePlatform': sourcePlatform,
+      'jobUrl': jobUrl,
       'jobDescription': jobDescription,
       'hrContact': hrContact,
       'testDate': testDate?.toIso8601String(),
@@ -106,9 +124,13 @@ class JobApplication {
           ? DateTime.parse(map['appliedDate'])
           : DateTime.now(),
       salaryOffered: map['salaryOffered'],
+      minSalary: map['minSalary'] is int ? map['minSalary'] : null,
+      maxSalary: map['maxSalary'] is int ? map['maxSalary'] : null,
       workType: map['workType'] ?? 'WFO',
       location: map['location'],
       jobSource: map['jobSource'],
+      sourcePlatform: map['sourcePlatform'] ?? 'Manual',
+      jobUrl: map['jobUrl'],
       jobDescription: map['jobDescription'] ?? '',
       hrContact: map['hrContact'],
       testDate: map['testDate'] != null ? DateTime.parse(map['testDate']) : null,

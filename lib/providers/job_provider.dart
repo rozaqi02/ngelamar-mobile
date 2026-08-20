@@ -25,7 +25,7 @@ class JobState {
     this.isLoading = false,
     this.userName = '',
     this.userEmail = '',
-    this.isDarkMode = true,
+    this.isDarkMode = false,
   });
 
   JobState copyWith({
@@ -72,11 +72,44 @@ class JobState {
     final responded = jobs.where((j) => j.status != 'Dikirim').length;
     return (responded / jobs.length) * 100;
   }
+
+  /// Mengembalikan maksimal 4 lamaran prioritas untuk tumpukan kartu Beranda.
+  /// Urutan prioritas: Offering / Interview / Tes ➔ Favorit ➔ Terbaru.
+  List<JobApplication> get priorityJobs {
+    if (jobs.isEmpty) return [];
+
+    final list = List<JobApplication>.from(jobs);
+    list.sort((a, b) {
+      int score(JobApplication j) {
+        if (j.status == 'Offering') return 10;
+        if (j.status.contains('Interview')) return 8;
+        if (j.status == 'Tes / Psikotes') return 6;
+        if (j.isFavorite) return 4;
+        if (j.status == 'Dikirim') return 2;
+        return 0;
+      }
+
+      final scoreDiff = score(b).compareTo(score(a));
+      if (scoreDiff != 0) return scoreDiff;
+      return b.appliedDate.compareTo(a.appliedDate);
+    });
+
+    return list.take(4).toList();
+  }
 }
 
 class JobNotifier extends StateNotifier<JobState> {
   static const String _boxName = 'ngelamar_jobs_box';
   late final Future<Box<String>> _boxReady;
+
+  static const List<String> stageSequence = [
+    'Dikirim',
+    'Tes / Psikotes',
+    'Interview HR',
+    'Interview User',
+    'Offering',
+    'Diterima',
+  ];
 
   JobNotifier() : super(JobState(jobs: [], isLoading: true)) {
     _boxReady = _initHiveAndLoad();
@@ -92,15 +125,16 @@ class JobNotifier extends StateNotifier<JobState> {
         try {
           loaded.add(JobApplication.fromJson(jsonStr));
         } catch (error) {
-          // Data korup diabaikan agar data lain tetap dapat dibaca.
           debugPrint('Gagal membaca data lamaran dengan key $key: $error');
         }
       }
     }
 
-    // Jika penyimpan data masih kosong (misal pertama kali di-run di Flutter Web),
-    // muat data sampel awal secara otomatis agar pengguna tidak mendapatkan tampilan kosong.
-    if (loaded.isEmpty && box.isEmpty) {
+    // Selalu pastikan data awal adalah data perusahaan Indonesia dengan format Rupiah
+    final isInitialOrOutdated = loaded.isEmpty || loaded.any((j) => j.salaryOffered?.contains('\$') ?? false);
+    if (isInitialOrOutdated) {
+      await box.clear();
+      loaded.clear();
       final samples = _generateSampleJobs();
       for (final sample in samples) {
         try {
@@ -115,8 +149,8 @@ class JobNotifier extends StateNotifier<JobState> {
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
     // Muat preferensi pengguna
-    final name = await PrefsService.getUserName() ?? '';
-    final email = await PrefsService.getUserEmail() ?? '';
+    final name = await PrefsService.getUserName() ?? 'Rizki Pratama';
+    final email = await PrefsService.getUserEmail() ?? 'rizki.pratama@email.com';
     final theme = await PrefsService.getThemeMode();
 
     state = state.copyWith(
@@ -127,35 +161,28 @@ class JobNotifier extends StateNotifier<JobState> {
       isDarkMode: theme == 'dark',
     );
 
-    // Sinkronisasi notifikasi dijalankan terpisah - kegagalan notifikasi
-    // TIDAK boleh menggagalkan _boxReady sehingga seluruh CRUD tetap berfungsi.
-    _syncNotificationsQuietly(loaded);
-
+    _syncRemindersQuietly(loaded);
     return box;
   }
 
-  /// Sinkronisasi pengingat notifikasi secara diam-diam (fire-and-forget).
-  /// Kegagalan notifikasi tidak berdampak pada operasi penyimpanan data.
-  void _syncNotificationsQuietly(Iterable<JobApplication> jobs) {
+  void _syncRemindersQuietly(List<JobApplication> jobs) {
     NotificationService.syncAll(jobs).catchError((Object error) {
-      debugPrint('Sinkronisasi notifikasi gagal (diabaikan): $error');
+      debugPrint('Sinkronisasi notifikasi gagal: $error');
       return null;
     });
   }
 
-  /// Jadwalkan pengingat notifikasi untuk satu lamaran secara diam-diam.
   void _scheduleReminderQuietly(JobApplication job) {
     NotificationService.syncInterviewReminder(job).catchError((Object error) {
-      debugPrint('Penjadwalan notifikasi gagal (diabaikan): $error');
+      debugPrint('Penjadwalan notifikasi gagal: $error');
       return null;
     });
   }
 
-  /// Batalkan pengingat notifikasi secara diam-diam.
   void _cancelReminderQuietly(String jobId) {
     NotificationService.cancelInterviewReminder(jobId).catchError(
       (Object error) {
-        debugPrint('Pembatalan notifikasi gagal (diabaikan): $error');
+        debugPrint('Pembatalan notifikasi gagal: $error');
         return null;
       },
     );
@@ -173,81 +200,92 @@ class JobNotifier extends StateNotifier<JobState> {
 
   Future<void> loadSampleJobs() async {
     final box = await _boxReady;
+    await box.clear();
     final samples = _generateSampleJobs();
     await box.putAll({
       for (final sample in samples) sample.id: sample.toJson(),
     });
-    final updatedJobs = _normalizedJobs([...state.jobs, ...samples]);
-    state = state.copyWith(jobs: updatedJobs);
-    _syncNotificationsQuietly(updatedJobs);
+    state = state.copyWith(jobs: samples);
+    _syncRemindersQuietly(samples);
   }
 
-  Future<void> addJob(JobApplication job) async {
+  Future<void> importJobs(List<JobApplication> newJobs) async {
     final box = await _boxReady;
-    await box.put(job.id, job.toJson());
-    final newJobs = _normalizedJobs([...state.jobs, job]);
-    state = state.copyWith(jobs: newJobs);
-    // Notifikasi dijalankan setelah state berhasil diperbarui - kegagalan tidak
-    // membatalkan penyimpanan data.
-    _scheduleReminderQuietly(job);
-  }
-
-  Future<void> updateJob(JobApplication job) async {
-    final box = await _boxReady;
-    await box.put(job.id, job.toJson());
-    final newJobs = _normalizedJobs([
-      ...state.jobs.where((existing) => existing.id != job.id),
-      job,
-    ]);
-    state = state.copyWith(jobs: newJobs);
-    // Notifikasi diperbarui setelah state berhasil diperbarui.
-    _scheduleReminderQuietly(job);
-  }
-
-  Future<void> toggleFavorite(String jobId) async {
-    final index = state.jobs.indexWhere((j) => j.id == jobId);
-    if (index != -1) {
-      final updated = state.jobs[index].copyWith(
-        isFavorite: !state.jobs[index].isFavorite,
-      );
-      await updateJob(updated);
-    }
-  }
-
-  Future<void> updateStatus(String jobId, String newStatus) async {
-    final jobIndex = state.jobs.indexWhere((j) => j.id == jobId);
-    if (jobIndex != -1) {
-      final updated = state.jobs[jobIndex].copyWith(status: newStatus);
-      await updateJob(updated);
-    }
-  }
-
-  Future<void> deleteJob(String jobId) async {
-    final box = await _boxReady;
-    await box.delete(jobId);
-    final newJobs = state.jobs.where((j) => j.id != jobId).toList();
-    state = state.copyWith(jobs: newJobs);
-    _cancelReminderQuietly(jobId);
-  }
-
-  Future<void> importJobs(List<JobApplication> importedJobs) async {
-    final box = await _boxReady;
-    final normalized = _normalizedJobs([...state.jobs, ...importedJobs]);
-    await box.putAll({for (final job in normalized) job.id: job.toJson()});
-    state = state.copyWith(jobs: normalized);
-    _syncNotificationsQuietly(normalized);
+    await box.putAll({
+      for (final job in newJobs) job.id: job.toJson(),
+    });
+    final updated = _normalizedJobs([...state.jobs, ...newJobs]);
+    state = state.copyWith(jobs: updated);
+    _syncRemindersQuietly(updated);
   }
 
   Future<void> clearAllJobs() async {
     final box = await _boxReady;
     await box.clear();
     state = state.copyWith(jobs: []);
-    NotificationService.cancelAllInterviewReminders().catchError(
-      (Object error) {
-        debugPrint('Pembatalan semua notifikasi gagal (diabaikan): $error');
-        return null;
-      },
+  }
+
+  Future<void> addJob(JobApplication job) async {
+    final box = await _boxReady;
+    await box.put(job.id, job.toJson());
+    final updated = _normalizedJobs([job, ...state.jobs]);
+    state = state.copyWith(jobs: updated);
+    _scheduleReminderQuietly(job);
+  }
+
+  /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet).
+  Future<JobApplication> saveFromSearchEngine(JobApplication searchJob) async {
+    final now = DateTime.now();
+    final newJob = searchJob.copyWith(
+      id: 'job_${now.millisecondsSinceEpoch}',
+      status: 'Dikirim',
+      appliedDate: now,
     );
+    await addJob(newJob);
+    return newJob;
+  }
+
+  /// Progres 1-Klik: Menaikkan tahapan seleksi ke langkah berikutnya.
+  Future<String?> advanceToNextStage(String id) async {
+    final job = state.jobs.firstWhere((j) => j.id == id);
+    final currentIndex = stageSequence.indexOf(job.status);
+    if (currentIndex != -1 && currentIndex < stageSequence.length - 1) {
+      final nextStatus = stageSequence[currentIndex + 1];
+      final updated = job.copyWith(status: nextStatus);
+      await updateJob(updated);
+      return nextStatus;
+    }
+    return null;
+  }
+
+  Future<void> updateJob(JobApplication job) async {
+    final box = await _boxReady;
+    await box.put(job.id, job.toJson());
+    final updated = _normalizedJobs(
+      state.jobs.map((j) => j.id == job.id ? job : j),
+    );
+    state = state.copyWith(jobs: updated);
+    _scheduleReminderQuietly(job);
+  }
+
+  Future<void> deleteJob(String id) async {
+    final box = await _boxReady;
+    await box.delete(id);
+    final updated = state.jobs.where((j) => j.id != id).toList();
+    state = state.copyWith(jobs: updated);
+    _cancelReminderQuietly(id);
+  }
+
+  Future<void> toggleFavorite(String id) async {
+    final job = state.jobs.firstWhere((j) => j.id == id);
+    final updated = job.copyWith(isFavorite: !job.isFavorite);
+    await updateJob(updated);
+  }
+
+  Future<void> updateStatus(String id, String status) async {
+    final job = state.jobs.firstWhere((j) => j.id == id);
+    final updated = job.copyWith(status: status);
+    await updateJob(updated);
   }
 
   void setSearchQuery(String query) {
@@ -275,19 +313,16 @@ class JobNotifier extends StateNotifier<JobState> {
     );
   }
 
-  /// Save user name to prefs and update state.
   Future<void> setUserName(String name) async {
     await PrefsService.setUserName(name);
     state = state.copyWith(userName: name);
   }
 
-  /// Save user email to prefs and update state.
   Future<void> setUserEmail(String email) async {
     await PrefsService.setUserEmail(email);
     state = state.copyWith(userEmail: email);
   }
 
-  /// Toggle dark/light mode and persist to prefs.
   Future<void> toggleThemeMode() async {
     final isDark = !state.isDarkMode;
     await PrefsService.setThemeMode(isDark ? 'dark' : 'light');
@@ -298,52 +333,84 @@ class JobNotifier extends StateNotifier<JobState> {
     final now = DateTime.now();
     return [
       JobApplication(
-        id: 'job_1',
-        companyName: 'PT GoTo Indonesia',
-        position: 'Junior Software Engineer',
-        status: 'Interview HR',
-        appliedDate: now.subtract(const Duration(days: 2)),
-        salaryOffered: 'Rp 8.500.000 - Rp 12.000.000', // Contoh Range 2 Angka
-        workType: 'Hybrid',
-        location: 'Jakarta Selatan',
-        jobSource: 'LinkedIn',
-        jobDescription:
-            'Membutuhkan pengetahuan dasar Flutter, Dart, REST API, Git, dan pemahaman struktur data. Pengalaman 1-2 tahun di bidang mobile development menjadi nilai plus.',
-        hrContact: '+6281234567890',
-        interviewDate: now.add(const Duration(days: 2)),
-        notes: 'Interview via Google Meet jam 10:00 WIB',
-        isFavorite: true,
-      ),
-      JobApplication(
-        id: 'job_2',
-        companyName: 'BukaLapak',
-        position: 'Frontend Developer Intern',
-        status: 'Offering',
-        appliedDate: now.subtract(const Duration(days: 6)),
-        salaryOffered: 'Rp 6.000.000', // Contoh 1 Angka
-        workType: 'WFH',
-        location: 'Jakarta',
-        jobSource: 'Glints',
-        jobDescription:
-            'Mengembangkan fitur antarmuka web & mobile. Syarat: HTML/CSS, Flutter/React, Komunikasi baik.',
-        hrContact: 'recruitment@bukalapak.com',
-        notes: 'Penawaran offering berlaku sampai akhir minggu ini.',
-        isFavorite: true,
-      ),
-      JobApplication(
-        id: 'job_3',
-        companyName: 'Bank Central Asia (BCA)',
-        position: 'Management Trainee IT',
+        id: 'job_goto',
+        companyName: 'PT GoTo Gojek Tokopedia Tbk',
+        position: 'Senior Flutter Developer',
         status: 'Tes / Psikotes',
-        appliedDate: now.subtract(const Duration(days: 4)),
-        salaryOffered: 'Rp 9.000.000 - Rp 11.500.000', // Contoh Range 2 Angka
-        workType: 'WFO',
-        location: 'Tangerang / BSD',
-        jobSource: 'Kalibrr',
+        appliedDate: now.subtract(const Duration(days: 1)),
+        salaryOffered: 'Rp 22.000.000 / bln',
+        minSalary: 22000000,
+        maxSalary: 30000000,
+        workType: 'Hybrid',
+        location: 'Jakarta Selatan (Hybrid)',
+        jobSource: 'Glints',
+        sourcePlatform: 'Glints',
+        jobUrl: 'https://glints.com/id/opportunities/jobs/senior-flutter-engineer',
         jobDescription:
-            'Program MT IT BCA. Tes logika, algoritma dasar, dan Bahasa Inggris.',
-        hrContact: '+6281987654321',
-        testDate: now.add(const Duration(days: 1)),
+            '• Menguasai pengembangan aplikasi mobile skala besar dengan Flutter & Dart.\n• Berpengalaman dengan Clean Architecture, State Management (Riverpod/Bloc), dan CI/CD.\n• Mampu berkolaborasi erat dengan Product Manager, UI/UX Designer, dan Backend Engineer.',
+        hrContact: '+62 21 2910 1000',
+        testDate: now.add(const Duration(days: 2)),
+        isFavorite: true,
+      ),
+      JobApplication(
+        id: 'job_bca',
+        companyName: 'PT Bank Central Asia Tbk',
+        position: 'Mobile Application Specialist',
+        status: 'Interview HR',
+        appliedDate: now.subtract(const Duration(days: 3)),
+        salaryOffered: 'Rp 18.500.000 / bln',
+        minSalary: 18500000,
+        maxSalary: 24000000,
+        workType: 'On-Site',
+        location: 'Jakarta Barat (WFO)',
+        jobSource: 'JobStreet',
+        sourcePlatform: 'JobStreet',
+        jobUrl: 'https://www.jobstreet.co.id/job/bca-mobile-developer',
+        jobDescription:
+            '• Pengalaman minimal 2 tahun dalam pengembangan mobile iOS/Android/Flutter.\n• Memahami secure coding standard untuk transaksi perbankan dan enkripsi data.\n• Berpengalaman dengan automated unit testing dan release store.',
+        hrContact: 'recruitment@bca.co.id',
+        interviewDate: now.add(const Duration(days: 3)),
+        isFavorite: true,
+      ),
+      JobApplication(
+        id: 'job_telkom',
+        companyName: 'PT Telkom Indonesia Tbk',
+        position: 'Lead Mobile Solution Architect',
+        status: 'Interview User',
+        appliedDate: now.subtract(const Duration(days: 5)),
+        salaryOffered: 'Rp 26.000.000 / bln',
+        minSalary: 26000000,
+        maxSalary: 35000000,
+        workType: 'Hybrid',
+        location: 'Jakarta / Bandung',
+        jobSource: 'JobStreet',
+        sourcePlatform: 'JobStreet',
+        jobUrl: 'https://www.jobstreet.co.id/job/telkom-lead-architect',
+        jobDescription:
+            '• Merancang arsitektur aplikasi mobile enterprise skala nasional.\n• Mendukung integrasi microservices, GraphQL, REST API, dan cloud infrastructure.\n• Memimpin tim developer dalam menerapkan best practice rekayasa perangkat lunak.',
+        hrContact: 'careers@telkom.co.id',
+        interviewDate: now.add(const Duration(days: 4)),
+        isFavorite: false,
+      ),
+      JobApplication(
+        id: 'job_shopee',
+        companyName: 'PT Shopee International Indonesia',
+        position: 'Software Development Engineer.',
+        status: 'Offering',
+        appliedDate: now.subtract(const Duration(days: 7)),
+        salaryOffered: 'Rp 25.000.000 / bln',
+        minSalary: 25000000,
+        maxSalary: 32000000,
+        workType: 'WFH',
+        location: 'Jakarta Pusat (WFH)',
+        jobSource: 'Glints',
+        sourcePlatform: 'Glints',
+        jobUrl: 'https://glints.com/id/opportunities/jobs/software-engineer-golang',
+        jobDescription:
+            '• Lulusan S1 Teknik Informatika, Sistem Informasi, atau pengalaman setara.\n• Memiliki portofolio aplikasi mobile nyata dengan performa tinggi dan clean code.\n• Menguasai algoritma pemecahan masalah, multi-threading, dan state management modern.',
+        hrContact: 'hiring@shopee.co.id',
+        notes: 'Sesi review offering package pada hari Jumat pukul 14:00 WIB.',
+        isFavorite: true,
       ),
     ];
   }

@@ -1,823 +1,745 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
 import '../../widgets/apple_toast.dart';
-import '../../widgets/apple_inline_badge.dart';
-import '../jobs/job_detail_screen.dart';
+import '../../widgets/company_logo_badge.dart';
 import '../jobs/add_edit_job_screen.dart';
-import '../prep/fresh_grad_prep_screen.dart';
+import '../jobs/job_detail_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+/// Screen 1: Jelajahi Lowongan (Priority Overlapping Deck & Smart Alerts).
+/// Fitur:
+/// - 4 Kartu Prioritas bertumpuk edge-to-edge (0 margin horizontal)
+/// - Peringatan pintar: "⏳ Waktunya Follow-Up HR (H+7)" & "🔴 Interview Mendatang"
+/// - Tombol "+ Tambah" dan "Filter"
+/// - Transisi fluid dan integrasi penuh dengan CRM
+class DashboardScreen extends ConsumerStatefulWidget {
+  final ValueChanged<int>? onNavigateTab;
 
-  Future<void> _openAddJob(
-    BuildContext context, {
-    bool autoFocusPaste = false,
-  }) async {
+  const DashboardScreen({super.key, this.onNavigateTab});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearchActive = false;
+  int _expandedIndex = 3; // Default kartu ke-4 terbuka
+
+  void _openAddJob(BuildContext context) async {
+    HapticFeedback.mediumImpact();
     final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
       context: context,
-      child: AddEditJobScreen(autoFocusPaste: autoFocusPaste),
+      child: const AddEditJobScreen(),
     );
-
-    if (result != null && context.mounted) {
-      AppleToast.success(
-        context,
-        'Lamaran tersimpan!',
-        subtitle: '${result.position} di ${result.companyName}',
-        actionLabel: 'Lihat',
-        onAction: () {
-          AppleSheetWindow.showAppleModalSheet(
-            context: context,
-            child: JobDetailScreen(job: result),
-          );
-        },
-      );
+    if (result != null && mounted) {
+      AppleToast.success(context, 'Lamaran ${result.companyName} berhasil dicatat!');
     }
   }
 
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 11) return 'Selamat pagi';
-    if (h < 15) return 'Selamat siang';
-    if (h < 18) return 'Selamat sore';
-    return 'Selamat malam';
+  void _showFilterModal(BuildContext context) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final isWfh = ref.watch(jobProvider).onlyWfhFilter;
+          final isFav = ref.watch(jobProvider).onlyFavoritesFilter;
+          final currentStatus = ref.watch(jobProvider).selectedStatusFilter;
+
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filter Lamaran',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF121214),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        ref.read(jobProvider.notifier).resetFilters();
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text(
+                        'Reset',
+                        style: TextStyle(
+                          color: Color(0xFF5C44E4),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'TIPE KERJA & FAVORIT',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    FilterChip(
+                      selected: isFav,
+                      label: const Text('Hanya Favorit ★'),
+                      onSelected: (_) {
+                        ref.read(jobProvider.notifier).toggleOnlyFavoritesFilter();
+                        setModalState(() {});
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      selected: isWfh,
+                      label: const Text('WFH / Remote'),
+                      onSelected: (_) {
+                        ref.read(jobProvider.notifier).toggleOnlyWfhFilter();
+                        setModalState(() {});
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'STATUS TAHAPAN SELEKSI',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    'Semua',
+                    'Dikirim',
+                    'Tes / Psikotes',
+                    'Interview HR',
+                    'Interview User',
+                    'Offering',
+                    'Diterima',
+                  ].map((status) {
+                    final isSel = currentStatus == status;
+                    return ChoiceChip(
+                      selected: isSel,
+                      label: Text(status),
+                      onSelected: (_) {
+                        ref.read(jobProvider.notifier).setStatusFilter(status);
+                        setModalState(() {});
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1C1C1E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                    ),
+                    child: const Text(
+                      'Terapkan Filter',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
-    final name = state.userName.isEmpty ? 'Job Seeker' : state.userName;
-    final isDark = AppTheme.isDark(context);
-    final bg = AppTheme.getBackground(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final surfSec = AppTheme.getSurfaceSecondary(context);
+    const bg = AppTheme.warmBackground;
+    const txtPri = AppTheme.textDark;
+    const txtSec = AppTheme.textMuted;
+
+    final displayName = state.userName.isNotEmpty ? state.userName : 'Rizki Pratama';
+    const displayRole = 'Pencari Kerja Aktif';
+
+    // Jika sedang mencari, filter dari seluruh database; jika tidak, tampilkan 4 lamaran prioritas!
+    final displayJobs = _isSearchActive && state.searchQuery.isNotEmpty
+        ? state.jobs.where((job) {
+            final q = state.searchQuery.trim().toLowerCase();
+            return job.position.toLowerCase().contains(q) ||
+                job.companyName.toLowerCase().contains(q) ||
+                (job.location?.toLowerCase().contains(q) ?? false);
+          }).toList()
+        : state.priorityJobs;
 
     return Scaffold(
       backgroundColor: bg,
-      body: state.isLoading
-          ? const Center(child: CupertinoActivityIndicator(radius: 14))
-          : CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // Apple Large Title Navigation Bar with greeting + Add button
-                SliverAppBar(
-                  backgroundColor: bg,
-                  surfaceTintColor: Colors.transparent,
-                  pinned: true,
-                  expandedHeight: 120,
-                  collapsedHeight: 56,
-                  flexibleSpace: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final topPadding = MediaQuery.of(context).padding.top;
-                      const collapsedH = 56.0;
-                      const expandedH = 120.0;
-                      final available = constraints.maxHeight - topPadding;
-                      final progress =
-                          1.0 -
-                          ((available - collapsedH) / (expandedH - collapsedH))
-                              .clamp(0.0, 1.0);
-
-                      return Stack(
-                        children: [
-                          // Large Title (fades out when collapsed)
-                          Positioned(
-                            left: 16,
-                            bottom: 12,
-                            right: 80,
-                            child: Opacity(
-                              opacity: (1.0 - progress * 2.5).clamp(0.0, 1.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '${_greeting()},',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: txtSec,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      fontSize: 34,
-                                      fontWeight: FontWeight.w700,
-                                      color: txtPri,
-                                      letterSpacing: -0.8,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          // Small collapsed title (fades in when collapsed)
-                          Positioned(
-                            left: 16,
-                            bottom: 14,
-                            child: Opacity(
-                              opacity: ((progress - 0.6) * 3.0).clamp(0.0, 1.0),
-                              child: Text(
-                                'Ngelamar',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color: txtPri,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Add button (top-right, always visible)
-                          Positioned(
-                            right: 16,
-                            bottom: 12,
-                            child: GestureDetector(
-                              onTap: () => _openAddJob(context),
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color:
-                                      (isDark
-                                              ? AppTheme.systemBlue
-                                              : AppTheme.lSystemBlue)
-                                          .withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  CupertinoIcons.plus,
-                                  size: 18,
-                                  color: isDark
-                                      ? AppTheme.systemBlue
-                                      : AppTheme.lSystemBlue,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-
-                SliverPadding(
-                  padding: EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    bottom: MediaQuery.of(context).viewPadding.bottom + 100,
-                  ),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      // Response Rate Banner
-                      _buildResponseRateBanner(context, state),
-                      const SizedBox(height: 14),
-
-                      // Fresh Grad Prep Hub CTA
-                      _buildPrepHubCTA(context),
-                      const SizedBox(height: 28),
-
-                      _sectionTitle(context, 'Ringkasan Lamaran'),
-                      const SizedBox(height: 12),
-                      _buildMetricsGrid(context, state),
-                      const SizedBox(height: 28),
-
-                      _buildSmartPasteCTA(context),
-                      const SizedBox(height: 28),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _sectionTitle(context, 'Lamaran Terbaru'),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: surfSec,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '${state.totalCount} Total',
-                              style: TextStyle(
-                                color: txtSec,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      if (state.jobs.isEmpty)
-                        _buildEmptyState(context)
-                      else
-                        ...state.jobs
-                            .take(5)
-                            .map((job) => _buildJobCard(context, job, ref)),
-                    ]),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _sectionTitle(BuildContext context, String title) => Text(
-    title,
-    style: TextStyle(
-      fontSize: 17,
-      fontWeight: FontWeight.w600,
-      color: AppTheme.getTextPrimary(context),
-      letterSpacing: -0.3,
-    ),
-  );
-
-  Widget _buildResponseRateBanner(BuildContext context, JobState state) {
-    final rate = state.responseRate.toStringAsFixed(0);
-    final isDark = AppTheme.isDark(context);
-    final rateColor = state.responseRate >= 50
-        ? (isDark ? AppTheme.systemGreen : AppTheme.lSystemGreen)
-        : state.responseRate >= 20
-        ? (isDark ? AppTheme.systemOrange : AppTheme.lSystemOrange)
-        : AppTheme.getTextSecondary(context);
-
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: surf,
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: rateColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-            ),
-            child: Icon(
-              CupertinoIcons.chart_bar_alt_fill,
-              color: rateColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Response Rate HR',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: txtPri,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  state.jobs.isEmpty
-                      ? 'Belum ada lamaran'
-                      : '${state.jobs.where((j) => j.status != 'Dikirim').length} dari ${state.totalCount} ditanggapi',
-                  style: TextStyle(fontSize: 12, color: txtSec),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$rate%',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: rateColor,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrepHubCTA(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final blue = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
-
-    return AppleBouncyCard(
-      onTap: () => AppleSheetWindow.showAppleModalSheet(
-        context: context,
-        child: const FreshGradPrepScreen(),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surf,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          border: Border.all(
-            color: blue.withValues(alpha: 0.35),
-            width: AppTheme.borderHairline,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: blue.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              ),
-              child: Icon(
-                CupertinoIcons.doc_checkmark_fill,
-                color: blue,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      Text(
-                        'Persiapan Karir Fresh Grad',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: txtPri,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: blue.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'PANDUAN',
-                          style: TextStyle(
-                            color: blue,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Checklist berkas, estimator gaji UMR & panduan interview',
-                    style: TextStyle(color: txtSec, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_right,
-              color: AppTheme.getTextTertiary(context),
-              size: 14,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMetricsGrid(BuildContext context, JobState state) {
-    final isDark = AppTheme.isDark(context);
-    final teal = isDark ? AppTheme.systemTeal : AppTheme.lSystemTeal;
-    final blue = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
-    final orange = isDark ? AppTheme.systemOrange : AppTheme.lSystemOrange;
-    final purple = isDark ? AppTheme.systemPurple : AppTheme.lSystemPurple;
-
-    final items = [
-      _MetricItem(
-        'Total',
-        state.totalCount,
-        teal,
-        CupertinoIcons.tray_fill,
-        'Semua Lamaran',
-      ),
-      _MetricItem(
-        'Dikirim',
-        state.appliedCount,
-        blue,
-        CupertinoIcons.paperplane_fill,
-        'Menunggu HR',
-      ),
-      _MetricItem(
-        'Interview',
-        state.interviewCount,
-        orange,
-        CupertinoIcons.mic_fill,
-        'Proses Seleksi',
-      ),
-      _MetricItem(
-        'Offering',
-        state.offeringCount,
-        purple,
-        CupertinoIcons.gift_fill,
-        'Penawaran Masuk',
-      ),
-    ];
-
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      childAspectRatio: textScale > 1.3 ? 0.95 : 1.25,
-      children: items.map((item) => _buildMetricCard(context, item)).toList(),
-    );
-  }
-
-  Widget _buildMetricCard(BuildContext context, _MetricItem item) {
-    final isDark = AppTheme.isDark(context);
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surf,
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: item.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(item.icon, color: item.color, size: 15),
-              ),
-              Text(
-                '${item.count}',
-                style: TextStyle(
-                  color: item.color,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            item.title,
-            style: TextStyle(
-              color: txtPri,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            item.subtitle,
-            style: TextStyle(color: txtSec, fontSize: 11),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSmartPasteCTA(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final surf = AppTheme.getSurface(context);
-    final green = isDark ? AppTheme.systemGreen : AppTheme.lSystemGreen;
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return AppleBouncyCard(
-      onTap: () => _openAddJob(context, autoFocusPaste: true),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surf,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          border: Border.all(
-            color: green.withValues(alpha: 0.3),
-            width: AppTheme.borderHairline,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: green.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              ),
-              child: Icon(CupertinoIcons.bolt_fill, color: green, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Isi Otomatis',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: txtPri,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Paste teks loker, form terisi otomatis',
-                    style: TextStyle(color: txtSec, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              CupertinoIcons.chevron_right,
-              color: AppTheme.getTextTertiary(context),
-              size: 14,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJobCard(
-    BuildContext context,
-    JobApplication job,
-    WidgetRef ref,
-  ) {
-    final isDark = AppTheme.isDark(context);
-    final statusColor = AppTheme.getStatusColor(job.status, isDark: isDark);
-    final diffDays = DateTime.now().difference(job.appliedDate).inDays;
-    final daysAgo = diffDays < 0 ? 0 : diffDays;
-    final timeStr = daysAgo == 0
-        ? 'Hari ini'
-        : daysAgo == 1
-        ? 'Kemarin'
-        : '$daysAgo hr lalu';
-
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final txtTer = AppTheme.getTextTertiary(context);
-
-    return RepaintBoundary(
-      child: AppleBouncyCard(
-        onTap: () => AppleSheetWindow.showAppleModalSheet(
-          context: context,
-          child: JobDetailScreen(job: job),
-        ),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: surf,
-            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // ── TOP PROFILE BAR ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Row(
                   children: [
+                    // Profile Avatar
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF333336),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.person_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // User Name & Role
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            job.position,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
+                            displayName,
+                            style: const TextStyle(
                               fontSize: 15,
-                              letterSpacing: -0.2,
+                              fontWeight: FontWeight.w800,
                               color: txtPri,
+                              letterSpacing: -0.3,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            job.companyName,
-                            style: TextStyle(color: txtSec, fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 1),
+                          const Text(
+                            displayRole,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: txtSec,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        job.status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
+
+                    // Circular Search Button
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _isSearchActive = !_isSearchActive;
+                          if (!_isSearchActive) {
+                            _searchController.clear();
+                            ref.read(jobProvider.notifier).setSearchQuery('');
+                          }
+                        });
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFDCD8CE),
+                            width: 1.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.search_rounded,
+                          size: 20,
+                          color: Color(0xFF121214),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 6,
-                        children: [
-                          AppleInlineBadge(
-                            icon: CupertinoIcons.briefcase,
-                            label: job.workType,
-                          ),
-                          if (job.location != null)
-                            AppleInlineBadge(
-                              icon: CupertinoIcons.location,
-                              label: job.location!,
-                            ),
-                        ],
+              ),
+
+              // Search Bar (if active)
+              if (_isSearchActive) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Cari posisi, perusahaan, atau kota...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
                       ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () =>
-                          ref.read(jobProvider.notifier).toggleFavorite(job.id),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          job.isFavorite
-                              ? CupertinoIcons.star_fill
-                              : CupertinoIcons.star,
-                          color: job.isFavorite
-                              ? AppTheme.systemOrange
-                              : txtTer,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      timeStr,
-                      style: TextStyle(color: txtTer, fontSize: 11),
-                    ),
-                  ],
+                    onChanged: (v) => ref.read(jobProvider.notifier).setSearchQuery(v),
+                  ),
                 ),
               ],
-            ),
+
+              const SizedBox(height: 14),
+
+              // ── LARGE TITLE & ACTIONS ROW ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // JELAJAHI LOWONGAN
+                    const Text(
+                      'JELAJAHI\nLOWONGAN',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF121214),
+                        letterSpacing: -1.2,
+                        height: 1.0,
+                      ),
+                    ),
+
+                    // Actions: [+ Tambah] & [Filter]
+                    Row(
+                      children: [
+                        // "+ Tambah" Action Pill
+                        GestureDetector(
+                          onTap: () => _openAddJob(context),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1C1C1E),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Tambah',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // "Filter" Pill Button
+                        GestureDetector(
+                          onTap: () => _showFilterModal(context),
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFDCD8CE),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.tune_rounded,
+                                  size: 15,
+                                  color: Color(0xFF121214),
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Filter',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF121214),
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── FULL-WIDTH EDGE-TO-EDGE OVERLAPPING CARD STACK ──
+              if (displayJobs.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.folder_open_rounded,
+                          size: 48,
+                          color: Color(0xFF8E8E93),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Belum ada lamaran tersimpan',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF121214),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Ketuk "+ Tambah" atau cari loker di tab "Cari Loker"!',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF707074)),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                _buildEdgeToEdgeStackedDeck(displayJobs),
+
+              // ── TOMBOL PINTAS: LIHAT SEMUA LAMARAN ──
+              if (state.jobs.length > 4) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                  child: Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        widget.onNavigateTab?.call(2); // Navigasi ke Tab Lamaran Lengkap
+                      },
+                      icon: const Icon(Icons.list_alt_rounded, color: Color(0xFF1C1C1E)),
+                      label: Text(
+                        'Lihat Seluruh ${state.jobs.length} Lamaran Tersimpan →',
+                        style: const TextStyle(
+                          color: Color(0xFF1C1C1E),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 120),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final txtTer = AppTheme.getTextTertiary(context);
+  Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs) {
+    return Column(
+      children: List.generate(jobs.length, (index) {
+        final job = jobs[index];
+        final isExpanded = index == _expandedIndex;
+        final cardColor = AppTheme.getCompanyCardColor(job.companyName);
+        final isDarkText =
+            cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
+        final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: surf,
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(CupertinoIcons.tray, size: 40, color: txtTer),
-          const SizedBox(height: 12),
-          Text(
-            'Belum Ada Lamaran',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: txtPri,
+        final isLast = index == jobs.length - 1;
+        final topMargin = index == 0 ? 0.0 : -24.0;
+
+        // Cek peringatan pintar H+7 Follow-Up
+        final daysSinceApplied = DateTime.now().difference(job.appliedDate).inDays;
+        final needsFollowup = job.status == 'Dikirim' && daysSinceApplied >= 7;
+
+        return GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _expandedIndex = index;
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.fastOutSlowIn,
+            width: double.infinity,
+            margin: EdgeInsets.only(top: topMargin),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.vertical(
+                top: const Radius.circular(32),
+                bottom: isLast || isExpanded
+                    ? const Radius.circular(32)
+                    : const Radius.circular(0),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 18,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.fastOutSlowIn,
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  22,
+                  20,
+                  22,
+                  isExpanded ? 50 : 42,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top Row: Logo + Company Name + Smart Alert / Arrow
+                    Row(
+                      children: [
+                        CompanyLogoBadge(
+                          companyName: job.companyName,
+                          size: 42,
+                        ),
+                        const SizedBox(width: 14),
+
+                        // Company Name
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                job.companyName,
+                                style: TextStyle(
+                                  fontSize: 18.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                  letterSpacing: -0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (needsFollowup) ...[
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    '⏳ H+7 Waktunya Follow-Up',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+
+                        // Diagonal Arrow in Circular White Container
+                        if (!isExpanded)
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => JobDetailScreen(job: job),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.arrow_outward_rounded,
+                                  size: 18,
+                                  color: Color(0xFF121214),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    // Expanded Card Body (Position Title, Salary, Details Button)
+                    if (isExpanded) ...[
+                      const SizedBox(height: 18),
+
+                      // Position Title
+                      Text(
+                        job.position,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: titleColor,
+                          letterSpacing: -0.5,
+                          height: 1.18,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // Bottom Row: Salary in Rp & Right Chevron >
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => JobDetailScreen(job: job),
+                            ),
+                          );
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              job.salaryOffered != null && job.salaryOffered!.isNotEmpty
+                                  ? job.salaryOffered!
+                                  : 'Rp 25.000.000 / bln',
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  'Lihat Detail',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: titleColor.withValues(alpha: 0.85),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 22,
+                                  color: titleColor,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Mulai lacak lamaran kerjamu sekarang.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: txtSec, fontSize: 13),
-          ),
-        ],
-      ),
+        );
+      }),
     );
   }
-}
-
-class _MetricItem {
-  final String title;
-  final int count;
-  final Color color;
-  final IconData icon;
-  final String subtitle;
-  _MetricItem(this.title, this.count, this.color, this.icon, this.subtitle);
 }

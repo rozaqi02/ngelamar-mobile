@@ -7,10 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
-
-import '../../widgets/apple_sheet_window.dart';
 import '../prep/fresh_grad_prep_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -42,13 +39,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
-  // ─────────────────────── Data Actions ────────────────────────────
-
   void _exportData() {
     final jobs = ref.read(jobProvider).jobs;
     final jsonList = jobs.map((j) => j.toMap()).toList();
     final jsonStr = const JsonEncoder.withIndent('  ').convert(jsonList);
-
     Share.share(jsonStr, subject: 'Backup Data Ngelamar App');
   }
 
@@ -56,12 +50,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final jobs = ref.read(jobProvider).jobs;
     final jsonList = jobs.map((j) => j.toMap()).toList();
     final jsonStr = jsonEncode(jsonList);
-
     Clipboard.setData(ClipboardData(text: jsonStr));
-    _showSnackbar(
-      'Data backup JSON berhasil disalin ke Clipboard!',
-      color: AppTheme.systemGreen,
-    );
+    AppleToast.success(context, 'Data backup JSON disalin ke Clipboard');
   }
 
   void _shareTextReport() {
@@ -73,16 +63,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     buffer.writeln('✈️ Dikirim: ${state.appliedCount}');
     buffer.writeln('🎙️ Interview: ${state.interviewCount}');
     buffer.writeln('🎁 Offering: ${state.offeringCount}');
-    buffer.writeln(
-      '📈 Response Rate: ${state.responseRate.toStringAsFixed(0)}%',
-    );
+    buffer.writeln('📈 Response Rate: ${state.responseRate.toStringAsFixed(0)}%');
     buffer.writeln('==============================\n');
 
     for (var i = 0; i < state.jobs.length; i++) {
       final j = state.jobs[i];
-      buffer.writeln(
-        '${i + 1}. ${j.position} - ${j.companyName} [${j.status}]',
-      );
+      buffer.writeln('${i + 1}. ${j.position} - ${j.companyName} [${j.status}]');
     }
 
     Share.share(buffer.toString(), subject: 'Laporan Progres Ngelamar App');
@@ -91,39 +77,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _importData() async {
     final text = _importController.text.trim();
     if (text.isEmpty) {
-      _showSnackbar(
-        'Silakan tempel teks JSON backup dahulu!',
-        color: AppTheme.systemOrange,
-      );
+      AppleToast.warning(context, 'Tempel teks JSON backup terlebih dahulu.');
       return;
     }
 
     try {
       final decoded = jsonDecode(text);
-      if (decoded is! List) {
-        throw const FormatException('Root backup harus berupa daftar.');
-      }
-      final importedJobs = decoded.map((item) {
-        if (item is! Map) {
-          throw const FormatException('Isi backup harus berupa objek.');
-        }
-        return JobApplication.fromMap(Map<String, dynamic>.from(item));
-      }).toList();
+      if (decoded is! List) throw const FormatException();
+      final importedJobs = decoded.map((item) => JobApplication.fromMap(Map<String, dynamic>.from(item))).toList();
       await ref.read(jobProvider.notifier).importJobs(importedJobs);
 
       _importController.clear();
       if (mounted) {
-        _showSnackbar(
-          '🎉 Berhasil mengimpor ${importedJobs.length} data lamaran!',
-          color: AppTheme.systemGreen,
-        );
+        AppleToast.success(context, 'Berhasil mengimpor ${importedJobs.length} data lamaran!');
       }
-    } catch (e) {
-      if (!mounted) return;
-      _showSnackbar(
-        'Format JSON tidak valid. Periksa kembali teks backup.',
-        color: AppTheme.systemRed,
-      );
+    } catch (_) {
+      if (mounted) AppleToast.error(context, 'Format JSON backup tidak valid.');
     }
   }
 
@@ -132,517 +101,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (_) => CupertinoAlertDialog(
         title: const Text('Hapus Semua Data?'),
-        content: const Text(
-          'Semua data lamaran akan dihapus permanen. Pastikan sudah backup terlebih dahulu.',
-        ),
+        content: const Text('Semua data lamaran akan dihapus permanen.'),
         actions: [
-          CupertinoDialogAction(
-            child: const Text('Batal'),
-            onPressed: () => Navigator.pop(context, false),
-          ),
+          CupertinoDialogAction(child: const Text('Batal'), onPressed: () => Navigator.pop(context, false)),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
             child: const Text('Hapus Semua'),
+            onPressed: () => Navigator.pop(context, true),
           ),
         ],
       ),
     );
     if (confirm == true) {
       await ref.read(jobProvider.notifier).clearAllJobs();
-      if (mounted) {
-        _showSnackbar(
-          'Semua data berhasil dihapus.',
-          color: AppTheme.systemRed,
-        );
-      }
+      if (mounted) AppleToast.success(context, 'Semua data telah dibersihkan.');
     }
   }
 
-  void _showSnackbar(String msg, {required Color color}) {
-    if (color == AppTheme.systemGreen) {
-      AppleToast.success(context, msg);
-    } else if (color == AppTheme.systemRed) {
-      AppleToast.error(context, msg);
-    } else {
-      AppleToast.warning(context, msg);
-    }
-  }
-
-  // ─────────────────────── UI ──────────────────────────────────────
-
-  @override
-  Widget build(BuildContext context) {
-    final state = ref.watch(jobProvider);
-    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
-    final bg = AppTheme.getBackground(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final txtTer = AppTheme.getTextTertiary(context);
-
-    return Scaffold(
-      backgroundColor: bg,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // Apple Large Title Navigation Bar
-          SliverAppBar(
-            backgroundColor: bg,
-            surfaceTintColor: Colors.transparent,
-            pinned: true,
-            expandedHeight: 100,
-            collapsedHeight: 56,
-            flexibleSpace: LayoutBuilder(
-              builder: (context, constraints) {
-                final topPadding = MediaQuery.of(context).padding.top;
-                const collapsedH = 56.0;
-                const expandedH = 100.0;
-                final available = constraints.maxHeight - topPadding;
-                final progress =
-                    1.0 -
-                    ((available - collapsedH) / (expandedH - collapsedH)).clamp(
-                      0.0,
-                      1.0,
-                    );
-
-                return Stack(
-                  children: [
-                    // Large title
-                    Positioned(
-                      left: 16,
-                      bottom: 12,
-                      child: Opacity(
-                        opacity: (1.0 - progress * 2.5).clamp(0.0, 1.0),
-                        child: Text(
-                          'Pengaturan',
-                          style: TextStyle(
-                            fontSize: 34,
-                            fontWeight: FontWeight.w700,
-                            color: txtPri,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Collapsed title
-                    Positioned(
-                      left: 16,
-                      bottom: 14,
-                      child: Opacity(
-                        opacity: ((progress - 0.6) * 3.0).clamp(0.0, 1.0),
-                        child: Text(
-                          'Pengaturan',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: txtPri,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          // Settings Content
-          SliverPadding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: bottomInset + 100,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // ── Identitas Diri ──────────────────────────────────
-                _sectionLabel('IDENTITAS'),
-                _settingsCard([
-                  _buildIdentityRow(
-                    icon: CupertinoIcons.person_fill,
-                    iconColor: AppTheme.systemBlue,
-                    title: 'Nama Panjang',
-                    value: state.userName.isEmpty ? 'Belum diisi' : state.userName,
-                    onTap: () => _showEditIdentityDialog(isName: true),
-                  ),
-                  _divider(),
-                  _buildIdentityRow(
-                    icon: CupertinoIcons.mail,
-                    iconColor: AppTheme.systemTeal,
-                    title: 'Email',
-                    value: state.userEmail.isEmpty ? 'Belum diisi' : state.userEmail,
-                    onTap: () => _showEditIdentityDialog(isName: false),
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Fitur Unggulan Pembeda ────────────────────────────
-                _sectionLabel('PANDUAN & PERSIAPAN'),
-                _settingsCard([
-                  _buildActionRow(
-                    icon: CupertinoIcons.doc_checkmark_fill,
-                    iconColor: AppTheme.systemBlue,
-                    title: 'Persiapan Karir Fresh Grad',
-                    subtitle:
-                        'Checklist berkas, estimator gaji UMR & panduan interview',
-                    onTap: () => AppleSheetWindow.showAppleModalSheet(
-                      context: context,
-                      child: const FreshGradPrepScreen(),
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Tampilan ────────────────────────────────────────
-                _sectionLabel('TAMPILAN'),
-                _settingsCard([
-                  _buildSwitchRow(
-                    icon: CupertinoIcons.moon_fill,
-                    iconColor: AppTheme.systemIndigo,
-                    title: 'Mode Gelap',
-                    subtitle: state.isDarkMode
-                        ? 'Aktif'
-                        : 'Nonaktif (Mode Terang)',
-                    value: state.isDarkMode,
-                    onChanged: (_) =>
-                        ref.read(jobProvider.notifier).toggleThemeMode(),
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Ekspor & Laporan ─────────────────────────────────
-                _sectionLabel('EKSPOR & LAPORAN'),
-                _settingsCard([
-                  _buildActionRow(
-                    icon: CupertinoIcons.share,
-                    iconColor: AppTheme.systemBlue,
-                    title: 'Bagikan Laporan Teks',
-                    subtitle: 'Kirim rekap ke WhatsApp / Catatan',
-                    onTap: _shareTextReport,
-                  ),
-                  _divider(),
-                  _buildActionRow(
-                    icon: CupertinoIcons.arrow_up_doc,
-                    iconColor: AppTheme.systemGreen,
-                    title: 'Export JSON Backup',
-                    subtitle: 'Simpan & kirim file backup data',
-                    onTap: _exportData,
-                  ),
-                  _divider(),
-                  _buildActionRow(
-                    icon: CupertinoIcons.doc_on_clipboard,
-                    iconColor: AppTheme.systemTeal,
-                    title: 'Salin Backup ke Clipboard',
-                    subtitle: 'Copy teks JSON backup',
-                    onTap: _copyBackupText,
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Impor & Pulihkan Data ────────────────────────────
-                _sectionLabel('IMPOR & PULIHKAN DATA'),
-                _settingsCard([
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              CupertinoIcons.arrow_down_doc,
-                              color: AppTheme.systemOrange,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Pulihkan Data (Restore)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: txtPri,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Tempel teks JSON backup di bawah ini',
-                                    style: TextStyle(
-                                      color: txtSec,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _importController,
-                          maxLines: 4,
-                          style: TextStyle(fontSize: 13, color: txtPri),
-                          decoration: const InputDecoration(
-                            hintText: 'Tempel kode JSON backup di sini...',
-                            contentPadding: EdgeInsets.all(12),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            onPressed: _importData,
-                            child: Container(
-                              height: 46,
-                              decoration: BoxDecoration(
-                                color: AppTheme.systemOrange,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.arrow_down_doc,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Impor Data Sekarang',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Statistik ───────────────────────────────────────
-                _sectionLabel('STATISTIK'),
-                _settingsCard([
-                  _buildStatRow('Total Lamaran', '${state.totalCount}'),
-                  _divider(),
-                  _buildStatRow(
-                    'Diterima',
-                    '${state.acceptedCount}',
-                    valueColor: AppTheme.systemGreen,
-                  ),
-                  _divider(),
-                  _buildStatRow(
-                    'Ditolak',
-                    '${state.rejectedCount}',
-                    valueColor: AppTheme.systemRed,
-                  ),
-                  _divider(),
-                  _buildStatRow(
-                    'Response Rate',
-                    '${state.responseRate.toStringAsFixed(0)}%',
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Berbahaya ────────────────────────────────────────
-                _sectionLabel('ZONA BAHAYA'),
-                _settingsCard([
-                  _buildActionRow(
-                    icon: CupertinoIcons.trash,
-                    iconColor: AppTheme.systemRed,
-                    title: 'Hapus Semua Data',
-                    subtitle: 'Menghapus seluruh data lamaran',
-                    titleColor: AppTheme.systemRed,
-                    showChevron: false,
-                    onTap: _clearAllData,
-                  ),
-                ]),
-                const SizedBox(height: 24),
-
-                // ── Tentang Aplikasi ─────────────────────────────────
-                _sectionLabel('TENTANG APLIKASI'),
-                _settingsCard([
-                  _buildActionRow(
-                    icon: CupertinoIcons.share,
-                    iconColor: AppTheme.systemBlue,
-                    title: 'Bagikan Aplikasi',
-                    subtitle: 'Bagikan Ngelamar ke teman pencari kerja',
-                    onTap: () {
-                      Share.share(
-                        'Coba aplikasi Ngelamar, Personal Career CRM untuk melacak dan mengelola seluruh lamaran kerjamu secara instan!',
-                      );
-                    },
-                  ),
-                  _divider(),
-                  _buildInfoRow(
-                    'Versi Aplikasi',
-                    '$_appVersion ($_buildNumber)',
-                  ),
-                  _divider(),
-                  _buildInfoRow('Developer', 'idka-solutions team'),
-                  _divider(),
-                  _buildInfoRow('Framework', 'Flutter + Riverpod'),
-                ]),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    '\u00a9 ${DateTime.now().year} Ngelamar App. All rights reserved.',
-                    style: TextStyle(color: txtTer, fontSize: 11),
-                  ),
-                ),
-              ]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: AppTheme.getTextTertiary(context),
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
-  }
-
-  Widget _settingsCard(List<Widget> children) {
-    final surf = AppTheme.getSurface(context);
-    final bdr = AppTheme.getBorder(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: surf,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSettings),
-        border: Border.all(color: bdr, width: AppTheme.borderHairline),
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _divider() => Container(
-    height: 0.5,
-    margin: const EdgeInsets.only(left: 50),
-    color: AppTheme.getBorder(context),
-  );
-
-  Widget _buildIdentityRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: iconColor,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(icon, color: Colors.white, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w400,
-                      fontSize: 13,
-                      color: txtSec,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: txtPri,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              CupertinoIcons.pencil,
-              color: AppTheme.systemBlue,
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showEditIdentityDialog({required bool isName}) {
-    final controller = isName ? _nameController : _emailController;
-    if (isName) {
-      _nameController.text = ref.read(jobProvider).userName;
-    } else {
-      _emailController.text = ref.read(jobProvider).userEmail;
-    }
+  void _showEditProfileDialog() {
+    _nameController.text = ref.read(jobProvider).userName;
+    _emailController.text = ref.read(jobProvider).userEmail;
 
     showCupertinoDialog(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
-        title: Text(isName ? 'Ubah Nama Panjang' : 'Ubah Email'),
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Edit Profil'),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: CupertinoTextField(
-            controller: controller,
-            placeholder: isName ? 'Nama Panjang kamu...' : 'contoh@email.com',
-            autofocus: true,
-            keyboardType: isName ? TextInputType.name : TextInputType.emailAddress,
-            textCapitalization: isName ? TextCapitalization.words : TextCapitalization.none,
+          child: Column(
+            children: [
+              CupertinoTextField(
+                controller: _nameController,
+                placeholder: 'Nama Lengkap...',
+              ),
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: _emailController,
+                placeholder: 'Email...',
+              ),
+            ],
           ),
         ),
         actions: [
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Batal'),
-            onPressed: () => Navigator.pop(context),
-          ),
+          CupertinoDialogAction(child: const Text('Batal'), onPressed: () => Navigator.pop(ctx)),
           CupertinoDialogAction(
             child: const Text('Simpan'),
             onPressed: () async {
-              final val = controller.text.trim();
-              if (isName) {
-                await ref.read(jobProvider.notifier).setUserName(val);
-              } else {
-                await ref.read(jobProvider.notifier).setUserEmail(val);
-              }
-              if (mounted) Navigator.pop(context);
+              await ref.read(jobProvider.notifier).setUserName(_nameController.text.trim());
+              await ref.read(jobProvider.notifier).setUserEmail(_emailController.text.trim());
+              if (mounted) Navigator.pop(ctx);
             },
           ),
         ],
@@ -650,170 +157,250 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSwitchRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(jobProvider);
+    final isDark = AppTheme.isDark(context);
+    final bg = AppTheme.getBackground(context);
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
     final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: iconColor,
-              borderRadius: BorderRadius.circular(AppTheme.radiusBadge),
-            ),
-            child: Icon(icon, color: Colors.white, size: 16),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
+    return Scaffold(
+      backgroundColor: bg,
+      body: SafeArea(
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Text(
+                  'PROFIL &\nPENGATURAN',
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
                     color: txtPri,
+                    letterSpacing: -1.2,
+                    height: 1.0,
                   ),
                 ),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: txtSec)),
-              ],
-            ),
-          ),
-          CupertinoSwitch(
-            value: value,
-            activeTrackColor: AppTheme.systemBlue,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? titleColor,
-    bool showChevron = true,
-  }) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final txtTer = AppTheme.getTextTertiary(context);
-
-    return AppleBouncyCard(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: iconColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusBadge),
               ),
-              child: Icon(icon, color: Colors.white, size: 16),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: titleColor ?? txtPri,
+
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // User Profile Hero Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF19191B),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(CupertinoIcons.person_fill, color: Color(0xFF19191B), size: 28),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                state.userName.isNotEmpty ? state.userName : 'Michel Clark',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                state.userEmail.isNotEmpty ? state.userEmail : 'Software Engineer',
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _showEditProfileDialog,
+                          icon: const Icon(CupertinoIcons.pencil, color: Colors.white),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: txtSec)),
-                ],
+
+                  const SizedBox(height: 18),
+
+                  // Data & Backup Section
+                  _sectionHeader('BACKUP & EKSPOR DATA'),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                      border: Border.all(color: const Color(0xFFE6E3D8)),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildSettingTile(
+                          icon: CupertinoIcons.share,
+                          color: AppTheme.cardPurple,
+                          title: 'Bagikan Laporan Teks',
+                          subtitle: 'Kirim rekap status ke WhatsApp / Catatan',
+                          onTap: _shareTextReport,
+                        ),
+                        const Divider(height: 1, indent: 54),
+                        _buildSettingTile(
+                          icon: CupertinoIcons.doc_on_doc,
+                          color: AppTheme.cardYellow,
+                          title: 'Salin JSON Backup',
+                          subtitle: 'Simpan backup ke Clipboard',
+                          onTap: _copyBackupText,
+                        ),
+                        const Divider(height: 1, indent: 54),
+                        _buildSettingTile(
+                          icon: CupertinoIcons.arrow_up_doc,
+                          color: AppTheme.cardGreen,
+                          title: 'Ekspor File JSON',
+                          subtitle: 'Kirim file backup ke cloud / chat',
+                          onTap: _exportData,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Restore Section
+                  _sectionHeader('PULIHKAN DATA (RESTORE)'),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                      border: Border.all(color: const Color(0xFFE6E3D8)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _importController,
+                          maxLines: 3,
+                          style: const TextStyle(fontSize: 12),
+                          decoration: const InputDecoration(
+                            hintText: 'Tempel teks JSON backup di sini...',
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _importData,
+                            icon: const Icon(CupertinoIcons.arrow_down_doc, size: 16),
+                            label: const Text('Impor & Pulihkan'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF19191B),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Danger Zone
+                  _sectionHeader('ZONA BERSIH DATA'),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                      border: Border.all(color: const Color(0xFFE6E3D8)),
+                    ),
+                    child: _buildSettingTile(
+                      icon: CupertinoIcons.trash,
+                      color: AppTheme.systemRed,
+                      title: 'Hapus Semua Data',
+                      subtitle: 'Menghapus seluruh lamaran yang tersimpan',
+                      onTap: _clearAllData,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // App Info
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Ngelamar v$_appVersion ($_buildNumber)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Personal Career CRM • idka-solutions team',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
               ),
             ),
-            if (showChevron)
-              Icon(CupertinoIcons.chevron_right, color: txtTer, size: 14),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatRow(String label, String value, {Color? valueColor}) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
+  Widget _sectionHeader(String label) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                color: txtPri,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: valueColor ?? txtSec,
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label, style: TextStyle(fontSize: 15, color: txtPri)),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 14,
-                color: txtSec,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-        ],
+  Widget _buildSettingTile({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 18),
       ),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+      trailing: const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+      onTap: onTap,
     );
   }
 }

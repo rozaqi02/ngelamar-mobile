@@ -147,7 +147,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _descriptionController.text = text;
     });
 
-    // Check duplicate
     final jobs = ref.read(jobProvider).jobs;
     final isDup = jobs.any(
       (j) =>
@@ -160,13 +159,13 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         context,
         'Peringatan Lamaran Duplikat',
         subtitle:
-            'Lamaran posisi "${result.position}" di ${result.companyName} sudah pernah dicatat.',
+            'Lamaran "${result.position}" di ${result.companyName} sudah pernah dicatat.',
       );
     } else {
       AppleToast.success(
         context,
         'Pengisian Otomatis Berhasil!',
-        subtitle: 'Terdeteksi: ${result.position} di ${result.companyName}',
+        subtitle: '${result.position} di ${result.companyName}',
       );
     }
   }
@@ -175,10 +174,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: const Text('Unggah / Pindai Gambar Loker'),
-        message: const Text(
-          'Sistem akan menganalisis teks dari poster atau screenshot iklan loker',
-        ),
+        title: const Text('Pindai Poster / Screenshot Loker'),
         actions: [
           CupertinoActionSheetAction(
             onPressed: () {
@@ -230,7 +226,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
       String extractedText = '';
 
-      // 1. Coba pemindaian OCR native via Google ML Kit
       try {
         final inputImage = InputImage.fromFilePath(image.path);
         final textRecognizer =
@@ -241,12 +236,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
         extractedText = recognizedText.text.trim();
       } catch (ocrError) {
-        debugPrint('ML Kit OCR Native error (Fallback active): $ocrError');
-      }
-
-      // 2. Jika OCR ML Kit tidak mengembalikan teks / tidak didukung di platform ini, gunakan Smart Fallback Extractor
-      if (extractedText.isEmpty) {
-        extractedText = _smartFallbackImageTextExtractor(image);
+        debugPrint('OCR error: $ocrError');
       }
 
       if (extractedText.trim().isEmpty) {
@@ -266,23 +256,16 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       AppleToast.success(
         context,
         'Gambar Berhasil Dipindai!',
-        subtitle: 'Teks dari gambar iklan loker telah diisikan otomatis ke form.',
+        subtitle: 'Data loker telah diisikan otomatis ke formulir.',
       );
     } catch (e) {
-      debugPrint('Error picking/processing image: $e');
       if (!mounted) return;
       AppleToast.warning(
         context,
         'Gagal Membaca Gambar',
-        subtitle: 'Pastikan izin galeri/kamera diizinkan di perangkat Anda.',
+        subtitle: 'Periksa izin akses galeri/kamera Anda.',
       );
     }
-  }
-
-  String _smartFallbackImageTextExtractor(XFile image) {
-    // Tanpa halusinasi: jika OCR native tidak menemukan teks, kembalikan string kosong
-    // agar aplikasi secara jujur menginfokan ke pengguna bahwa gambar tidak mengandung teks terbaca.
-    return '';
   }
 
   Future<void> _saveJob() async {
@@ -330,59 +313,34 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
 
     try {
-      // Simpan data ke Hive terlebih dahulu - ini operasi utama.
       if (isEdit) {
         await ref.read(jobProvider.notifier).updateJob(newJob);
       } else {
         await ref.read(jobProvider.notifier).addJob(newJob);
       }
 
-      // Minta izin notifikasi SETELAH data berhasil disimpan.
-      // Kegagalan minta izin tidak membatalkan penyimpanan data.
       if (newJob.interviewDate != null && mounted) {
         NotificationService.requestPermission().catchError((Object error) {
-          debugPrint('Permintaan izin notifikasi gagal (diabaikan): $error');
+          debugPrint('Permintaan izin notifikasi gagal: $error');
           return false;
         });
       }
 
       if (!mounted) return;
       Navigator.pop(context, newJob);
-    } catch (error, stackTrace) {
-      debugPrint('Error saat menyimpan lamaran: $error\n$stackTrace');
+    } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      AppleToast.error(
-        context,
-        'Lamaran gagal disimpan',
-        subtitle: 'Periksa penyimpanan perangkat lalu coba lagi.',
-      );
+      AppleToast.error(context, 'Lamaran gagal disimpan.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.jobToEdit != null;
-    final surfSec = AppTheme.getSurfaceSecondary(context);
-    final bdr = AppTheme.getBorder(context);
+    final isDark = AppTheme.isDark(context);
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
     final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final media = MediaQuery.of(context);
-    final compact = media.size.width < 390 || media.textScaler.scale(1) > 1.25;
-
-    Widget responsivePair(Widget first, Widget second) {
-      if (compact) {
-        return Column(children: [first, const SizedBox(height: 14), second]);
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: first),
-          const SizedBox(width: 12),
-          Expanded(child: second),
-        ],
-      );
-    }
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -392,164 +350,89 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header title row for modal window
+            // Modal Header
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: txtPri,
-                    ),
-                    maxLines: 2,
+                Text(
+                  isEdit ? 'Edit Lamaran' : 'Tambah Lowongan',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: txtPri,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: surfSec,
+                      color: Colors.black.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(CupertinoIcons.xmark, size: 16, color: txtSec),
+                    child: const Icon(CupertinoIcons.xmark, size: 16),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Pengisian Otomatis Teks & Pindai Gambar Loker (Apple Card Style)
+            // Smart OCR & Paste Card
             if (!isEdit) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: surfSec,
+                  color: AppTheme.cardYellow.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                  border: Border.all(
-                    color: AppTheme.systemBlue.withValues(alpha: 0.35),
-                  ),
+                  border: Border.all(color: AppTheme.cardYellow),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.systemBlue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.sparkles,
-                            color: AppTheme.systemBlue,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Pengisian Otomatis Teks & Gambar',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: txtPri,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Tempel deskripsi atau unggah screenshot gambar loker',
-                                style: TextStyle(fontSize: 12, color: txtSec),
-                              ),
-                            ],
-                          ),
+                        Icon(CupertinoIcons.sparkles, color: Color(0xFFB8860B), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Isi Otomatis dari Teks / Foto Loker',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-
+                    const SizedBox(height: 10),
                     TextField(
                       controller: _pasteController,
-                      maxLines: 4,
-                      style: TextStyle(fontSize: 13, color: txtPri),
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 13),
                       decoration: const InputDecoration(
-                        hintText:
-                            'Contoh: Lowongan Backend Dev di PT Shopee Indonesia, Gaji 10jt - 15jt, Lokasi Jakarta...',
+                        hintText: 'Tempel teks iklan loker di sini...',
+                        fillColor: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: _parsePastedText,
-                            icon: const Icon(
-                              CupertinoIcons.wand_stars,
-                              size: 16,
-                            ),
-                            label: const Text('Isi dari Teks'),
+                            icon: const Icon(CupertinoIcons.wand_stars, size: 16),
+                            label: const Text('Isi Teks', style: TextStyle(fontSize: 13)),
                             style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF19191B),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _pickAndAnalyzeImage,
-                            icon: const Icon(
-                              CupertinoIcons.camera_viewfinder,
-                              size: 16,
-                              color: AppTheme.systemBlue,
-                            ),
-                            label: const Text(
-                              'Pindai Gambar',
-                              style: TextStyle(
-                                color: AppTheme.systemBlue,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            icon: const Icon(CupertinoIcons.camera, size: 16),
+                            label: const Text('Pindai Foto', style: TextStyle(fontSize: 13)),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              side: BorderSide(
-                                color: AppTheme.systemBlue.withValues(alpha: 0.5),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    Row(
-                      children: [
-                        const Icon(
-                          CupertinoIcons.info_circle,
-                          size: 14,
-                          color: AppTheme.systemBlue,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Fitur Isi Otomatis akan mendeteksi dan menginput field: Posisi, Perusahaan, Tipe Kerja, Gaji Range, Lokasi, dan Deskripsi.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: txtSec,
-                              height: 1.3,
+                              side: const BorderSide(color: Color(0xFF19191B), width: 1.5),
                             ),
                           ),
                         ),
@@ -558,521 +441,174 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
             ],
 
-            // Grouped Form Card
-            Text(
-              'Informasi Utama',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-                color: txtPri,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-
+            // Main Form Fields Container
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: surfSec,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: bdr),
+                color: cardBg,
+                borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                border: Border.all(color: const Color(0xFFE6E3D8)),
               ),
               child: Column(
                 children: [
                   TextFormField(
                     controller: _positionController,
                     textCapitalization: TextCapitalization.words,
-                    style: TextStyle(color: txtPri),
                     decoration: const InputDecoration(
-                      labelText: 'Posisi Melamar *',
-                      hintText: 'Contoh: Junior Frontend Developer',
+                      labelText: 'Posisi Lowongan *',
+                      hintText: 'Contoh: Software Development Engineer',
                       prefixIcon: Icon(CupertinoIcons.briefcase, size: 18),
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty
-                        ? 'Posisi wajib diisi'
-                        : null,
+                    validator: (val) => val == null || val.trim().isEmpty ? 'Posisi wajib diisi' : null,
                   ),
                   const SizedBox(height: 14),
 
                   TextFormField(
                     controller: _companyController,
                     textCapitalization: TextCapitalization.words,
-                    style: TextStyle(color: txtPri),
                     decoration: const InputDecoration(
                       labelText: 'Nama Perusahaan *',
-                      hintText: 'Contoh: PT GoTo Indonesia',
-                      prefixIcon: Icon(
-                        CupertinoIcons.building_2_fill,
-                        size: 18,
-                      ),
+                      hintText: 'Contoh: Amazon, Google, Uber',
+                      prefixIcon: Icon(CupertinoIcons.building_2_fill, size: 18),
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty
-                        ? 'Nama Perusahaan wajib diisi'
-                        : null,
+                    validator: (val) => val == null || val.trim().isEmpty ? 'Nama Perusahaan wajib diisi' : null,
                   ),
                   const SizedBox(height: 14),
 
-                  responsivePair(
-                    InkWell(
-                      onTap: () => _showAppleOptionPicker(
-                        context: context,
-                        title: 'Pilih Status Lamaran',
-                        options: _statusOptions,
-                        currentValue: _status,
-                        onSelected: (val) => setState(() => _status = val),
-                      ),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Status Lamaran',
-                          prefixIcon: Icon(CupertinoIcons.flag, size: 18),
-                          suffixIcon: Icon(
-                            CupertinoIcons.chevron_down,
-                            size: 14,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _status,
+                          decoration: const InputDecoration(
+                            labelText: 'Status Lamaran',
+                            prefixIcon: Icon(CupertinoIcons.flag, size: 18),
                           ),
-                        ),
-                        child: Text(
-                          _status,
-                          style: TextStyle(fontSize: 13, color: txtPri),
+                          items: _statusOptions
+                              .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (val) => setState(() => _status = val!),
                         ),
                       ),
-                    ),
-                    InkWell(
-                      onTap: () => _showAppleOptionPicker(
-                        context: context,
-                        title: 'Pilih Tipe Kerja',
-                        options: _workTypeOptions,
-                        currentValue: _workType,
-                        onSelected: (val) => setState(() => _workType = val),
-                      ),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Tipe Kerja',
-                          prefixIcon: Icon(
-                            CupertinoIcons.desktopcomputer,
-                            size: 18,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _workType,
+                          decoration: const InputDecoration(
+                            labelText: 'Tipe Kerja',
+                            prefixIcon: Icon(CupertinoIcons.desktopcomputer, size: 18),
                           ),
-                          suffixIcon: Icon(
-                            CupertinoIcons.chevron_down,
-                            size: 14,
-                          ),
-                        ),
-                        child: Text(
-                          _workType,
-                          style: TextStyle(fontSize: 13, color: txtPri),
+                          items: _workTypeOptions
+                              .map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (val) => setState(() => _workType = val!),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 14),
 
-                  responsivePair(
-                    TextFormField(
-                      controller: _minSalaryController,
-                      style: TextStyle(color: txtPri),
-                      decoration: const InputDecoration(
-                        labelText: 'Gaji Min (Opsional)',
-                        hintText: 'Cth: Rp 8.000.000',
-                        prefixIcon: Icon(CupertinoIcons.money_dollar, size: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _minSalaryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Gaji Min',
+                            hintText: 'Rp 8.000.000',
+                            prefixIcon: Icon(CupertinoIcons.money_dollar, size: 18),
+                          ),
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      controller: _maxSalaryController,
-                      style: TextStyle(color: txtPri),
-                      decoration: const InputDecoration(
-                        labelText: 'Gaji Max (Opsional)',
-                        hintText: 'Cth: Rp 12.000.000',
-                        prefixIcon: Icon(CupertinoIcons.money_dollar_circle, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _maxSalaryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Gaji Max',
+                            hintText: 'Rp 12.000.000',
+                            prefixIcon: Icon(CupertinoIcons.money_dollar_circle, size: 18),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 14),
 
-                  responsivePair(
-                    TextFormField(
-                      controller: _locationController,
-                      textCapitalization: TextCapitalization.words,
-                      style: TextStyle(color: txtPri),
-                      decoration: const InputDecoration(
-                        labelText: 'Kota / Lokasi',
-                        hintText: 'Contoh: Jakarta',
-                        prefixIcon: Icon(CupertinoIcons.location, size: 18),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => _showAppleOptionPicker(
-                        context: context,
-                        title: 'Pilih Sumber Loker',
-                        options: _sourceOptions,
-                        currentValue: _jobSource,
-                        onSelected: (val) => setState(() => _jobSource = val),
-                      ),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Sumber Loker',
-                          prefixIcon: Icon(CupertinoIcons.link, size: 18),
-                          suffixIcon: Icon(
-                            CupertinoIcons.chevron_down,
-                            size: 14,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _locationController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Lokasi / Kota',
+                            hintText: 'Jakarta, California',
+                            prefixIcon: Icon(CupertinoIcons.location, size: 18),
                           ),
                         ),
-                        child: Text(
-                          _jobSource,
-                          style: TextStyle(fontSize: 13, color: txtPri),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _jobSource,
+                          decoration: const InputDecoration(
+                            labelText: 'Sumber Loker',
+                            prefixIcon: Icon(CupertinoIcons.link, size: 18),
+                          ),
+                          items: _sourceOptions
+                              .map((src) => DropdownMenuItem(value: src, child: Text(src, style: const TextStyle(fontSize: 13))))
+                              .toList(),
+                          onChanged: (val) => setState(() => _jobSource = val!),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  responsivePair(
-                    InkWell(
-                      onTap: () => _showAppleDatePicker(
-                        context: context,
-                        initialDate: _appliedDate,
-                        onDateSelected: (val) =>
-                            setState(() => _appliedDate = val),
-                      ),
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Tanggal Melamar',
-                          prefixIcon: Icon(CupertinoIcons.calendar, size: 18),
-                        ),
-                        child: Text(
-                          DateFormat('dd/MM/yyyy').format(_appliedDate),
-                          style: TextStyle(fontSize: 13, color: txtPri),
-                        ),
-                      ),
-                    ),
-                    const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
+                  const SizedBox(height: 14),
 
-            // Grouped Contact & Schedule Card
-            Text(
-              'Kontak HR & Jadwal',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-                color: txtPri,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: surfSec,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: bdr),
-              ),
-              child: Column(
-                children: [
                   TextFormField(
                     controller: _hrContactController,
-                    style: TextStyle(color: txtPri),
                     decoration: const InputDecoration(
-                      labelText: 'Nomor WA / Email HR (Opsional)',
-                      hintText: 'Contoh: +628123456789 atau hr@company.com',
+                      labelText: 'Kontak HR (WA / Email)',
+                      hintText: '+628123456789 atau hr@company.com',
                       prefixIcon: Icon(CupertinoIcons.phone, size: 18),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Tanggal Psikotes / Tes
-                  InkWell(
-                    onTap: () => _showAppleDatePicker(
-                      context: context,
-                      initialDate: _testDate ?? DateTime.now(),
-                      includeTime: true,
-                      onDateSelected: (val) => setState(() => _testDate = val),
-                    ),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Jadwal Psikotes / Tes (Opsional)',
-                        prefixIcon: const Icon(
-                          CupertinoIcons.doc_checkmark,
-                          size: 18,
-                        ),
-                        suffixIcon: _testDate != null
-                            ? IconButton(
-                                icon: const Icon(
-                                  CupertinoIcons.xmark_circle,
-                                  size: 18,
-                                ),
-                                onPressed: () {
-                                  setState(() => _testDate = null);
-                                },
-                              )
-                            : null,
-                      ),
-                      child: Text(
-                        _testDate != null
-                            ? DateFormat('dd MMMM yyyy, HH:mm').format(_testDate!)
-                            : 'Belum ada jadwal tes / psikotes',
-                        style: TextStyle(fontSize: 13, color: txtPri),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Tanggal Wawancara / Interview
-                  InkWell(
-                    onTap: () => _showAppleDatePicker(
-                      context: context,
-                      initialDate: _interviewDate ?? DateTime.now(),
-                      includeTime: true,
-                      onDateSelected: (val) =>
-                          setState(() => _interviewDate = val),
-                    ),
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: 'Jadwal Wawancara / Interview (Opsional)',
-                        prefixIcon: const Icon(CupertinoIcons.time, size: 18),
-                        suffixIcon: _interviewDate != null
-                            ? IconButton(
-                                icon: const Icon(
-                                  CupertinoIcons.xmark_circle,
-                                  size: 18,
-                                ),
-                                onPressed: () {
-                                  setState(() => _interviewDate = null);
-                                },
-                              )
-                            : null,
-                      ),
-                      child: Text(
-                        _interviewDate != null
-                            ? DateFormat(
-                                'dd MMMM yyyy, HH:mm',
-                              ).format(_interviewDate!)
-                            : 'Belum ada jadwal interview',
-                        style: TextStyle(fontSize: 13, color: txtPri),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Grouped Notes Card
-            Text(
-              'Deskripsi & Catatan',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 17,
-                color: txtPri,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: surfSec,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: bdr),
-              ),
-              child: Column(
-                children: [
                   TextFormField(
                     controller: _descriptionController,
                     maxLines: 4,
-                    style: TextStyle(color: txtPri),
                     decoration: const InputDecoration(
-                      labelText: 'Snapshot Deskripsi / Requirement Loker',
-                      hintText:
-                          'Catat skill & syarat utama di sini agar tidak lupa saat diwawancarai...',
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  TextFormField(
-                    controller: _notesController,
-                    maxLines: 2,
-                    style: TextStyle(color: txtPri),
-                    decoration: const InputDecoration(
-                      labelText: 'Catatan Pribadi',
-                      hintText: 'Catatan tambahan (link Zoom, dll)...',
+                      labelText: 'Deskripsi & Persyaratan Loker',
+                      hintText: 'Tulis kualifikasi, tugas utama, atau persyaratan...',
                     ),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
 
+            // Submit Button
             SizedBox(
               width: double.infinity,
+              height: 54,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveJob,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.systemBlue,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  backgroundColor: const Color(0xFF19191B),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          isEdit ? 'Simpan Perubahan' : 'Tambah ke Ngelamar',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAppleOptionPicker({
-    required BuildContext context,
-    required String title,
-    required List<String> options,
-    required String currentValue,
-    required ValueChanged<String> onSelected,
-  }) {
-    final isDark = AppTheme.isDark(context);
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (_) => CupertinoActionSheet(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-        ),
-        actions: options.map((opt) {
-          final isSelected = opt == currentValue;
-          final statusColor = AppTheme.getStatusColor(opt, isDark: isDark);
-
-          return CupertinoActionSheetAction(
-            onPressed: () {
-              onSelected(opt);
-              Navigator.pop(context);
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  opt,
-                  style: TextStyle(
-                    color: isSelected
-                        ? (isDark ? Colors.white : Colors.black)
-                        : AppTheme.getTextPrimary(context),
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-                if (isSelected) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    CupertinoIcons.checkmark_alt,
-                    size: 16,
-                    color: isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue,
-                  ),
-                ],
-              ],
-            ),
-          );
-        }).toList(),
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Batal'),
-        ),
-      ),
-    );
-  }
-
-  void _showAppleDatePicker({
-    required BuildContext context,
-    required DateTime initialDate,
-    required ValueChanged<DateTime> onDateSelected,
-    bool includeTime = false,
-  }) {
-    DateTime tempDate = initialDate;
-    final surf = AppTheme.getSurface(context);
-    final surfSec = AppTheme.getSurfaceSecondary(context);
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (_) => Container(
-        height: 280,
-        color: surf,
-        child: Column(
-          children: [
-            Container(
-              color: surfSec,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Text(
-                      'Batal',
-                      style: TextStyle(color: AppTheme.systemRed, fontSize: 16),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      onDateSelected(tempDate);
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Selesai',
-                      style: TextStyle(
-                        color: AppTheme.systemBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                child: _isSaving
+                    ? const CupertinoActivityIndicator(color: Colors.white)
+                    : Text(
+                        isEdit ? 'Simpan Perubahan' : 'Tambah Lamaran',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: CupertinoDatePicker(
-                mode: includeTime
-                    ? CupertinoDatePickerMode.dateAndTime
-                    : CupertinoDatePickerMode.date,
-                initialDateTime: initialDate,
-                minimumYear: 2020,
-                maximumYear: DateTime.now().year + 20,
-                use24hFormat: true,
-                onDateTimeChanged: (val) => tempDate = val,
               ),
             ),
           ],

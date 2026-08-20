@@ -3,178 +3,196 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // ─────────────────────────────────────────────────
-  // Apple HIG Radius & Border Constants
+  // Neo-Modern Design Tokens & Radii
   // ─────────────────────────────────────────────────
-  static const double radiusCard = 12.0;
-  static const double radiusSettings = 10.0;
-  static const double radiusSheet = 16.0;
-  static const double radiusButton = 12.0;
-  static const double radiusBadge = 6.0;
-  static const double borderHairline = 0.33;
-
-  // ─────────────────────────────────────────────────
-  // Apple iOS 18 Dark Mode — System Colors
-  // ─────────────────────────────────────────────────
-  static const Color background = Color(0xFF000000);
-  static const Color surface = Color(0xFF1C1C1E);
-  static const Color surfaceSecondary = Color(0xFF2C2C2E);
-  static const Color surfaceLight = Color(0xFF3A3A3C);
-  static const Color border = Color(0xFF38383A);
-  static const Color borderDark = Color(0xFF38383A);
-
-  static const Color systemBlue = Color(0xFF0A84FF);
-  static const Color systemIndigo = Color(0xFF5E5CE6);
-  static const Color systemGreen = Color(0xFF30D158);
-  static const Color systemOrange = Color(0xFFFF9F0A);
-  static const Color systemRed = Color(0xFFFF453A);
-  static const Color systemPurple = Color(0xFFBF5AF2);
-  static const Color systemTeal = Color(0xFF64D2FF);
-  static const Color systemYellow = Color(0xFFFFD60A);
-
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color textTertiary = Color(0xFF636366);
-  static const Color textQuaternary = Color(0xFF48484A);
+  static const double radiusCard = 24.0;
+  static const double radiusCardLarge = 28.0;
+  static const double radiusPill = 32.0;
+  static const double radiusBadge = 14.0;
+  static const double radiusButton = 28.0;
+  static const double borderHairline = 1.2;
 
   // ─────────────────────────────────────────────────
-  // Apple iOS 18 Light Mode — System Colors
+  // Exact Reference Colors
   // ─────────────────────────────────────────────────
-  static const Color lBackground = Color(0xFFF2F2F7);
-  static const Color lSurface = Color(0xFFFFFFFF);
-  static const Color lSurfaceSecondary = Color(0xFFE5E5EA);
-  static const Color lSurfaceLight = Color(0xFFD1D1D6);
-  static const Color lBorder = Color(0xFFC6C6C8);
+  static const Color warmBackground = Color(0xFFF5EFE6); // Exact warm cream tone
+  static const Color warmSurface = Color(0xFFFFFFFF);
+  static const Color warmSurfaceAlt = Color(0xFFEDE7DC);
+  static const Color warmBorder = Color(0xFFDCD8CE);
 
-  static const Color lSystemBlue = Color(0xFF007AFF);
-  static const Color lSystemGreen = Color(0xFF34C759);
-  static const Color lSystemOrange = Color(0xFFFF9500);
-  static const Color lSystemRed = Color(0xFFFF3B30);
-  static const Color lSystemPurple = Color(0xFFAF52DE);
-  static const Color lSystemTeal = Color(0xFF32ADE6);
+  // Saturated Vibrant Palette (Pixel-matched with Reference Image)
+  static const Color cardPurple = Color(0xFF5C44E4); // Uber card & Stage 1
+  static const Color cardYellow = Color(0xFFF8BA38); // Amazon card, Hero Header & Stage 3
+  static const Color cardCoral = Color(0xFFE55444); // Stage 2 card
+  static const Color cardGreen = Color(0xFFC1DE98); // Google expanded card & Stage 4
+  static const Color cardDark = Color(0xFF1C1C1E); // Microsoft card & Action Buttons
+  static const Color cardBlue = Color(0xFF3884F5);
+  static const Color cardTeal = Color(0xFF32B0B8);
 
-  static const Color lTextPrimary = Color(0xFF000000);
-  static const Color lTextSecondary = Color(0xFF6E6E73);
-  static const Color lTextTertiary = Color(0xFF8E8E93);
+  // Typography Colors
+  static const Color textDark = Color(0xFF121214);
+  static const Color textMuted = Color(0xFF707074);
+  static const Color textLight = Color(0xFFFFFFFF);
+  static const Color textLightMuted = Color(0xD9FFFFFF);
+
+  // Status System Colors
+  static const Color systemBlue = Color(0xFF3884F5);
+  static const Color systemGreen = Color(0xFF2E7D32);
+  static const Color systemOrange = Color(0xFFE65100);
+  static const Color systemRed = Color(0xFFD32F2F);
+  static const Color systemPurple = Color(0xFF5C44E4);
+  static const Color systemTeal = Color(0xFF00838F);
 
   // ─────────────────────────────────────────────────
-  // Dynamic Context Color Getters (Light/Dark Aware)
+  // Context-Aware Colors
   // ─────────────────────────────────────────────────
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
 
   static Color getBackground(BuildContext context) =>
-      isDark(context) ? background : lBackground;
+      isDark(context) ? const Color(0xFF121214) : warmBackground;
 
   static Color getSurface(BuildContext context) =>
-      isDark(context) ? surface : lSurface;
+      isDark(context) ? const Color(0xFF1E1E22) : warmSurface;
 
   static Color getSurfaceSecondary(BuildContext context) =>
-      isDark(context) ? surfaceSecondary : lSurfaceSecondary;
-
-  static Color getSurfaceLight(BuildContext context) =>
-      isDark(context) ? surfaceLight : lSurfaceLight;
+      isDark(context) ? const Color(0xFF2A2A30) : warmSurfaceAlt;
 
   static Color getBorder(BuildContext context) =>
-      isDark(context) ? border : lBorder;
+      isDark(context) ? const Color(0xFF3A3A42) : warmBorder;
 
   static Color getTextPrimary(BuildContext context) =>
-      isDark(context) ? textPrimary : lTextPrimary;
+      isDark(context) ? textLight : textDark;
 
   static Color getTextSecondary(BuildContext context) =>
-      isDark(context) ? textSecondary : lTextSecondary;
+      isDark(context) ? const Color(0xFFA1A1AA) : textMuted;
 
   static Color getTextTertiary(BuildContext context) =>
-      isDark(context) ? textTertiary : lTextTertiary;
+      isDark(context) ? const Color(0xFF71717A) : const Color(0xFFA1A1AA);
+
+  // ─────────────────────────────────────────────────
+  // Dynamic Card Color Selector
+  // Assigns vibrant theme color per card index or company name
+  // ─────────────────────────────────────────────────
+  static Color getCardColor(int index) {
+    const colors = [
+      cardPurple,
+      cardYellow,
+      cardDark,
+      cardGreen,
+      cardCoral,
+      cardBlue,
+    ];
+    return colors[index % colors.length];
+  }
+
+  static Color getCompanyCardColor(String companyName) {
+    final lower = companyName.toLowerCase();
+    if (lower.contains('uber') || lower.contains('meta') || lower.contains('facebook')) {
+      return cardPurple;
+    } else if (lower.contains('amazon') || lower.contains('bca') || lower.contains('shopee')) {
+      return cardYellow;
+    } else if (lower.contains('microsoft') || lower.contains('apple') || lower.contains('netflix')) {
+      return cardDark;
+    } else if (lower.contains('google') || lower.contains('tokopedia') || lower.contains('goto')) {
+      return cardGreen;
+    } else if (lower.contains('bukalapak') || lower.contains('traveloka')) {
+      return cardCoral;
+    }
+
+    final hash = companyName.codeUnits.fold(0, (prev, elem) => prev + elem);
+    return getCardColor(hash);
+  }
+
+  static bool isDarkCard(Color color) {
+    return color == cardPurple || color == cardDark || color == cardCoral || color == cardBlue;
+  }
 
   // ─────────────────────────────────────────────────
   // Status Color Mapping
   // ─────────────────────────────────────────────────
-  static Color getStatusColor(String status, {bool isDark = true}) {
-    final blue = isDark ? systemBlue : lSystemBlue;
-    final teal = isDark ? systemTeal : lSystemTeal;
-    final orange = isDark ? systemOrange : lSystemOrange;
-    final purple = isDark ? systemPurple : lSystemPurple;
-    final green = isDark ? systemGreen : lSystemGreen;
-    final red = isDark ? systemRed : lSystemRed;
-
+  static Color getStatusColor(String status, {bool isDark = false}) {
     switch (status) {
       case 'Dikirim':
-        return blue;
+        return systemBlue;
       case 'HR Screening':
-        return teal;
+        return systemTeal;
       case 'Tes / Psikotes':
-        return orange;
+        return cardCoral;
       case 'Interview HR':
-        return orange;
+        return cardYellow;
       case 'Interview User':
-        return orange;
+        return cardPurple;
       case 'Offering':
-        return purple;
+        return const Color(0xFF9C27B0);
       case 'Diterima':
-        return green;
+        return const Color(0xFF2E7D32);
       case 'Ditolak':
-        return red;
+        return systemRed;
       default:
-        return blue;
+        return systemBlue;
     }
   }
 
   // ─────────────────────────────────────────────────
-  // Apple iOS 18 Dark Theme
+  // Theme Data Builder
   // ─────────────────────────────────────────────────
-  static ThemeData get appleDarkTheme => _buildTheme(Brightness.dark);
+  static ThemeData get lightTheme => _buildTheme(Brightness.light);
+  static ThemeData get darkTheme => _buildTheme(Brightness.dark);
 
-  // ─────────────────────────────────────────────────
-  // Apple iOS 18 Light Theme
-  // ─────────────────────────────────────────────────
-  static ThemeData get appleLightTheme => _buildTheme(Brightness.light);
+  // Aliases for compatibility
+  static ThemeData get appleLightTheme => lightTheme;
+  static ThemeData get appleDarkTheme => darkTheme;
+  static const Color lSystemBlue = systemBlue;
+  static const Color lSystemGreen = systemGreen;
+  static const Color lSystemOrange = systemOrange;
+  static const Color lSystemRed = systemRed;
+  static const Color lSystemPurple = systemPurple;
+  static const Color lSystemTeal = systemTeal;
 
   static ThemeData _buildTheme(Brightness brightness) {
-    final isDarkMode = brightness == Brightness.dark;
-
-    final bg = isDarkMode ? background : lBackground;
-    final surf = isDarkMode ? surface : lSurface;
-    final surfSec = isDarkMode ? surfaceSecondary : lSurfaceSecondary;
-    final bdr = isDarkMode ? border : lBorder;
-    final blue = isDarkMode ? systemBlue : lSystemBlue;
-    final green = isDarkMode ? systemGreen : lSystemGreen;
-    final red = isDarkMode ? systemRed : lSystemRed;
-    final txtPri = isDarkMode ? textPrimary : lTextPrimary;
-    final txtSec = isDarkMode ? textSecondary : lTextSecondary;
-    final txtTer = isDarkMode ? textTertiary : lTextTertiary;
+    final isDark = brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF121214) : warmBackground;
+    final surf = isDark ? const Color(0xFF1E1E22) : warmSurface;
+    final surfSec = isDark ? const Color(0xFF2A2A30) : warmSurfaceAlt;
+    final bdr = isDark ? const Color(0xFF3A3A42) : warmBorder;
+    final txtPri = isDark ? textLight : textDark;
+    final txtSec = isDark ? const Color(0xFFA1A1AA) : textMuted;
 
     return ThemeData(
+      useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: bg,
-      primaryColor: blue,
+      primaryColor: cardPurple,
       colorScheme: ColorScheme(
         brightness: brightness,
-        primary: blue,
-        secondary: green,
+        primary: cardPurple,
+        secondary: cardYellow,
         surface: surf,
-        error: red,
+        error: systemRed,
         onPrimary: Colors.white,
-        onSecondary: Colors.white,
+        onSecondary: textDark,
         onSurface: txtPri,
         onError: Colors.white,
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        ThemeData(
-          brightness: brightness,
-        ).textTheme.apply(bodyColor: txtPri, displayColor: txtPri),
+      textTheme: GoogleFonts.plusJakartaSansTextTheme(
+        ThemeData(brightness: brightness).textTheme.apply(
+          bodyColor: txtPri,
+          displayColor: txtPri,
+        ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: surf,
+        backgroundColor: bg,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
         iconTheme: IconThemeData(color: txtPri),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: GoogleFonts.plusJakartaSans(
           color: txtPri,
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.3,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
@@ -182,91 +200,44 @@ class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(radiusCard)),
+          borderRadius: BorderRadius.circular(radiusCard),
           side: BorderSide(color: bdr, width: borderHairline),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfSec,
+        fillColor: surf,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: bdr, width: 0.8),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: bdr, width: 1.2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: bdr, width: 0.8),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: bdr, width: 1.2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: blue, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: cardDark, width: 2),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: red, width: 0.8),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: red, width: 1.5),
-        ),
-        hintStyle: TextStyle(
-          color: txtTer,
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-        ),
-        labelStyle: TextStyle(
-          color: txtSec,
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-        floatingLabelStyle: TextStyle(
-          color: blue,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 13,
-        ),
-        prefixIconColor: txtSec,
-        suffixIconColor: txtSec,
+        hintStyle: TextStyle(color: txtSec, fontSize: 14, fontWeight: FontWeight.w400),
+        labelStyle: TextStyle(color: txtSec, fontSize: 14, fontWeight: FontWeight.w600),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: blue,
+          backgroundColor: cardDark,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radiusButton),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
             fontSize: 16,
+            letterSpacing: -0.2,
           ),
         ),
-      ),
-      tabBarTheme: TabBarThemeData(
-        labelColor: blue,
-        unselectedLabelColor: txtSec,
-        indicatorColor: blue,
-        dividerColor: Colors.transparent,
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-      ),
-      dividerColor: bdr,
-      dividerTheme: DividerThemeData(color: bdr, thickness: 0.5, space: 0),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDarkMode ? surfaceLight : lSurfaceSecondary,
-        contentTextStyle: GoogleFonts.inter(color: txtPri, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        behavior: SnackBarBehavior.floating,
-      ),
-      iconTheme: IconThemeData(color: txtPri),
-      listTileTheme: ListTileThemeData(
-        tileColor: surf,
-        iconColor: blue,
-        textColor: txtPri,
-        subtitleTextStyle: TextStyle(color: txtSec, fontSize: 13),
       ),
     );
   }

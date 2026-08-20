@@ -4,9 +4,8 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/salary_evaluator_service.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/apple_animations.dart';
 
-/// Halaman Persiapan Karir - Apple HIG iOS 18 Style.
-/// CupertinoSlidingSegmentedControl, Grouped List View, Large Title collapse.
 class FreshGradPrepScreen extends StatefulWidget {
   const FreshGradPrepScreen({super.key});
 
@@ -15,13 +14,11 @@ class FreshGradPrepScreen extends StatefulWidget {
 }
 
 class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
-  // Segmented control index
   int _selectedSegment = 0;
 
-  // --- Checklist Berkas ---
   final List<Map<String, dynamic>> _docs = [
     {'title': 'CV Format ATS (PDF, maks. 2 halaman)', 'checked': true},
-    {'title': 'Portofolio / Project Showcase', 'checked': false},
+    {'title': 'Portofolio / Project GitHub Showcase', 'checked': false},
     {'title': 'Surat Lamaran (Cover Letter)', 'checked': true},
     {'title': 'Ijazah / Surat Keterangan Lulus (SKL)', 'checked': true},
     {'title': 'Transkrip Nilai Legalisir', 'checked': true},
@@ -29,16 +26,13 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
     {'title': 'Sertifikat Pelatihan / Organisasi', 'checked': false},
   ];
 
-  // --- Salary Calculator ---
-  double _grossSalary = 5500000;
+  double _grossSalary = 6500000;
   String _selectedCity = 'Jakarta';
   bool _needsKos = true;
 
   int get _checkedCount => _docs.where((d) => d['checked'] == true).length;
-  double get _readinessPercent =>
-      _docs.isEmpty ? 0 : _checkedCount / _docs.length;
+  double get _readinessPercent => _docs.isEmpty ? 0 : _checkedCount / _docs.length;
 
-  // --- Interview Q&A ---
   final _qaItems = const [
     {
       'q': 'Ceritakan tentang diri Anda',
@@ -62,53 +56,42 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
       'q': 'Apa kelebihan dan kekurangan terbesar Anda?',
       'sub': 'Self-Awareness',
       'a':
-          'Kelebihan: Pilih 1 soft skill atau hard skill dengan contoh proyek nyata. Kekurangan: Sebutkan kelemahan yang sedang aktif Anda perbaiki, misal "Saya sedang belajar manajemen waktu dengan to-do list harian."',
-    },
-    {
-      'q': 'Di mana Anda melihat diri Anda dalam 3-5 tahun ke depan?',
-      'sub': 'Ambisi & Komitmen',
-      'a':
-          'Jawab dengan jujur dan realistis. Tunjukkan bahwa Anda ingin tumbuh bersama perusahaan ini, bukan sekadar batu loncatan. Sebutkan keterampilan spesifik yang ingin Anda kuasai.',
+          'Kelebihan: Pilih 1 soft skill atau hard skill dengan contoh proyek nyata. Kekurangan: Sebutkan kelemahan yang sedang aktif Anda perbaiki, misal manajemen waktu dengan to-do list.',
     },
   ];
 
-  // --- Templat Pesan ---
   final _templates = const [
     {
       'title': 'Email Melamar Kerja (Formal)',
       'category': 'Email',
-      'icon': CupertinoIcons.envelope_fill,
-      'color': 0xFF007AFF,
+      'color': AppTheme.cardPurple,
       'text':
           'Yth. HRD [Nama Perusahaan],\n\nPerkenalkan nama saya [Nama Anda], lulusan [Jurusan] dari [Universitas]. Berdasarkan informasi posisi [Nama Posisi], saya bermaksud mengajukan diri untuk bergabung dengan perusahaan Bapak/Ibu.\n\nTerlampir CV dan Portofolio saya sebagai bahan pertimbangan. Saya siap dihubungi kapan saja untuk proses seleksi lebih lanjut.\n\nTerima kasih,\n[Nama Anda]\n[Nomor HP]',
     },
     {
       'title': 'Follow-Up Status Lamaran',
       'category': 'WhatsApp',
-      'icon': CupertinoIcons.chat_bubble_fill,
-      'color': 0xFF34C759,
+      'color': AppTheme.cardGreen,
       'text':
           'Selamat pagi/siang Bapak/Ibu HRD [Nama Perusahaan], perkenalkan saya [Nama Anda] yang melamar posisi [Nama Posisi] pada [Tanggal]. Saya ingin menanyakan perkembangan proses seleksi berkas saya. Terima kasih banyak atas waktunya.',
     },
     {
       'title': 'Konfirmasi Jadwal Interview',
       'category': 'WhatsApp',
-      'icon': CupertinoIcons.calendar_badge_plus,
-      'color': 0xFFFF9500,
+      'color': AppTheme.cardYellow,
       'text':
           'Selamat pagi/siang Bapak/Ibu, terima kasih atas undangan interview untuk posisi [Nama Posisi]. Saya mengonfirmasi kehadiran pada [Hari/Tanggal] pukul [Waktu] di [Lokasi]. Terima kasih.',
     },
     {
       'title': 'Ucapan Terima Kasih Pasca Interview',
       'category': 'Email',
-      'icon': CupertinoIcons.star_fill,
-      'color': 0xFF5E5CE6,
+      'color': AppTheme.cardCoral,
       'text':
-          'Yth. [Nama Interviewer],\n\nTerima kasih atas waktu dan kesempatan wawancara hari ini. Saya semakin antusias dengan kesempatan untuk bergabung di [Nama Perusahaan] setelah mendengar penjelasan Bapak/Ibu mengenai peran dan tim yang ada.\n\nSaya berharap dapat segera berkontribusi di tim Anda.\n\nHormat saya,\n[Nama Anda]',
+          'Yth. [Nama Interviewer],\n\nTerima kasih atas waktu dan kesempatan wawancara hari ini. Saya semakin antusias dengan kesempatan untuk bergabung di [Nama Perusahaan].\n\nHormat saya,\n[Nama Anda]',
     },
   ];
 
-  final _segments = ['Berkas', 'Gaji', 'Interview', 'Templat'];
+  final _segments = ['Berkas', 'Gaji UMR', 'Interview', 'Templat'];
 
   @override
   Widget build(BuildContext context) {
@@ -118,1107 +101,440 @@ class _FreshGradPrepScreenState extends State<FreshGradPrepScreen> {
 
     return Scaffold(
       backgroundColor: bg,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: [
-          // Apple Large Title App Bar
-          CupertinoSliverNavigationBar(
-            backgroundColor: bg.withValues(alpha: 0.85),
-            border: null,
-            largeTitle: Text(
-              'Persiapan Karir',
-              style: TextStyle(color: txtPri, fontWeight: FontWeight.bold),
-            ),
-            middle: Text(
-              'Persiapan Karir',
-              style: TextStyle(
-                color: txtPri,
-                fontWeight: FontWeight.w600,
-                fontSize: 17,
-              ),
-            ),
-            stretch: true,
-          ),
-
-          // Segmented Control - sticky di bawah nav bar
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SegmentedHeaderDelegate(
-              segments: _segments,
-              selectedIndex: _selectedSegment,
-              isDark: isDark,
-              onChanged: (i) => setState(() => _selectedSegment = i),
-            ),
-          ),
-
-          // Content berdasarkan tab aktif
-          SliverToBoxAdapter(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.02),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
+      body: SafeArea(
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Header Title
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PERSIAPAN\nKARIR',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: txtPri,
+                        letterSpacing: -1.2,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Checklist berkas, simulasi gaji UMR, cheat-sheet interview & templat',
+                      style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
               ),
-              child: KeyedSubtree(
-                key: ValueKey(_selectedSegment),
-                child: _buildContent(context, isDark),
+            ),
+
+            // Segmented Filter Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: Row(
+                  children: List.generate(_segments.length, (i) {
+                    final isSel = _selectedSegment == i;
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: i < _segments.length - 1 ? 6 : 0),
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedSegment = i),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: isSel
+                                  ? const Color(0xFF19191B)
+                                  : (isDark ? const Color(0xFF242428) : Colors.white),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSel
+                                    ? const Color(0xFF19191B)
+                                    : const Color(0xFFE6E3D8),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _segments[i],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSel ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF333333)),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
               ),
             ),
-          ),
 
-          // Bottom safe area
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
-        ],
+            // Tab Content
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+              sliver: SliverToBoxAdapter(
+                child: _buildSelectedTabContent(context, isDark),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, bool isDark) {
+  Widget _buildSelectedTabContent(BuildContext context, bool isDark) {
     switch (_selectedSegment) {
       case 0:
-        return _buildChecklistContent(context, isDark);
+        return _buildChecklistTab(context, isDark);
       case 1:
-        return _buildSalaryContent(context, isDark);
+        return _buildSalaryTab(context, isDark);
       case 2:
-        return _buildInterviewContent(context, isDark);
+        return _buildInterviewTab(context, isDark);
       case 3:
-        return _buildTemplatesContent(context, isDark);
+        return _buildTemplatesTab(context, isDark);
       default:
         return const SizedBox.shrink();
     }
   }
 
-  // ── 1. Checklist Berkas ──────────────────────────────────────────────────────
-
-  Widget _buildChecklistContent(BuildContext context, bool isDark) {
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final bdr = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.07);
+  Widget _buildChecklistTab(BuildContext context, bool isDark) {
     final percent = _readinessPercent;
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-
-          // Progress Card
-          _AppleCard(
-            isDark: isDark,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Kesiapan Berkas',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: txtPri,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _progressColor(percent).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${(_checkedCount)}/${_docs.length} berkas',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _progressColor(percent),
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: percent,
-                    minHeight: 10,
-                    backgroundColor: AppTheme.getSurfaceSecondary(context),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _progressColor(percent),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  percent < 1.0
-                      ? 'Lengkapi ${_docs.length - _checkedCount} berkas lagi agar siap melamar'
-                      : 'Semua berkas sudah siap - selamat melamar!',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: txtSec,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Section Header gaya Apple
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              'DAFTAR PERIKSA BERKAS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: txtSec,
-                letterSpacing: 0.4,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Readiness Hero Card (Purple Card)
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppTheme.cardPurple,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.cardPurple.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-            ),
+            ],
           ),
-
-          // Grouped Checklist - Apple Settings style
-          Container(
-            decoration: BoxDecoration(
-              color: surf,
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(color: bdr, width: AppTheme.borderHairline),
-            ),
-            child: Column(
-              children: List.generate(_docs.length, (i) {
-                final doc = _docs[i];
-                final isChecked = doc['checked'] as bool;
-                final isLast = i == _docs.length - 1;
-
-                return Column(
-                  children: [
-                    _ChecklistRow(
-                      title: doc['title'] as String,
-                      isChecked: isChecked,
-                      isDark: isDark,
-                      onTap: () {
-                        setState(() {
-                          _docs[i]['checked'] = !isChecked;
-                        });
-                      },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Kesiapan Berkas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
-                    if (!isLast)
-                      Divider(height: 1, indent: 52, endIndent: 0, color: bdr),
-                  ],
-                );
-              }),
-            ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${(_checkedCount)}/${_docs.length} Siap',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: percent,
+                  minHeight: 10,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                percent < 1.0
+                    ? 'Lengkapi ${_docs.length - _checkedCount} berkas lagi agar persiapan lamaran optimal.'
+                    : 'Luar biasa! Seluruh berkas karir sudah lengkap.',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        const SizedBox(height: 18),
+
+        // Checklist Items
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            border: Border.all(color: const Color(0xFFE6E3D8)),
+          ),
+          child: Column(
+            children: List.generate(_docs.length, (i) {
+              final doc = _docs[i];
+              final isChecked = doc['checked'] as bool;
+              final isLast = i == _docs.length - 1;
+
+              return Column(
+                children: [
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: GestureDetector(
+                      onTap: () => setState(() => _docs[i]['checked'] = !isChecked),
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: isChecked ? AppTheme.cardPurple : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isChecked ? AppTheme.cardPurple : Colors.grey.shade400,
+                            width: 2,
+                          ),
+                        ),
+                        child: isChecked
+                            ? const Icon(CupertinoIcons.checkmark_alt, size: 16, color: Colors.white)
+                            : null,
+                      ),
+                    ),
+                    title: Text(
+                      doc['title'] as String,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isChecked ? FontWeight.w600 : FontWeight.w500,
+                        decoration: isChecked ? TextDecoration.lineThrough : null,
+                        color: isChecked ? Colors.grey : null,
+                      ),
+                    ),
+                    onTap: () => setState(() => _docs[i]['checked'] = !isChecked),
+                  ),
+                  if (!isLast) const Divider(height: 1, indent: 54),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
-  Color _progressColor(double percent) {
-    if (percent < 0.5) return AppTheme.systemRed;
-    if (percent < 0.8) return AppTheme.systemOrange;
-    return AppTheme.systemGreen;
-  }
-
-  // ── 2. Estimator Gaji ────────────────────────────────────────────────────────
-
-  Widget _buildSalaryContent(BuildContext context, bool isDark) {
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final bdr = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.07);
-    final blue = isDark ? AppTheme.systemBlue : AppTheme.lSystemBlue;
-
+  Widget _buildSalaryTab(BuildContext context, bool isDark) {
     final eval = SalaryEvaluatorService.evaluateSalary(
       grossSalary: _grossSalary,
       city: _selectedCity,
       workType: 'WFO',
       needsKos: _needsKos,
     );
-    final isPositive = eval.estimatedNetSavings >= 0;
-    final resultColor = isPositive ? AppTheme.systemGreen : AppTheme.systemRed;
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-
-          // Input Card
-          _AppleCard(
-            isDark: isDark,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Estimator Gaji Pertama',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: txtPri,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Hitung estimasi sisa gaji bersih setelah potongan dan biaya hidup.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: txtSec,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Gaji slider
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Tawaran Gaji Kotor',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: txtSec,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    Text(
-                      SalaryEvaluatorService.formatRupiah(_grossSalary),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: txtPri,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                SliderTheme(
-                  data: SliderThemeData(
-                    activeTrackColor: blue,
-                    inactiveTrackColor: AppTheme.getSurfaceSecondary(context),
-                    thumbColor: isDark ? Colors.white : Colors.white,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 11,
-                    ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 20,
-                    ),
-                    overlayColor: blue.withValues(alpha: 0.12),
-                    trackHeight: 5,
-                  ),
-                  child: Slider(
-                    value: _grossSalary,
-                    min: 2000000,
-                    max: 15000000,
-                    divisions: 130,
-                    onChanged: (v) => setState(() => _grossSalary = v),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Rp 2 Jt',
-                      style: TextStyle(fontSize: 11, color: txtSec),
-                    ),
-                    Text(
-                      'Rp 15 Jt',
-                      style: TextStyle(fontSize: 11, color: txtSec),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // City + Kos Card - Apple Grouped style
-          Container(
-            decoration: BoxDecoration(
-              color: surf,
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(color: bdr, width: AppTheme.borderHairline),
-            ),
-            child: Column(
-              children: [
-                // Kota dropdown
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.location_fill,
-                        size: 18,
-                        color: AppTheme.systemRed,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Kota Tujuan Kerja',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: txtPri,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const Spacer(),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () => _showCityPicker(context),
-                        child: Row(
-                          children: [
-                            Text(
-                              _selectedCity,
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: txtSec,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              CupertinoIcons.chevron_right,
-                              size: 14,
-                              color: txtSec,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(height: 1, indent: 44, color: bdr),
-                // Perlu Kos switch
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.house_fill,
-                        size: 18,
-                        color: AppTheme.systemOrange,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Perlu Sewa Kos',
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: txtPri,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            Text(
-                              'Estimasi kos ±Rp 1.500.000/bulan',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: txtSec,
-                                letterSpacing: -0.1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CupertinoSwitch(
-                        value: _needsKos,
-                        activeTrackColor: blue,
-                        onChanged: (v) => setState(() => _needsKos = v),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Result card
-          Container(
-            decoration: BoxDecoration(
-              color: resultColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(
-                color: resultColor.withValues(alpha: 0.25),
-                width: AppTheme.borderHairline,
-              ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isPositive
-                          ? CupertinoIcons.checkmark_circle_fill
-                          : CupertinoIcons.exclamationmark_circle_fill,
-                      size: 18,
-                      color: resultColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isPositive
-                          ? 'Gaji ini cukup untuk hidup mandiri'
-                          : 'Gaji ini kurang untuk hidup mandiri',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: resultColor,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _SalaryRow(
-                  label: 'Gaji Kotor',
-                  value: SalaryEvaluatorService.formatRupiah(eval.grossSalary),
-                  color: txtPri,
-                ),
-                const SizedBox(height: 6),
-                _SalaryRow(
-                  label: 'Potongan BPJS (-4%)',
-                  value:
-                      '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}',
-                  color: AppTheme.systemRed,
-                ),
-                const SizedBox(height: 6),
-                _SalaryRow(
-                  label: 'Biaya Hidup & Kos',
-                  value:
-                      '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedOperationalCost)}',
-                  color: AppTheme.systemRed,
-                ),
-                const SizedBox(height: 12),
-                Divider(height: 1, color: resultColor.withValues(alpha: 0.20)),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Estimasi Sisa / Tabungan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: txtPri,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    Text(
-                      SalaryEvaluatorService.formatRupiah(
-                        eval.estimatedNetSavings,
-                      ),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: resultColor,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCityPicker(BuildContext context) {
-    final cities = SalaryEvaluatorService.umrList;
-    int tempIndex = cities.indexWhere((u) => u.city == _selectedCity);
-    if (tempIndex < 0) tempIndex = 0;
-
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (ctx) => Container(
-        height: 280,
-        color: AppTheme.getSurface(context),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CupertinoButton(
-                  child: const Text('Batal'),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-                CupertinoButton(
-                  child: const Text(
-                    'Pilih',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _selectedCity = cities[tempIndex].city;
-                    });
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ],
-            ),
-            Expanded(
-              child: CupertinoPicker(
-                scrollController: FixedExtentScrollController(
-                  initialItem: tempIndex,
-                ),
-                itemExtent: 40,
-                onSelectedItemChanged: (i) => tempIndex = i,
-                children: cities
-                    .map(
-                      (u) => Text(
-                        '${u.city} (${SalaryEvaluatorService.formatRupiah(u.umrAmount)})',
-                        style: TextStyle(
-                          color: AppTheme.getTextPrimary(context),
-                          fontSize: 15,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── 3. Interview Q&A ─────────────────────────────────────────────────────────
-
-  Widget _buildInterviewContent(BuildContext context, bool isDark) {
-    final surf = AppTheme.getSurface(context);
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-    final bdr = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.07);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-
-          // Tips banner
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.systemBlue.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(
-                color: AppTheme.systemBlue.withValues(alpha: 0.25),
-                width: AppTheme.borderHairline,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  CupertinoIcons.lightbulb_fill,
-                  size: 18,
-                  color: AppTheme.systemBlue,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Pelajari pertanyaan-pertanyaan umum ini sebelum interview. '
-                    'Jawaban terbaik selalu yang tulus, spesifik, dan disertai contoh nyata.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.systemBlue,
-                      height: 1.4,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Q&A list - Apple Grouped Style dengan ExpansionTile
-          Container(
-            decoration: BoxDecoration(
-              color: surf,
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(color: bdr, width: AppTheme.borderHairline),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              child: Column(
-                children: List.generate(_qaItems.length, (i) {
-                  final item = _qaItems[i];
-                  final isLast = i == _qaItems.length - 1;
-
-                  return Column(
-                    children: [
-                      Theme(
-                        data: Theme.of(
-                          context,
-                        ).copyWith(dividerColor: Colors.transparent),
-                        child: ExpansionTile(
-                          tilePadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                          childrenPadding: const EdgeInsets.only(
-                            left: 16,
-                            right: 16,
-                            bottom: 14,
-                          ),
-                          leading: Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              color: AppTheme.systemBlue.withValues(
-                                alpha: 0.15,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${i + 1}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.systemBlue,
-                                ),
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            item['q']!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: txtPri,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          subtitle: Text(
-                            item['sub']!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: txtSec,
-                              letterSpacing: -0.1,
-                            ),
-                          ),
-                          iconColor: txtSec,
-                          collapsedIconColor: txtSec,
-                          children: [
-                            Text(
-                              item['a']!,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: txtSec,
-                                height: 1.5,
-                                letterSpacing: -0.1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!isLast) Divider(height: 1, indent: 62, color: bdr),
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 4. Templat Pesan ─────────────────────────────────────────────────────────
-
-  Widget _buildTemplatesContent(BuildContext context, bool isDark) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-          ...List.generate(_templates.length, (i) {
-            final t = _templates[i];
-            final color = Color(t['color'] as int);
-            final icon = t['icon'] as IconData;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _AppleCard(
-                isDark: isDark,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(icon, size: 18, color: color),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                t['title'] as String,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: txtPri,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              Text(
-                                t['category'] as String,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: color,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -0.1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(text: t['text'] as String),
-                            );
-                            AppleToast.success(
-                              context,
-                              'Templat berhasil disalin!',
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF2C2C2E)
-                                  : const Color(0xFFE5E5EA),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  CupertinoIcons.doc_on_doc,
-                                  size: 13,
-                                  color: AppTheme.systemBlue,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Salin',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.systemBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1C1C1E)
-                            : const Color(0xFFF2F2F7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        t['text'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: txtSec,
-                          height: 1.5,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Segmented Header Delegate ──────────────────────────────────────────────────
-
-class _SegmentedHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final List<String> segments;
-  final int selectedIndex;
-  final bool isDark;
-  final ValueChanged<int> onChanged;
-
-  const _SegmentedHeaderDelegate({
-    required this.segments,
-    required this.selectedIndex,
-    required this.isDark,
-    required this.onChanged,
-  });
-
-  @override
-  double get minExtent => 60;
-  @override
-  double get maxExtent => 60;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final bg = AppTheme.getBackground(context);
-
-    return Container(
-      color: bg.withValues(alpha: 0.95),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: segments.length,
-        separatorBuilder: (_, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final selected = index == selectedIndex;
-          return CupertinoButton(
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            onPressed: () => onChanged(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppTheme.systemBlue
-                    : isDark
-                    ? const Color(0xFF2C2C2E)
-                    : const Color(0xFFE5E5EA),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                segments[index],
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected
-                      ? CupertinoColors.white
-                      : AppTheme.getTextPrimary(context),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SegmentedHeaderDelegate old) =>
-      old.selectedIndex != selectedIndex || old.isDark != isDark;
-}
-
-// ── Helper Widgets ─────────────────────────────────────────────────────────────
-
-class _AppleCard extends StatelessWidget {
-  final Widget child;
-  final bool isDark;
-
-  const _AppleCard({required this.child, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final surf = AppTheme.getSurface(context);
-    final bdr = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.07);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surf,
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(color: bdr, width: AppTheme.borderHairline),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _ChecklistRow extends StatelessWidget {
-  final String title;
-  final bool isChecked;
-  final bool isDark;
-  final VoidCallback onTap;
-
-  const _ChecklistRow({
-    required this.title,
-    required this.isChecked,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final txtPri = AppTheme.getTextPrimary(context);
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: isChecked ? AppTheme.systemBlue : Colors.transparent,
-                shape: BoxShape.circle,
-                border: isChecked
-                    ? null
-                    : Border.all(
-                        color: isDark
-                            ? const Color(0xFF48484A)
-                            : const Color(0xFFC6C6C8),
-                        width: 1.5,
-                      ),
-              ),
-              child: isChecked
-                  ? const Icon(
-                      CupertinoIcons.checkmark_alt,
-                      size: 15,
-                      color: Colors.white,
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isChecked ? FontWeight.w500 : FontWeight.w400,
-                  color: isChecked ? txtPri : txtSec,
-                  decoration: isChecked ? TextDecoration.lineThrough : null,
-                  decorationColor: txtSec,
-                  letterSpacing: -0.2,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SalaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _SalaryRow({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final txtSec = AppTheme.getTextSecondary(context);
-
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 13, color: txtSec, letterSpacing: -0.1),
+        // Salary Input Card
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            border: Border.all(color: const Color(0xFFE6E3D8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Tawaran Gaji Pokok', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(
+                    SalaryEvaluatorService.formatRupiah(_grossSalary),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF19191B)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Slider(
+                value: _grossSalary,
+                min: 2000000,
+                max: 20000000,
+                divisions: 180,
+                activeColor: const Color(0xFF19191B),
+                onChanged: (v) => setState(() => _grossSalary = v),
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Kota Tujuan Kerja', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  DropdownButton<String>(
+                    value: _selectedCity,
+                    underline: const SizedBox.shrink(),
+                    items: SalaryEvaluatorService.umrList
+                        .map((u) => DropdownMenuItem(value: u.city, child: Text(u.city, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedCity = val!),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Perlu Sewa Kos', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  CupertinoSwitch(
+                    value: _needsKos,
+                    activeTrackColor: const Color(0xFF19191B),
+                    onChanged: (v) => setState(() => _needsKos = v),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: color,
-              letterSpacing: -0.2,
-            ),
+
+        const SizedBox(height: 14),
+
+        // Result Card (Green / Coral Card)
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: eval.estimatedNetSavings >= 0 ? AppTheme.cardGreen : AppTheme.cardCoral,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eval.estimatedNetSavings >= 0
+                    ? '✓ Gaji Cukup untuk Hidup Mandiri'
+                    : '⚠ Gaji Berpotensi Defisit',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF19191B)),
+              ),
+              const SizedBox(height: 12),
+              _buildEvalRow('Gaji Kotor', SalaryEvaluatorService.formatRupiah(eval.grossSalary)),
+              _buildEvalRow('BPJS Ketenagakerjaan (4%)', '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}'),
+              _buildEvalRow('Biaya Kos & Operasional', '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedOperationalCost)}'),
+              const Divider(height: 16, color: Colors.black26),
+              _buildEvalRow(
+                'Estimasi Tabungan Bersih',
+                SalaryEvaluatorService.formatRupiah(eval.estimatedNetSavings),
+                isBold: true,
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEvalRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w500)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.w900 : FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInterviewTab(BuildContext context, bool isDark) {
+    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
+
+    return Column(
+      children: _qaItems.map((qa) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            border: Border.all(color: const Color(0xFFE6E3D8)),
+          ),
+          child: ExpansionTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusCard)),
+            title: Text(qa['q']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            subtitle: Text(qa['sub']!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Text(
+                  qa['a']!,
+                  style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF333333)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildTemplatesTab(BuildContext context, bool isDark) {
+    return Column(
+      children: _templates.map((tpl) {
+        final color = tpl['color'] as Color;
+        final isDarkText = color == AppTheme.cardYellow || color == AppTheme.cardGreen;
+        final titleColor = isDarkText ? const Color(0xFF111113) : Colors.white;
+        final subColor = isDarkText ? const Color(0xCC111113) : const Color(0xCCFFFFFF);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    tpl['title'] as String,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: titleColor,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(CupertinoIcons.doc_on_doc, color: titleColor, size: 18),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: tpl['text'] as String));
+                      AppleToast.success(context, 'Templat disalin ke clipboard');
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                tpl['text'] as String,
+                style: TextStyle(fontSize: 12, color: subColor, height: 1.4),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

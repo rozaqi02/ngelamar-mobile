@@ -31,10 +31,10 @@ class PrefsService {
     await prefs.setString(_keyUserEmail, email);
   }
 
-  /// Returns 'dark' or 'light'. Defaults to 'dark'.
+  /// Returns 'dark' or 'light'. Defaults to 'light'.
   static Future<String> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyThemeMode) ?? 'dark';
+    return prefs.getString(_keyThemeMode) ?? 'light';
   }
 
   /// Saves theme mode persistently.
