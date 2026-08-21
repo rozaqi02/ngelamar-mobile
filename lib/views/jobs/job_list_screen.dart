@@ -28,6 +28,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   final ScrollController _tabScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
+  String _sortBy = 'Terbaru';
+
   final List<String> _tabs = const [
     'Semua',
     'Dikirim',
@@ -58,6 +60,90 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       targetOffset.clamp(0.0, _tabScrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _showSortModal(BuildContext context) {
+    HapticFeedback.selectionClick();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final sortOptions = [
+      {'label': 'Terbaru Dilamar', 'value': 'Terbaru', 'icon': Icons.schedule_rounded},
+      {'label': 'Terlama Dilamar', 'value': 'Terlama', 'icon': Icons.history_rounded},
+      {'label': 'Gaji Tertinggi', 'value': 'Gaji Tertinggi', 'icon': Icons.monetization_on_outlined},
+      {'label': 'Jadwal Terdekat', 'value': 'Deadline Terdekat', 'icon': Icons.event_available_rounded},
+      {'label': 'Nama Perusahaan (A-Z)', 'value': 'Nama Perusahaan (A-Z)', 'icon': Icons.sort_by_alpha_rounded},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset > 0 ? bottomInset + 16 : 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Urutkan Lamaran',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF121214),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ...sortOptions.map((opt) {
+              final isSel = _sortBy == opt['value'];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF5C44E4).withValues(alpha: 0.12) : const Color(0xFFF3F1EC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    opt['icon'] as IconData,
+                    size: 20,
+                    color: isSel ? const Color(0xFF5C44E4) : const Color(0xFF121214),
+                  ),
+                ),
+                title: Text(
+                  opt['label'] as String,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                    color: isSel ? const Color(0xFF5C44E4) : const Color(0xFF121214),
+                  ),
+                ),
+                trailing: isSel
+                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFF5C44E4), size: 22)
+                    : null,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _sortBy = opt['value'] as String);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -96,7 +182,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   }
 
   List<JobApplication> _filterJobs(List<JobApplication> jobs, String category, JobState state) {
-    return jobs.where((job) {
+    final filtered = jobs.where((job) {
       final q = state.searchQuery.trim().toLowerCase();
       final matchesSearch = q.isEmpty ||
           job.position.toLowerCase().contains(q) ||
@@ -113,6 +199,32 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       if (category == 'Semua') return true;
       return job.status == category;
     }).toList();
+
+    // Sort logic
+    switch (_sortBy) {
+      case 'Terlama':
+        filtered.sort((a, b) => a.appliedDate.compareTo(b.appliedDate));
+        break;
+      case 'Gaji Tertinggi':
+        filtered.sort((a, b) => (b.maxSalary ?? 0).compareTo(a.maxSalary ?? 0));
+        break;
+      case 'Deadline Terdekat':
+        filtered.sort((a, b) {
+          final aDate = a.interviewDate ?? a.testDate ?? DateTime(2099);
+          final bDate = b.interviewDate ?? b.testDate ?? DateTime(2099);
+          return aDate.compareTo(bDate);
+        });
+        break;
+      case 'Nama Perusahaan (A-Z)':
+        filtered.sort((a, b) => a.companyName.toLowerCase().compareTo(b.companyName.toLowerCase()));
+        break;
+      case 'Terbaru':
+      default:
+        filtered.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
+        break;
+    }
+
+    return filtered;
   }
 
   @override
@@ -304,6 +416,48 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        FluidBounceButton(
+                          onTap: () => _showSortModal(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: _sortBy != 'Terbaru' ? const Color(0xFF1C1C1E) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _sortBy != 'Terbaru' ? const Color(0xFF1C1C1E) : const Color(0xFFDCD8CE),
+                              ),
+                              boxShadow: _sortBy != 'Terbaru'
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.sort_rounded,
+                                  size: 14,
+                                  color: _sortBy != 'Terbaru' ? Colors.white : const Color(0xFF121214),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Urutkan: $_sortBy',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _sortBy != 'Terbaru' ? Colors.white : const Color(0xFF121214),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -409,20 +563,73 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                   if (jobs.isEmpty) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(CupertinoIcons.tray, size: 44, color: Colors.grey),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Tidak ada lamaran di kategori "$category"',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: txtPri,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF242428) : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFFE5E0D5)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                category == 'Bookmark'
+                                    ? Icons.bookmark_border_rounded
+                                    : (category.contains('Interview')
+                                        ? Icons.record_voice_over_rounded
+                                        : CupertinoIcons.tray),
+                                size: 40,
+                                color: const Color(0xFF5C44E4),
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'Belum Ada Lamaran di "$category"',
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w800,
+                                color: txtPri,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              category == 'Bookmark'
+                                  ? 'Tandai lowongan favoritmu agar tersimpan rapi di sini.'
+                                  : (category.contains('Interview')
+                                      ? 'Belum ada jadwal wawancara aktif. Terus kirim lamaran terbaikmu!'
+                                      : 'Catat dan pantau setiap tahapan seleksi kerjamu.'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: Colors.grey.shade600,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            ElevatedButton.icon(
+                              onPressed: () => _openAddJob(context),
+                              icon: const Icon(Icons.add_rounded, size: 16),
+                              label: const Text('Catat Lamaran', style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF19191B),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }

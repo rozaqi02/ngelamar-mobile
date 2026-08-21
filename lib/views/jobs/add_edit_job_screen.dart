@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/text_parser_service.dart';
@@ -248,8 +249,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: source, maxWidth: 600, maxHeight: 600, imageQuality: 85);
       if (image != null && mounted) {
+        final appDocDir = await getApplicationDocumentsDirectory();
+        final logosDir = Directory('${appDocDir.path}/logos');
+        if (!await logosDir.exists()) {
+          await logosDir.create(recursive: true);
+        }
+        final fileName = 'logo_${DateTime.now().millisecondsSinceEpoch}.png';
+        final savedImage = await File(image.path).copy('${logosDir.path}/$fileName');
         setState(() {
-          _companyLogoPath = image.path;
+          _companyLogoPath = savedImage.path;
         });
         AppleToast.success(context, 'Foto perusahaan berhasil dipilih!');
       }
@@ -322,14 +330,68 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: source, imageQuality: 90);
       if (image != null && mounted) {
+        final appDocDir = await getApplicationDocumentsDirectory();
+        final screenshotsDir = Directory('${appDocDir.path}/screenshots');
+        if (!await screenshotsDir.exists()) {
+          await screenshotsDir.create(recursive: true);
+        }
+        final fileName = 'screenshot_${DateTime.now().millisecondsSinceEpoch}.png';
+        final savedImage = await File(image.path).copy('${screenshotsDir.path}/$fileName');
         setState(() {
-          _screenshotPath = image.path;
+          _screenshotPath = savedImage.path;
         });
         AppleToast.success(context, 'Screenshot loker berhasil dilampirkan!');
       }
     } catch (_) {
       if (mounted) AppleToast.warning(context, 'Gagal memilih gambar.');
     }
+  }
+
+  bool _hasUnsavedChanges() {
+    if (widget.jobToEdit != null) {
+      final j = widget.jobToEdit!;
+      return _companyController.text != j.companyName ||
+          _positionController.text != j.position ||
+          _salaryController.text != (j.salaryOffered ?? '') ||
+          _notesController.text != (j.notes ?? '') ||
+          _status != j.status ||
+          _screenshotPath != j.screenshotPath ||
+          _companyLogoPath != j.companyLogoPath;
+    }
+    return _companyController.text.isNotEmpty ||
+        _positionController.text.isNotEmpty ||
+        _salaryController.text.isNotEmpty ||
+        _notesController.text.isNotEmpty ||
+        _screenshotPath != null ||
+        _companyLogoPath != null;
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_hasUnsavedChanges()) return true;
+    HapticFeedback.warningNotification();
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Buang Perubahan?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Informasi yang sudah Anda ketik belum tersimpan. Yakin ingin menutup form ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Lanjut Mengisi', style: TextStyle(color: Color(0xFF5C44E4), fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: const Text('Buang', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    return discard ?? false;
   }
 
   void _deleteCurrentJob() async {
@@ -437,40 +499,54 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   Widget build(BuildContext context) {
     final isEdit = widget.jobToEdit != null;
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: EdgeInsets.fromLTRB(20, 8, 20, 40 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF121214),
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                FluidBounceButton(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      shape: BoxShape.circle,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final discard = await _confirmDiscard();
+        if (discard && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 40 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF121214),
+                      letterSpacing: -0.6,
                     ),
-                    child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF121214)),
                   ),
-                ),
-              ],
-            ),
+                  FluidBounceButton(
+                    onTap: () async {
+                      final discard = await _confirmDiscard();
+                      if (discard && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF121214)),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 18),
 
             // ── SECTION 1: SMART AUTO-FILL FROM LINK / TEXT ──
@@ -669,22 +745,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                   TextFormField(
                     controller: _companyController,
+                    maxLength: 80,
                     textCapitalization: TextCapitalization.words,
                     decoration: const InputDecoration(
                       labelText: 'Nama Perusahaan *',
                       hintText: 'Contoh: PT Bank Central Asia Tbk',
                       prefixIcon: Icon(Icons.business_rounded, size: 18),
+                      counterText: '',
                     ),
                     validator: (val) => val == null || val.trim().isEmpty ? 'Nama Perusahaan wajib diisi' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _positionController,
+                    maxLength: 100,
                     textCapitalization: TextCapitalization.words,
                     decoration: const InputDecoration(
                       labelText: 'Posisi / Role *',
                       hintText: 'Contoh: Mobile Application Specialist',
                       prefixIcon: Icon(Icons.badge_rounded, size: 18),
+                      counterText: '',
                     ),
                     validator: (val) => val == null || val.trim().isEmpty ? 'Posisi wajib diisi' : null,
                   ),
@@ -970,7 +1050,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ],
           ),
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../services/salary_evaluator_service.dart';
@@ -93,6 +94,31 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
         .map((d) => d['title'] as String)
         .toList();
     await PrefsService.setChecklistDocs(checkedTitles);
+  }
+
+  void _shareChecklist() {
+    HapticFeedback.selectionClick();
+    final items = _docs.map((d) => '${(d['checked'] as bool) ? '✅' : '⬜'} ${d['title']}').join('\n');
+    final text = '📋 *Kesiapan Berkas Lamaran Saya - Ngelamar App*\n'
+        'Progress: $_checkedCount/${_docs.length} (${(_readinessPercent * 100).toInt()}%)\n\n'
+        '$items\n\n'
+        'Dicatat via Ngelamar App';
+    Share.share(text, subject: 'Kesiapan Berkas Lamaran Kerja');
+  }
+
+  String _populateTemplate(String templateText, String userName, String? defaultCompany, String? defaultPosition) {
+    var result = templateText;
+    final name = userName.isNotEmpty ? userName : 'Pencari Kerja';
+    result = result.replaceAll('[Nama Anda]', name);
+    result = result.replaceAll('[Nama Lengkap]', name);
+    if (defaultCompany != null && defaultCompany.isNotEmpty) {
+      result = result.replaceAll('[Nama Perusahaan]', defaultCompany);
+    }
+    if (defaultPosition != null && defaultPosition.isNotEmpty) {
+      result = result.replaceAll('[Nama Posisi]', defaultPosition);
+      result = result.replaceAll('[Posisi]', defaultPosition);
+    }
+    return result;
   }
 
   final List<Map<String, String>> _allQaPool = const [
@@ -589,6 +615,27 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 ],
               );
             }),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Share Checklist Readiness Button
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: _shareChecklist,
+            icon: const Icon(Icons.share_outlined, size: 17, color: Color(0xFF19191B)),
+            label: const Text(
+              'Bagikan Ringkasan Kesiapan Berkas',
+              style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF19191B), fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFDCD8CE), width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
           ),
         ),
       ],
@@ -1332,10 +1379,97 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 tpl['text'] as String,
                 style: TextStyle(fontSize: 12.5, color: subColor, height: 1.45),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        if (isLocked) {
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(builder: (_) => const SubscriptionScreen()),
+                          );
+                          AppleToast.info(context, 'Buka Ngelamar PRO untuk membuka templat ini!');
+                        } else {
+                          final firstJob = state.jobs.isNotEmpty ? state.jobs.first : null;
+                          final filled = _populateTemplate(
+                            tpl['text'] as String,
+                            state.userName,
+                            firstJob?.companyName,
+                            firstJob?.position,
+                          );
+                          Clipboard.setData(ClipboardData(text: filled));
+                          AppleToast.success(
+                            context,
+                            'Templat Terisi Otomatis!',
+                            subtitle: 'Disalin dengan nama ${state.userName.isNotEmpty ? state.userName : "Anda"}',
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDarkText ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDarkText ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.auto_fix_high_rounded, size: 13, color: titleColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Isi Data Saya',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: titleColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      if (isLocked) {
+                        Navigator.push(
+                          context,
+                          CupertinoPageRoute(builder: (_) => const SubscriptionScreen()),
+                        );
+                        AppleToast.info(context, 'Buka Ngelamar PRO untuk membagikan templat ini!');
+                      } else {
+                        final firstJob = state.jobs.isNotEmpty ? state.jobs.first : null;
+                        final filled = _populateTemplate(
+                          tpl['text'] as String,
+                          state.userName,
+                          firstJob?.companyName,
+                          firstJob?.position,
+                        );
+                        Share.share(filled, subject: tpl['title'] as String);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDarkText ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDarkText ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Icon(Icons.share_outlined, size: 15, color: titleColor),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -53,6 +53,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _showFilterModal(BuildContext context) {
     HapticFeedback.selectionClick();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -63,7 +64,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           final currentStatus = ref.watch(jobProvider).selectedStatusFilter;
 
           return Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset > 0 ? bottomInset + 16 : 24),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -204,6 +205,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _showNotificationCenter(BuildContext context, List<JobApplication> jobs) {
     HapticFeedback.selectionClick();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     final now = DateTime.now();
     final upcomingInterviews = jobs.where((j) {
       final date = j.interviewDate ?? j.testDate;
@@ -217,7 +219,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset > 0 ? bottomInset + 16 : 24),
         decoration: const BoxDecoration(
           color: Color(0xFFFBF8F2),
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),

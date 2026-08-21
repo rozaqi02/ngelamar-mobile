@@ -382,6 +382,198 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _showPrivacyPolicyModal() {
+    HapticFeedback.selectionClick();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(24, 20, 24, bottomInset > 0 ? bottomInset + 16 : 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5C44E4).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(CupertinoIcons.lock_shield_fill, color: Color(0xFF5C44E4), size: 22),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kebijakan Privasi & Data',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+                      ),
+                      Text(
+                        'Offline-First & Keamanan Data Pengguna',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF121214)),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBF8F2),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE5E0D5)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '🔒 100% Data Tersimpan Lokal',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF121214)),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Seluruh catatan lamaran kerja, besaran gaji, tanggal interview, foto screenshot, dan identitas Anda tersimpan secara eksklusif di database internal perangkat (Hive).',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF555558), height: 1.4),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    '🛡️ Tanpa Tracking & Tanpa Iklan Pihak Ketiga',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF121214)),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Ngelamar tidak mengumpulkan, menjual, atau mentransfer data pribadi Anda ke server analitik pihak ketiga manapun.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF555558), height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF19191B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                ),
+                child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAboutAppModal() {
+    HapticFeedback.selectionClick();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(24, 20, 24, bottomInset > 0 ? bottomInset + 16 : 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                image: const DecorationImage(
+                  image: AssetImage('assets/images/app_icon.png'),
+                  fit: BoxFit.cover,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Ngelamar Mobile',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+            ),
+            const Text(
+              'Versi 2.0.0 (Build 200)',
+              style: TextStyle(fontSize: 12, color: Color(0xFF5C44E4), fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Asisten pelacak lamaran kerja modern dan persiapan karir all-in-one untuk pencari kerja dan fresh graduate di Indonesia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF555558), height: 1.45),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF19191B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                ),
+                child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
@@ -721,10 +913,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           icon: CupertinoIcons.lock_shield,
                           color: AppTheme.cardGreen,
                           title: 'Penyimpanan Lokal 100% Offline',
-                          subtitle: 'Data dan dokumen tersimpan aman hanya di HP kamu',
-                          onTap: () {
-                            AppleToast.info(context, 'Seluruh data privasi berada di database internal perangkat.');
-                          },
+                          subtitle: 'Data dan dokumen tersimpan aman hanya di HP kamu (Ketuk detail)',
+                          onTap: _showPrivacyPolicyModal,
+                        ),
+                        Divider(height: 1, color: isDark ? const Color(0xFF2C2C30) : const Color(0xFFEFECE4)),
+                        _buildSettingTile(
+                          icon: CupertinoIcons.info_circle,
+                          color: const Color(0xFF0288D1),
+                          title: 'Tentang Aplikasi & Versi',
+                          subtitle: 'Informasi rilis, tim developer & lisensi',
+                          onTap: _showAboutAppModal,
                         ),
                       ],
                     ),
@@ -765,24 +963,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                   const SizedBox(height: 24),
 
-                  // App Info & Version
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Ngelamar v$_appVersion ($_buildNumber)',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade600,
+                  // App Info & Version with Clickable Modal
+                  GestureDetector(
+                    onTap: _showAboutAppModal,
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Ngelamar v$_appVersion ($_buildNumber)',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Aplikasi Pelacak Lamaran Kerja Offline • idka-solutions',
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            'Aplikasi Pelacak Lamaran Kerja Offline • idka-solutions',
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ]),

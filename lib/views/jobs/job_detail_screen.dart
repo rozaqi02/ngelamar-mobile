@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/followup_service.dart';
+import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
@@ -79,6 +81,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     _bookmarkAnimController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _shareJob(JobApplication currentJob) {
+    HapticFeedback.selectionClick();
+    final salary = currentJob.salaryOffered != null ? '\n💰 Gaji: ${currentJob.salaryOffered}' : '';
+    final loc = currentJob.location != null ? '\n📍 Lokasi: ${currentJob.location}' : '';
+    final url = currentJob.jobUrl != null ? '\n🔗 Link: ${currentJob.jobUrl}' : '';
+    final date = '📅 Dilamar: ${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}';
+    final status = '📊 Status: ${currentJob.status} (${currentJob.workType})';
+
+    final text = '📄 *Lowongan Kerja - Ngelamar App*\n'
+        '🏢 *${currentJob.companyName}*\n'
+        '💼 Posisi: ${currentJob.position}'
+        '$loc'
+        '$salary\n'
+        '$status\n'
+        '$date'
+        '$url\n\n'
+        'Dicatat via Ngelamar App';
+
+    Share.share(text, subject: 'Lowongan: ${currentJob.position} di ${currentJob.companyName}');
   }
 
   void _openEditJob(JobApplication currentJob) async {
@@ -971,45 +994,77 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
 
-                        // Circular Bookmark Button with Animated Scale & Pop Feedback
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.heavyImpact();
-                            _bookmarkAnimController.forward(from: 0.0);
-                            ref.read(jobProvider.notifier).toggleFavorite(currentJob.id);
-                            AppleToast.success(
-                              context,
-                              currentJob.isFavorite ? 'Dihapus dari Bookmark' : 'Disimpan ke Bookmark',
-                              subtitle: currentJob.companyName,
-                            );
-                          },
-                          child: ScaleTransition(
-                            scale: _bookmarkScaleAnim,
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: currentJob.isFavorite ? const Color(0xFF19191B) : Colors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: currentJob.isFavorite
-                                        ? const Color(0xFF19191B).withValues(alpha: 0.35)
-                                        : Colors.black.withValues(alpha: 0.06),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
+                        Row(
+                          children: [
+                            // Share Button with Fluid Bounce
+                            FluidBounceButton(
+                              onTap: () => _shareJob(currentJob),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.06),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.share_outlined,
+                                    size: 19,
+                                    color: Color(0xFF121214),
                                   ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  currentJob.isFavorite ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
-                                  size: 20,
-                                  color: currentJob.isFavorite ? const Color(0xFFFFD54F) : const Color(0xFF121214),
                                 ),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+
+                            // Circular Bookmark Button with Animated Scale & Pop Feedback
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.heavyImpact();
+                                _bookmarkAnimController.forward(from: 0.0);
+                                ref.read(jobProvider.notifier).toggleFavorite(currentJob.id);
+                                AppleToast.success(
+                                  context,
+                                  currentJob.isFavorite ? 'Dihapus dari Bookmark' : 'Disimpan ke Bookmark',
+                                  subtitle: currentJob.companyName,
+                                );
+                              },
+                              child: ScaleTransition(
+                                scale: _bookmarkScaleAnim,
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: currentJob.isFavorite ? const Color(0xFF19191B) : Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: currentJob.isFavorite
+                                            ? const Color(0xFF19191B).withValues(alpha: 0.35)
+                                            : Colors.black.withValues(alpha: 0.06),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      currentJob.isFavorite ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
+                                      size: 20,
+                                      color: currentJob.isFavorite ? const Color(0xFFFFD54F) : const Color(0xFF121214),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

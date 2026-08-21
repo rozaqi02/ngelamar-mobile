@@ -128,7 +128,20 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     await ref.read(jobProvider.notifier).addJob(newJob);
 
     if (mounted) {
-      AppleToast.success(context, 'Lowongan "${job.position}" berhasil disimpan ke Lamaran!');
+      AppleToast.success(
+        context,
+        'Lowongan Tersimpan!',
+        subtitle: '${job.position} di ${job.companyName}',
+        actionLabel: 'Lihat',
+        onAction: () {
+          if (mounted) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => JobDetailScreen(job: newJob)),
+            );
+          }
+        },
+      );
     }
   }
 
@@ -606,8 +619,17 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                   child: GestureDetector(
                     onTap: () async {
                       HapticFeedback.selectionClick();
-                      final uri = Uri.parse(job.jobUrl ?? 'https://glints.com');
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      try {
+                        final uri = Uri.parse(job.jobUrl ?? 'https://glints.com');
+                        final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (!success && context.mounted) {
+                          AppleToast.warning(context, 'Tidak dapat membuka tautan browser.');
+                        }
+                      } catch (_) {
+                        if (context.mounted) {
+                          AppleToast.warning(context, 'Tautan lowongan tidak valid atau browser tidak tersedia.');
+                        }
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
