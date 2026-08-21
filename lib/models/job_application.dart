@@ -134,7 +134,7 @@ class JobApplication {
       position: map['position'] ?? '',
       status: cleanStatus,
       appliedDate: map['appliedDate'] != null
-          ? DateTime.parse(map['appliedDate'])
+          ? (DateTime.tryParse(map['appliedDate']) ?? DateTime.now())
           : DateTime.now(),
       salaryOffered: map['salaryOffered'],
       minSalary: map['minSalary'] is int ? map['minSalary'] : null,
@@ -146,9 +146,9 @@ class JobApplication {
       jobUrl: map['jobUrl'],
       jobDescription: map['jobDescription'] ?? '',
       hrContact: map['hrContact'],
-      testDate: map['testDate'] != null ? DateTime.parse(map['testDate']) : null,
+      testDate: map['testDate'] != null ? DateTime.tryParse(map['testDate']) : null,
       interviewDate: map['interviewDate'] != null
-          ? DateTime.parse(map['interviewDate'])
+          ? DateTime.tryParse(map['interviewDate'])
           : null,
       notes: map['notes'],
       isFavorite: map['isFavorite'] ?? false,

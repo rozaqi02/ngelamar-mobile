@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,9 +7,11 @@ import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/apple_sheet_window.dart';
-import '../../widgets/apple_toast.dart';
+import '../../widgets/app_dialog.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/confused_envelope_mascot.dart';
+import '../../widgets/container_morph_route.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
 import 'job_list_welcome_screen.dart';
@@ -27,6 +30,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   late TabController _tabController;
   final ScrollController _tabScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey _addBtnKey = GlobalKey();
+  Timer? _debounce;
 
   String _sortBy = 'Terbaru';
 
@@ -155,14 +160,15 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     super.dispose();
   }
 
-  void _openAddJob(BuildContext ctx) async {
-    final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
+  void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
+    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
       context: ctx,
+      buttonKey: key ?? _addBtnKey,
       child: const AddEditJobScreen(),
     );
 
     if (result != null && mounted) {
-      AppleToast.success(
+      AppToast.success(
         context,
         'Lamaran tersimpan!',
         subtitle: '${result.position} di ${result.companyName}',
@@ -231,16 +237,26 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
     final isDark = AppTheme.isDark(context);
-    final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
+    final purpleGradient = isDark
+        ? const [Color(0xFF19142E), Color(0xFF151324), Color(0xFF121214)]
+        : const [Color(0xFFEFEAFF), Color(0xFFF7F4FF), Color(0xFFF5EFE6)];
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            // Top Bar: Title + Add Button
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: purpleGradient,
+            stops: const [0.0, 0.35, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // Top Bar: Title + Add Button
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
               child: Row(
@@ -288,7 +304,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () => _openAddJob(context),
+                        key: _addBtnKey,
+                        onTap: () => _openAddJob(context, _addBtnKey),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
@@ -334,7 +351,12 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   CupertinoSearchTextField(
                     controller: _searchController,
                     placeholder: 'Cari posisi, perusahaan, atau kota...',
-                    onChanged: (v) => ref.read(jobProvider.notifier).setSearchQuery(v),
+                    onChanged: (v) {
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) ref.read(jobProvider.notifier).setSearchQuery(v);
+                      });
+                    },
                     backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -382,37 +404,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FluidBounceButton(
-                          onTap: () => ref.read(jobProvider.notifier).toggleOnlyWfhFilter(),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: state.onlyWfhFilter ? const Color(0xFF5C44E4) : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: state.onlyWfhFilter ? const Color(0xFF5C44E4) : const Color(0xFFDCD8CE),
-                              ),
-                              boxShadow: state.onlyWfhFilter
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFF5C44E4).withValues(alpha: 0.25),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Text(
-                              'WFH / Remote',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: state.onlyWfhFilter ? Colors.white : const Color(0xFF121214),
-                              ),
                             ),
                           ),
                         ),
@@ -568,31 +559,13 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF242428) : Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: const Color(0xFFE5E0D5)),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                category == 'Bookmark'
-                                    ? Icons.bookmark_border_rounded
-                                    : (category.contains('Interview')
-                                        ? Icons.record_voice_over_rounded
-                                        : CupertinoIcons.tray),
-                                size: 40,
-                                color: const Color(0xFF5C44E4),
+                            const Center(
+                              child: ConfusedEnvelopeMascot(
+                                width: 195,
+                                height: 155,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Text(
                               'Belum Ada Lamaran di "$category"',
                               style: TextStyle(
@@ -617,16 +590,40 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                               ),
                             ),
                             const SizedBox(height: 18),
-                            ElevatedButton.icon(
-                              onPressed: () => _openAddJob(context),
-                              icon: const Icon(Icons.add_rounded, size: 16),
-                              label: const Text('Catat Lamaran', style: TextStyle(fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF19191B),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (state.searchQuery.isNotEmpty || state.onlyFavoritesFilter || state.onlyWfhFilter || _sortBy != 'Terbaru') ...[
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      ref.read(jobProvider.notifier).resetFilters();
+                                      setState(() => _sortBy = 'Terbaru');
+                                    },
+                                    icon: const Icon(Icons.refresh_rounded, size: 15),
+                                    label: const Text('Reset Filter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      side: const BorderSide(color: Color(0xFFDCD8CE)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                      foregroundColor: const Color(0xFF121214),
+                                      backgroundColor: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                ElevatedButton.icon(
+                                  onPressed: () => _openAddJob(context),
+                                  icon: const Icon(Icons.add_rounded, size: 16),
+                                  label: const Text('Catat Lamaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF19191B),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -640,7 +637,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     itemCount: jobs.length,
                     itemBuilder: (context, i) {
                       final job = jobs[i];
-                      final cardColor = AppTheme.getCompanyCardColor(job.companyName);
+                      final cardColor = AppTheme.getCompanyCardColor(job.companyName, job.status);
                       final isDarkText = cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
 
                       return Padding(
@@ -650,32 +647,20 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           direction: DismissDirection.endToStart,
                           confirmDismiss: (direction) async {
                             HapticFeedback.heavyImpact();
-                            return await showDialog<bool>(
+                            return await AppDialog.show<bool>(
                               context: context,
-                              builder: (ctx) => AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                title: const Text('Hapus Lamaran?', style: TextStyle(fontWeight: FontWeight.bold)),
-                                content: Text('Hapus lamaran ${job.position} di ${job.companyName}?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFE53935),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
-                                    child: const Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
+                              icon: Icons.delete_outline_rounded,
+                              iconColor: const Color(0xFFE53935),
+                              title: 'Hapus Lamaran?',
+                              content: 'Hapus lamaran posisi ${job.position} di ${job.companyName}?',
+                              secondaryLabel: 'Batal',
+                              primaryLabel: 'Hapus',
+                              isDestructive: true,
                             );
                           },
                           onDismissed: (_) {
                             ref.read(jobProvider.notifier).deleteJob(job.id);
-                            AppleToast.success(context, 'Lamaran di ${job.companyName} dihapus.');
+                            AppToast.success(context, 'Lamaran di ${job.companyName} dihapus.');
                           },
                           background: Container(
                             alignment: Alignment.centerRight,
@@ -712,7 +697,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildJobCard({

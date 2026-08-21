@@ -91,16 +91,32 @@ class JobState {
 
   /// Daftar lamaran yang telah disaring berdasarkan kata kunci dan filter aktif
   List<JobApplication> get filteredJobs {
+    final queryTokens = searchQuery
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty)
+        .toList();
+
     return jobs.where((job) {
-      if (searchQuery.isNotEmpty) {
-        final q = searchQuery.trim().toLowerCase();
-        final inPos = job.position.toLowerCase().contains(q);
-        final inComp = job.companyName.toLowerCase().contains(q);
-        final inLoc = (job.location ?? '').toLowerCase().contains(q);
-        final inDesc = job.jobDescription.toLowerCase().contains(q);
-        final inNotes = (job.notes ?? '').toLowerCase().contains(q);
-        final inHr = (job.hrContact ?? '').toLowerCase().contains(q);
-        if (!inPos && !inComp && !inLoc && !inDesc && !inNotes && !inHr) return false;
+      if (queryTokens.isNotEmpty) {
+        final pos = job.position.toLowerCase();
+        final comp = job.companyName.toLowerCase();
+        final loc = (job.location ?? '').toLowerCase();
+        final desc = job.jobDescription.toLowerCase();
+        final notes = (job.notes ?? '').toLowerCase();
+        final hr = (job.hrContact ?? '').toLowerCase();
+
+        // Setiap token pencarian harus cocok dengan minimal 1 atribut
+        final allTokensMatch = queryTokens.every((token) =>
+            pos.contains(token) ||
+            comp.contains(token) ||
+            loc.contains(token) ||
+            desc.contains(token) ||
+            notes.contains(token) ||
+            hr.contains(token));
+
+        if (!allTokensMatch) return false;
       }
       if (selectedStatusFilter != 'Semua' && job.status != selectedStatusFilter) {
         return false;
@@ -176,9 +192,11 @@ class JobNotifier extends StateNotifier<JobState> {
       }
     }
 
-    // Selalu pastikan data awal adalah data perusahaan Indonesia dengan format Rupiah
-    final isInitialOrOutdated = loaded.isEmpty || loaded.any((j) => j.salaryOffered?.contains('\$') ?? false);
-    if (isInitialOrOutdated) {
+    final hasSeeded = await PrefsService.isInitialDataSeeded();
+    final hasDollarCurrency = loaded.any((j) => j.salaryOffered?.contains('\$') ?? false);
+
+    // Hanya isi sampel pada instalasi baru atau saat mata uang lama masih USD
+    if (!hasSeeded || hasDollarCurrency) {
       await box.clear();
       loaded.clear();
       final samples = _generateSampleJobs();
@@ -190,6 +208,7 @@ class JobNotifier extends StateNotifier<JobState> {
           debugPrint('Gagal menyimpan data sampel awal: $error');
         }
       }
+      await PrefsService.setInitialDataSeeded(true);
     }
 
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
@@ -277,6 +296,7 @@ class JobNotifier extends StateNotifier<JobState> {
     final box = await _boxReady;
     await box.clear();
     state = state.copyWith(jobs: []);
+    await NotificationService.cancelAllInterviewReminders();
   }
 
   Future<void> addJob(JobApplication job) async {
@@ -330,7 +350,9 @@ class JobNotifier extends StateNotifier<JobState> {
     );
     state = state.copyWith(jobs: updated);
 
-    if (job.status == 'Ditolak' || job.status == 'Diterima') {
+    if (job.status == 'Ditolak' ||
+        job.status == 'Diterima' ||
+        (job.interviewDate == null && job.testDate == null)) {
       _cancelReminderQuietly(job.id);
     } else {
       _scheduleReminderQuietly(job);

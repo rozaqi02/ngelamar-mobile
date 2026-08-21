@@ -4,17 +4,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
-import '../../services/text_parser_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/salary_evaluator_service.dart';
+import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/rupiah_input_formatter.dart';
-import '../../services/notification_service.dart';
 
+/// Screen: Tambah & Edit Catatan Lamaran Kerja.
+/// Didesain 100% presisi mengikuti referensi visual mockup:
+/// - Latar belakang dominan Warm Vibrant Yellow (seperti kartu Amazon)
+/// - Top Bar: Tombol bundar putih (Back), Logo Perusahaan bundar di tengah, Tombol Bookmark/Impor di kanan
+/// - Nama Perusahaan besar tebal di tengah
+/// - Pill Container Posisi/Role (Software Development Engineer style)
+/// - Teks Lokasi dengan pin icon (📍 California, USA style)
+/// - 3 Pill Chips horizontal: [ 🪙 Gaji ], [ ⏱️ Tipe Kerja ], [ 💼 Sumber/Status ]
+/// - Section Card Putih melengkung tumpul (28px) dengan floating pill header "Kualifikasi & Detail Seleksi"
+/// - Tombol Aksi Utama Pil Hitam Solid di bagian bawah: "Catat Lamaran Ini" / "Simpan Perubahan"
 class AddEditJobScreen extends ConsumerStatefulWidget {
   final JobApplication? jobToEdit;
   final bool autoFocusPaste;
@@ -43,7 +53,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
   String _status = 'Dikirim';
   String _workType = 'WFO';
-  String _jobSource = 'Pilih Sumber / Mandiri';
+  String _jobSource = 'LinkedIn';
   String _sourcePlatform = 'Manual';
   String? _jobUrl;
   String? _screenshotPath;
@@ -52,6 +62,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   DateTime? _interviewDate;
   bool _isSaving = false;
   bool _isExtracting = false;
+  bool _showSmartImport = false;
 
   final List<String> _statusOptions = [
     'Dikirim',
@@ -65,7 +76,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
   final List<String> _workTypeOptions = ['WFO', 'WFH', 'Hybrid'];
   final List<String> _sourceOptions = [
-    'Pilih Sumber / Mandiri',
     'LinkedIn',
     'JobStreet',
     'Indeed',
@@ -74,7 +84,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     'KitaLulus',
     'Website Karir',
     'Email Direct',
-    'Referensi / Rekomendasi',
+    'Referensi',
     'Lainnya',
   ];
 
@@ -117,7 +127,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     super.dispose();
   }
 
-  /// Tempel langsung dari Clipboard & Otomatis Ekstrak
+  /// Tempel dari Clipboard & Ekstrak otomatis
   void _pasteFromClipboard() async {
     HapticFeedback.selectionClick();
     final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -131,7 +141,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     }
   }
 
-  /// Ekstraksi otomatis dari Link URL (LinkedIn, Glints, JobStreet, Indeed) atau Teks Iklan
+  /// Ekstraksi otomatis dari Link URL atau Teks Iklan
   void _extractFromLinkOrText() async {
     final text = _linkOrTextController.text.trim();
     if (text.isEmpty) {
@@ -158,6 +168,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         if (result.sourcePlatform != 'Manual' && _sourceOptions.contains(result.sourcePlatform)) {
           _jobSource = result.sourcePlatform;
         }
+        _showSmartImport = false;
       });
 
       if (!mounted) return;
@@ -204,11 +215,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             const SizedBox(height: 16),
             const Text(
               'Foto / Logo Perusahaan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Pilih foto logo atau kantor perusahaan yang Anda lamar:',
+              'Pilih foto logo atau perusahaan yang Anda lamar:',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -259,7 +270,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         setState(() {
           _companyLogoPath = savedImage.path;
         });
-        AppleToast.success(context, 'Foto perusahaan berhasil dipilih!');
+        if (mounted) {
+          AppleToast.success(context, 'Foto perusahaan berhasil dipilih!');
+        }
       }
     } catch (_) {
       if (mounted) AppleToast.warning(context, 'Gagal memilih gambar.');
@@ -294,8 +307,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Lampirkan Screenshot Loker',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+              'Lampirkan Bukti / Screenshot Loker',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -328,7 +341,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   void _processImagePick(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: source, imageQuality: 90);
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
       if (image != null && mounted) {
         final appDocDir = await getApplicationDocumentsDirectory();
         final screenshotsDir = Directory('${appDocDir.path}/screenshots');
@@ -340,10 +358,50 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         setState(() {
           _screenshotPath = savedImage.path;
         });
-        AppleToast.success(context, 'Screenshot loker berhasil dilampirkan!');
+        if (mounted) {
+          AppleToast.success(context, 'Screenshot loker berhasil dilampirkan!');
+        }
       }
     } catch (_) {
       if (mounted) AppleToast.warning(context, 'Gagal memilih gambar.');
+    }
+  }
+
+  /// Pilih Tanggal Melamar & Tanggal Jadwal Interview
+  Future<void> _pickDate({required bool isInterview}) async {
+    HapticFeedback.selectionClick();
+    final initialDate = isInterview
+        ? (_interviewDate ?? DateTime.now().add(const Duration(days: 3)))
+        : _appliedDate;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF19191B),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF121214),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isInterview) {
+          _interviewDate = picked;
+        } else {
+          _appliedDate = picked;
+        }
+      });
     }
   }
 
@@ -495,9 +553,140 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     }
   }
 
+  void _showWorkTypePicker() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Pilih Tipe Kerja',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+            ),
+            const SizedBox(height: 14),
+            ..._workTypeOptions.map((type) {
+              final isSel = _workType == type;
+              return ListTile(
+                leading: Icon(
+                  type == 'WFH' ? Icons.home_work_rounded : (type == 'Hybrid' ? Icons.sync_alt_rounded : Icons.apartment_rounded),
+                  color: isSel ? const Color(0xFFF8BA38) : const Color(0xFF121214),
+                ),
+                title: Text(
+                  type,
+                  style: TextStyle(fontWeight: isSel ? FontWeight.w900 : FontWeight.w600),
+                ),
+                trailing: isSel ? const Icon(Icons.check_circle_rounded, color: Color(0xFF19191B)) : null,
+                onTap: () {
+                  setState(() => _workType = type);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showStatusPicker() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Pilih Tahapan Status Lamaran',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+            ),
+            const SizedBox(height: 14),
+            ..._statusOptions.map((st) {
+              final isSel = _status == st;
+              final color = AppTheme.getStatusColor(st);
+              return ListTile(
+                leading: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                title: Text(
+                  st,
+                  style: TextStyle(fontWeight: isSel ? FontWeight.w900 : FontWeight.w600),
+                ),
+                trailing: isSel ? const Icon(Icons.check_circle_rounded, color: Color(0xFF19191B)) : null,
+                onTap: () {
+                  setState(() => _status = st);
+                  Navigator.pop(ctx);
+                },
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.jobToEdit != null;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    const canvasYellow = Color(0xFFF8BA38); // Exact Amazon Mustard Yellow from mockup
+    const pillCream = Color(0xFFFDE7A8); // Exact pill cream container from mockup
+
+    final displayCompany = _companyController.text.trim().isNotEmpty
+        ? _companyController.text.trim()
+        : 'Nama Perusahaan';
+    final displayPosition = _positionController.text.trim().isNotEmpty
+        ? _positionController.text.trim()
+        : 'Posisi / Role Pekerjaan.';
+    final displayLocation = _locationController.text.trim().isNotEmpty
+        ? _locationController.text.trim()
+        : 'Lokasi Perusahaan';
+    final displaySalary = _salaryController.text.trim().isNotEmpty
+        ? _salaryController.text.trim()
+        : 'Gaji Negosiasi';
 
     return PopScope(
       canPop: false,
@@ -508,553 +697,802 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           Navigator.pop(context);
         }
       },
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 40 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
-        child: Form(
-          key: _formKey,
+      child: Scaffold(
+        backgroundColor: canvasYellow,
+        body: SafeArea(
+          bottom: false,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    isEdit ? 'Edit Lamaran' : 'Tambah Lamaran Baru',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF121214),
-                      letterSpacing: -0.6,
-                    ),
-                  ),
-                  FluidBounceButton(
-                    onTap: () async {
-                      final discard = await _confirmDiscard();
-                      if (discard && context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF121214)),
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 18),
-
-            // ── SECTION 1: SMART AUTO-FILL FROM LINK / TEXT ──
-            if (!isEdit) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3EEFF),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                  border: Border.all(color: const Color(0xFFD6C8F8), width: 1.2),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottomInset),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Row(
+                        // ── 1. TOP HEADER BAR: CIRCULAR BACK + LOGO IN CENTER + BOOKMARK/IMPORT ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Icon(Icons.auto_awesome_rounded, color: Color(0xFF5C44E4), size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Impor Cepat dari Link',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF121214)),
+                            // Left Circular Back Button (<)
+                            GestureDetector(
+                              onTap: () async {
+                                final discard = await _confirmDiscard();
+                                if (discard && context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.08),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(CupertinoIcons.chevron_back, color: Color(0xFF121214), size: 22),
+                                ),
+                              ),
+                            ),
+
+                            // Center Circular Logo Container
+                            GestureDetector(
+                              onTap: _pickCompanyLogo,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.12),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child: _companyLogoPath != null && File(_companyLogoPath!).existsSync()
+                                          ? Image.file(
+                                              File(_companyLogoPath!),
+                                              width: 64,
+                                              height: 64,
+                                              fit: BoxFit.cover,
+                                              cacheWidth: (64 * MediaQuery.of(context).devicePixelRatio).round(),
+                                              cacheHeight: (64 * MediaQuery.of(context).devicePixelRatio).round(),
+                                            )
+                                          : Center(
+                                              child: Text(
+                                                displayCompany.isNotEmpty ? displayCompany[0].toUpperCase() : '🏢',
+                                                style: const TextStyle(
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Color(0xFF121214),
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF19191B),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Right Circular Bookmark / Smart Auto-Fill Button
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _showSmartImport = !_showSmartImport);
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.08),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    _showSmartImport ? Icons.close_rounded : Icons.auto_awesome_rounded,
+                                    color: const Color(0xFF121214),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        GestureDetector(
-                          onTap: _pasteFromClipboard,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+
+                        const SizedBox(height: 16),
+
+                        // ── 2. SMART AUTO-FILL ACCORDION (JIKA DIAKTIFKAN) ──
+                        if (_showSmartImport) ...[
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF5C44E4),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.content_paste_rounded, size: 13, color: Colors.white),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Tempel',
-                                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.auto_awesome_rounded, color: Color(0xFF5C44E4), size: 18),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Impor dari Link / Teks Loker',
+                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                                        ),
+                                      ],
+                                    ),
+                                    GestureDetector(
+                                      onTap: _pasteFromClipboard,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF19191B),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Text(
+                                          'Tempel Clipboard',
+                                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: _linkOrTextController,
+                                  maxLines: 2,
+                                  style: const TextStyle(fontSize: 12.5),
+                                  decoration: InputDecoration(
+                                    hintText: 'Tempel link LinkedIn, Glints, JobStreet, atau teks loker...',
+                                    fillColor: const Color(0xFFF9F7F2),
+                                    filled: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 42,
+                                  child: ElevatedButton(
+                                    onPressed: _isExtracting ? null : _extractFromLinkOrText,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF5C44E4),
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    ),
+                                    child: _isExtracting
+                                        ? const CupertinoActivityIndicator(color: Colors.white)
+                                        : const Text('Ekstrak & Isi Otomatis ✨', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _linkOrTextController,
-                      maxLines: 2,
-                      style: const TextStyle(fontSize: 12.5),
-                      decoration: InputDecoration(
-                        hintText: 'Tempel link LinkedIn, Glints, JobStreet, atau teks loker...',
-                        fillColor: Colors.white,
-                        filled: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFD6C8F8)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFD6C8F8)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _isExtracting ? null : _extractFromLinkOrText,
-                        icon: _isExtracting
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.auto_awesome_rounded, size: 18),
-                        label: Text(
-                          _isExtracting ? 'Menganalisis Link...' : 'Ekstrak & Isi Otomatis',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF5C44E4),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                        ],
 
-            // ── SECTION 2: INFORMASI UTAMA PEKERJAAN ──
-            _buildSectionCard(
-              title: 'Informasi Pekerjaan',
-              icon: Icons.work_outline_rounded,
-              child: Column(
-                children: [
-                  // Logo / Foto Perusahaan Upload Row
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9F7F2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE5E0D5)),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: _pickCompanyLogo,
-                          child: Stack(
+                        // ── 3. COMPANY NAME (LARGE BOLD EDITORIAL TYPOGRAPHY - PERSIS MOCKUP) ──
+                        Text(
+                          displayCompany,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 27,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF121214),
+                            letterSpacing: -0.6,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // ── 4. POSITION PILL BADGE CONTAINER (PERSIS MOCKUP) ──
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: pillCream,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            displayPosition,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF121214),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // ── 5. LOCATION (📍 LOCATION WITH PIN - PERSIS MOCKUP) ──
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.location_on_outlined, size: 15, color: Color(0xFF121214)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                displayLocation,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF121214),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // ── 6. THREE HORIZONTAL INFO PILLS (GAJI, WORK TYPE, STATUS) - PERSIS MOCKUP ──
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              // Pill 1: White Pill with Black Circle Coin (Gaji)
                               Container(
-                                width: 54,
-                                height: 54,
+                                padding: const EdgeInsets.fromLTRB(6, 6, 16, 6),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFFDCD8CE), width: 1.5),
+                                  borderRadius: BorderRadius.circular(28),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: ClipOval(
-                                  child: _companyLogoPath != null && File(_companyLogoPath!).existsSync()
-                                      ? Image.file(
-                                          File(_companyLogoPath!),
-                                          width: 54,
-                                          height: 54,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Center(
-                                          child: Icon(
-                                            Icons.business_rounded,
-                                            size: 26,
-                                            color: Colors.grey.shade600,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF1C1C1E),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: Text(
+                                          'Rp',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF19191B),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Foto / Logo Perusahaan',
-                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _companyLogoPath != null
-                                    ? 'Foto kustom terpasang (ketuk untuk ubah)'
-                                    : 'Ketuk ikon kamera untuk unggah foto/logo',
-                                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
-                              ),
-                            ],
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: _pickCompanyLogo,
-                          child: Text(
-                            _companyLogoPath != null ? 'Ubah' : 'Unggah',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF5C44E4)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  TextFormField(
-                    controller: _companyController,
-                    maxLength: 80,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Perusahaan *',
-                      hintText: 'Contoh: PT Bank Central Asia Tbk',
-                      prefixIcon: Icon(Icons.business_rounded, size: 18),
-                      counterText: '',
-                    ),
-                    validator: (val) => val == null || val.trim().isEmpty ? 'Nama Perusahaan wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _positionController,
-                    maxLength: 100,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Posisi / Role *',
-                      hintText: 'Contoh: Mobile Application Specialist',
-                      prefixIcon: Icon(Icons.badge_rounded, size: 18),
-                      counterText: '',
-                    ),
-                    validator: (val) => val == null || val.trim().isEmpty ? 'Posisi wajib diisi' : null,
-                  ),
-                    const SizedBox(height: 14),
-
-                    // Segmented Selector Tipe Kerja (WFO / WFH / Hybrid)
-                    Row(
-                      children: [
-                        const Text(
-                          'Tipe Kerja:',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF121214)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Row(
-                            children: _workTypeOptions.map((type) {
-                              final isSelected = _workType == type;
-                              return Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                                  child: ChoiceChip(
-                                    selected: isSelected,
-                                    checkmarkColor: Colors.white,
-                                    label: Text(type),
-                                    labelStyle: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isSelected ? Colors.white : const Color(0xFF121214),
-                                    ),
-                                    selectedColor: const Color(0xFF1C1C1E),
-                                    backgroundColor: const Color(0xFFF5EFE6),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(
-                                        color: isSelected ? const Color(0xFF1C1C1E) : const Color(0xFFDCD8CE),
                                       ),
                                     ),
-                                    onSelected: (_) => setState(() => _workType = type),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      displaySalary,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF121214),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(width: 8),
+
+                              // Pill 2: Cream Pill with Clock Icon (Tipe Kerja)
+                              GestureDetector(
+                                onTap: _showWorkTypePicker,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: pillCream,
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF121214)),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _workType,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF121214),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── SECTION 3: GAJI & LOKASI ──
-              _buildSectionCard(
-                title: 'Gaji & Lokasi',
-                icon: Icons.payments_outlined,
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _salaryController,
-                      maxLength: 50,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [RupiahInputFormatter()],
-                      decoration: const InputDecoration(
-                        labelText: 'Gaji Penawaran (Bulan)',
-                        hintText: 'Rp 15.000.000',
-                        prefixIcon: Icon(Icons.monetization_on_outlined, size: 18),
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: _locationController,
-                            maxLength: 80,
-                            textCapitalization: TextCapitalization.words,
-                            decoration: InputDecoration(
-                              labelText: 'Lokasi / Link Maps',
-                              hintText: 'Kota atau link Google Maps...',
-                              prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
-                              counterText: '',
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.content_paste_rounded, size: 16, color: Color(0xFF5C44E4)),
-                                tooltip: 'Tempel Link Maps / Lokasi',
-                                onPressed: () async {
-                                  HapticFeedback.selectionClick();
-                                  final data = await Clipboard.getData(Clipboard.kTextPlain);
-                                  if (data?.text != null && data!.text!.trim().isNotEmpty) {
-                                    _locationController.text = data.text!.trim();
-                                    if (context.mounted) {
-                                      AppleToast.success(context, 'Alamat / Link Maps ditempel!');
-                                    }
-                                  } else {
-                                    if (context.mounted) {
-                                      AppleToast.info(context, 'Clipboard kosong');
-                                    }
-                                  }
-                                },
                               ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 2,
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _jobSource,
-                            decoration: const InputDecoration(
-                              labelText: 'Sumber',
-                              prefixIcon: Icon(Icons.link_rounded, size: 18),
-                            ),
-                            items: _sourceOptions
-                                .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12))))
-                                .toList(),
-                            onChanged: (val) => setState(() => _jobSource = val!),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 14),
+                              const SizedBox(width: 8),
 
-              // ── SECTION 4: TAHAPAN & JADWAL ──
-              _buildSectionCard(
-                title: 'Status & Tahapan Seleksi',
-                icon: Icons.tune_rounded,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _statusOptions.map((st) {
-                        final isSelected = _status == st;
-                        final color = AppTheme.getStatusColor(st);
-                        return ChoiceChip(
-                          selected: isSelected,
-                          label: Text(st),
-                          labelStyle: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : const Color(0xFF121214),
-                          ),
-                          selectedColor: color,
-                          backgroundColor: const Color(0xFFF5EFE6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: isSelected ? color : const Color(0xFFDCD8CE)),
-                          ),
-                          onSelected: (_) => setState(() => _status = st),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 14),
-
-              // ── SECTION 5: SCREENSHOT & KONTAK HR ──
-              _buildSectionCard(
-                title: 'Screenshot Loker & Kontak HR',
-                icon: Icons.attachment_rounded,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Screenshot Picker & Preview
-                    if (_screenshotPath != null && _screenshotPath!.isNotEmpty) ...[
-                      Stack(
-                        children: [
-                          Container(
-                            height: 160,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              image: DecorationImage(
-                                image: FileImage(File(_screenshotPath!)),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: GestureDetector(
-                              onTap: () => setState(() => _screenshotPath = null),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black87,
-                                  shape: BoxShape.circle,
+                              // Pill 3: Cream Pill with Briefcase Icon (Tahapan Status)
+                              GestureDetector(
+                                onTap: _showStatusPicker,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: pillCream,
+                                    borderRadius: BorderRadius.circular(28),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.business_center_outlined, size: 16, color: Color(0xFF121214)),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _status,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF121214),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── 7. STACKED BENTO CARD CONTAINER (MINIMUM QUALIFICATION & DETAIL FORM) ──
+                        Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.topCenter,
+                          children: [
+                            // Big White Card Container
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(top: 14),
+                              padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(32),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Form Input: Nama Perusahaan
+                                  const Text(
+                                    'Nama Perusahaan *',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _companyController,
+                                    maxLength: 80,
+                                    textCapitalization: TextCapitalization.words,
+                                    onChanged: (_) => setState(() {}),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                                    decoration: _buildInputDeco(
+                                      hint: 'Contoh: PT Bank Central Asia Tbk',
+                                      icon: Icons.business_rounded,
+                                    ),
+                                    validator: (v) => v == null || v.trim().isEmpty ? 'Nama Perusahaan wajib diisi' : null,
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Form Input: Posisi Lowongan
+                                  const Text(
+                                    'Posisi / Pekerjaan *',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _positionController,
+                                    maxLength: 100,
+                                    textCapitalization: TextCapitalization.words,
+                                    onChanged: (_) => setState(() {}),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                                    decoration: _buildInputDeco(
+                                      hint: 'Contoh: Software Development Engineer',
+                                      icon: Icons.badge_rounded,
+                                    ),
+                                    validator: (v) => v == null || v.trim().isEmpty ? 'Posisi lowongan wajib diisi' : null,
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Form Input: Gaji Penawaran
+                                  const Text(
+                                    'Gaji Penawaran (Bulan)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _salaryController,
+                                    maxLength: 50,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [RupiahInputFormatter()],
+                                    onChanged: (_) => setState(() {}),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                                    decoration: _buildInputDeco(
+                                      hint: 'Contoh: Rp 15.000.000',
+                                      icon: Icons.monetization_on_outlined,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Form Input: Lokasi Perusahaan
+                                  const Text(
+                                    'Lokasi / Kota Penempatan',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _locationController,
+                                    maxLength: 80,
+                                    textCapitalization: TextCapitalization.words,
+                                    onChanged: (_) => setState(() {}),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                                    decoration: _buildInputDeco(
+                                      hint: 'Contoh: Jakarta Selatan, DKI Jakarta',
+                                      icon: Icons.location_on_outlined,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Row: Tanggal Melamar & Tanggal Interview
+                                  Row(
+                                    children: [
+                                      // Tanggal Melamar
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _pickDate(isInterview: false),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF9F7F2),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: const Color(0xFFE5E0D5)),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Row(
+                                                  children: [
+                                                    Icon(Icons.event_available_rounded, size: 14, color: Color(0xFF5C44E4)),
+                                                    SizedBox(width: 4),
+                                                    Text('Tgl Melamar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF555558))),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  DateFormat('dd MMM yyyy', 'id_ID').format(_appliedDate),
+                                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      // Tanggal Interview
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _pickDate(isInterview: true),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: _interviewDate != null ? const Color(0xFFDCFCE7) : const Color(0xFFF9F7F2),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: _interviewDate != null ? const Color(0xFF15803D) : const Color(0xFFE5E0D5),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    const Row(
+                                                      children: [
+                                                        Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFF15803D)),
+                                                        SizedBox(width: 4),
+                                                        Text('Jadwal Tes/HR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF15803D))),
+                                                      ],
+                                                    ),
+                                                    if (_interviewDate != null)
+                                                      GestureDetector(
+                                                        onTap: () => setState(() => _interviewDate = null),
+                                                        child: const Icon(Icons.close_rounded, size: 14, color: Colors.grey),
+                                                      ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  _interviewDate != null
+                                                      ? DateFormat('dd MMM yyyy', 'id_ID').format(_interviewDate!)
+                                                      : '+ Pasang Alarm',
+                                                  style: TextStyle(
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: _interviewDate != null ? const Color(0xFF15803D) : const Color(0xFF707074),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Form Input: Kontak HR
+                                  const Text(
+                                    'Kontak HR (WhatsApp / Email)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _hrContactController,
+                                    maxLength: 80,
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                                    decoration: _buildInputDeco(
+                                      hint: 'hr.recruitment@perusahaan.com / +628...',
+                                      icon: Icons.contact_mail_outlined,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 14),
+
+                                  // Form Input: Deskripsi / Kualifikasi
+                                  const Text(
+                                    'Kualifikasi & Deskripsi Singkat',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF555558)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextFormField(
+                                    controller: _descriptionController,
+                                    maxLength: 600,
+                                    maxLines: 4,
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF121214), height: 1.4),
+                                    decoration: InputDecoration(
+                                      hintText: '• Minimal S1 Pengalaman 2 Tahun\n• Mahir Flutter & State Management\n• Mampu berkomunikasi efektif...',
+                                      hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade400, height: 1.4),
+                                      filled: true,
+                                      fillColor: const Color(0xFFF9F7F2),
+                                      counterText: '',
+                                      contentPadding: const EdgeInsets.all(14),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.8),
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  // Screenshot Preview & Picker
+                                  if (_screenshotPath != null && _screenshotPath!.isNotEmpty) ...[
+                                    Stack(
+                                      children: [
+                                        Container(
+                                          height: 150,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(18),
+                                            image: DecorationImage(
+                                              image: ResizeImage(FileImage(File(_screenshotPath!)), width: 1080),
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 8,
+                                          right: 8,
+                                          child: GestureDetector(
+                                            onTap: () => setState(() => _screenshotPath = null),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black87,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 46,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _pickScreenshot,
+                                      icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                                      label: Text(
+                                        _screenshotPath != null ? 'Ganti Foto Screenshot' : 'Lampirkan Screenshot Poster Loker',
+                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFFDCD8CE)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        foregroundColor: const Color(0xFF121214),
+                                        backgroundColor: const Color(0xFFF9F7F2),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Floating Header Pill (Minimum Qualification style)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: pillCream,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: canvasYellow, width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Text(
+                                'Formulir Detail Lamaran',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF121214),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ── 8. SOLID BLACK PILL BUTTON (APPLY FOR THIS JOB STYLE - PERSIS MOCKUP) ──
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveJob,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF19191B),
+                              foregroundColor: Colors.white,
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                            ),
+                            child: _isSaving
+                                ? const CupertinoActivityIndicator(color: Colors.white)
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        isEdit ? 'Simpan Perubahan Lamaran' : 'Catat Lamaran Sekarang',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
+                                    ],
+                                  ),
+                          ),
+                        ),
+
+                        // Tombol Hapus jika mode Edit
+                        if (isEdit) ...[
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: OutlinedButton.icon(
+                              onPressed: _deleteCurrentJob,
+                              icon: const Icon(Icons.delete_forever_rounded, color: Color(0xFFE53935), size: 18),
+                              label: const Text(
+                                'Hapus Lamaran Ini',
+                                style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.w900, fontSize: 13),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFE53935), width: 1.4),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                backgroundColor: Colors.white,
                               ),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-
-                    OutlinedButton.icon(
-                      onPressed: _pickScreenshot,
-                      icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
-                      label: Text(_screenshotPath != null ? 'Ganti Screenshot Loker' : 'Lampirkan Foto Screenshot Loker'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        side: const BorderSide(color: Color(0xFFDCD8CE)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        foregroundColor: const Color(0xFF121214),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _hrContactController,
-                      maxLength: 80,
-                      decoration: const InputDecoration(
-                        labelText: 'Kontak HR (WhatsApp / Email)',
-                        hintText: 'hr.recruitment@perusahaan.com / +628...',
-                        prefixIcon: Icon(Icons.contact_mail_outlined, size: 18),
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _descriptionController,
-                      maxLength: 500,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Deskripsi / Kualifikasi Singkat',
-                        hintText: 'Persyaratan utama lowongan...',
-                        counterText: '',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── ACTION BUTTONS ──
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveJob,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1C1C1E),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                    elevation: 4,
-                  ),
-                  child: _isSaving
-                      ? const CupertinoActivityIndicator(color: Colors.white)
-                      : Text(
-                          isEdit ? 'Simpan Perubahan' : 'Catat Lamaran Sekarang',
-                          style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
-                        ),
-                ),
-              ),
-
-              // Delete Button if editing
-              if (isEdit) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: OutlinedButton.icon(
-                    onPressed: _deleteCurrentJob,
-                    icon: const Icon(Icons.delete_forever_rounded, color: Color(0xFFE53935), size: 18),
-                    label: const Text(
-                      'Hapus Lamaran Ini',
-                      style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.bold),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFE53935), width: 1.2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         ),
@@ -1062,38 +1500,29 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
   }
 
-  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(color: const Color(0xFFDCD8CE), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  InputDecoration _buildInputDeco({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(fontSize: 12.5, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+      prefixIcon: Icon(icon, size: 18, color: const Color(0xFF121214)),
+      filled: true,
+      fillColor: const Color(0xFFF9F7F2),
+      counterText: '',
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: const Color(0xFF121214)),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.8),
       ),
     );
   }

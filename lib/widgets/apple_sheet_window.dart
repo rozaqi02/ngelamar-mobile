@@ -99,4 +99,87 @@ class AppleSheetWindow {
       },
     );
   }
+
+  static Future<T?> showFluidExpandSheet<T>({
+    required BuildContext context,
+    required Widget child,
+    String? title,
+  }) {
+    final isDark = AppTheme.isDark(context);
+    final surf = isDark ? const Color(0xFF1E1E22) : const Color(0xFFFAF7EE);
+    final bdr = isDark ? Colors.white12 : const Color(0xFFE5E0D5);
+
+    return showGeneralDialog<T>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 380),
+      pageBuilder: (ctx, anim1, anim2) {
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.92,
+              ),
+              margin: const EdgeInsets.only(top: 36),
+              decoration: BoxDecoration(
+                color: surf,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border.all(color: bdr, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 24,
+                    offset: const Offset(0, -6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.25)
+                          : Colors.black.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(child: child),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (ctx, anim, secondaryAnim, dialogChild) {
+        final curve = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.88, end: 1.0).animate(curve),
+          alignment: Alignment.bottomCenter,
+          child: FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(curve),
+              child: dialogChild,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

@@ -5,14 +5,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
-import '../../theme/app_theme.dart';
+import '../../widgets/apple_animations.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/app_toast.dart';
 import '../subscription/subscription_screen.dart';
-import 'package:share_plus/share_plus.dart';
 
+/// Screen 5: Profil & Pengaturan.
+/// Mengadopsi tata letak modern sesuai foto referensi:
+/// - Top Curved Pastel Lilac Banner dengan watermark dan tombol aksi melingkar
+/// - Avatar profil melingkar yang tumpang-tindih (overlapping) di batas banner
+/// - Nama pengguna & status karir
+/// - 3 Kotak Ringkasan Info (Total Lamaran, Minat Karir, Status Akun)
+/// - Kartu Kualifikasi & Kesiapan Karir dengan checklist rapi
+/// - Ringkasan Akun & Opsi Pengaturan lengkap (PRO, Privasi, Ekspor, dll.)
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
@@ -25,11 +34,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _emailController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.0.0';
-  static const String _buildNumber = '200';
+  static const String _appVersion = '2.1.0';
+  static const String _buildNumber = '210';
 
   List<String> _userInterests = [];
-  
+
   static const Map<String, List<String>> _categorizedInterests = {
     '💻 Lulusan IT & Software': [
       'Frontend Developer',
@@ -116,53 +125,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _nameController.text = ref.read(jobProvider).userName;
     _emailController.text = ref.read(jobProvider).userEmail;
 
-    showCupertinoDialog(
+    AppDialog.show(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Edit Informasi Profil'),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Column(
-            children: [
-              CupertinoTextField(
-                controller: _nameController,
-                placeholder: 'Nama Lengkap...',
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      icon: Icons.person_outline_rounded,
+      iconColor: const Color(0xFF5C44E4),
+      title: 'Edit Informasi Profil',
+      content: 'Perbarui nama dan email profil pencari kerja Anda:',
+      secondaryLabel: 'Batal',
+      primaryLabel: 'Simpan',
+      customBody: Column(
+        children: [
+          TextField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              hintText: 'Nama Lengkap...',
+              prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+              filled: true,
+              fillColor: const Color(0xFFF9F7F2),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
               ),
-              const SizedBox(height: 10),
-              CupertinoTextField(
-                controller: _emailController,
-                placeholder: 'Alamat Email (opsional)...',
-                keyboardType: TextInputType.emailAddress,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
               ),
-            ],
+            ),
           ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Batal'),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          CupertinoDialogAction(
-            child: const Text('Simpan'),
-            onPressed: () async {
-              final newName = _nameController.text.trim();
-              final newEmail = _emailController.text.trim();
-              if (newName.isNotEmpty) {
-                await ref.read(jobProvider.notifier).setUserName(newName);
-              }
-              await ref.read(jobProvider.notifier).setUserEmail(newEmail);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-              }
-              if (mounted) {
-                AppleToast.success(context, 'Profil berhasil diperbarui!');
-              }
-            },
+          const SizedBox(height: 10),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              hintText: 'Alamat Email (opsional)...',
+              prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
+              filled: true,
+              fillColor: const Color(0xFFF9F7F2),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+              ),
+            ),
           ),
         ],
       ),
+      onPrimary: () async {
+        final newName = _nameController.text.trim();
+        final newEmail = _emailController.text.trim();
+        if (newName.isNotEmpty) {
+          await ref.read(jobProvider.notifier).setUserName(newName);
+        }
+        await ref.read(jobProvider.notifier).setUserEmail(newEmail);
+        if (mounted) {
+          Navigator.pop(context);
+          AppToast.success(context, 'Profil berhasil diperbarui!');
+        }
+      },
     );
   }
 
@@ -211,7 +235,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Pilih posisi yang kamu minati berdasarkan jurusan atau keahlian:',
+                  'Pilih posisi yang kamu minati berdasarkan keahlian:',
                   style: TextStyle(fontSize: 13, color: Color(0xFF707074)),
                 ),
                 const SizedBox(height: 14),
@@ -311,25 +335,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     HapticFeedback.mediumImpact();
     final state = ref.read(jobProvider);
     if (!state.isProUser) {
-      final upgrade = await showCupertinoDialog<bool>(
+      final upgrade = await AppDialog.show<bool>(
         context: context,
-        builder: (ctx) => CupertinoAlertDialog(
-          title: const Text('Fitur Eksklusif Ngelamar PRO ✨'),
-          content: const Text(
-            'Ekspor data lamaran kerja ke format spreadsheet adalah fitur khusus member PRO. Upgrade sekarang hanya Rp 10.000 / bulan!',
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('Nanti Saja'),
-              onPressed: () => Navigator.pop(ctx, false),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: const Text('Lihat PRO'),
-              onPressed: () => Navigator.pop(ctx, true),
-            ),
-          ],
-        ),
+        icon: Icons.stars_rounded,
+        iconColor: const Color(0xFFF59E0B),
+        title: 'Fitur Eksklusif Ngelamar PRO ✨',
+        content:
+            'Ekspor data lamaran kerja ke format JSON/Spreadsheet adalah fitur khusus member PRO. Upgrade sekarang untuk backup data Anda kapan saja!',
+        secondaryLabel: 'Nanti Saja',
+        primaryLabel: 'Lihat PRO',
       );
       if (upgrade == true && mounted) {
         Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
@@ -338,13 +352,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     if (state.jobs.isEmpty) {
-      AppleToast.info(context, 'Belum ada data lamaran untuk diekspor.');
+      AppToast.info(context, 'Belum ada data lamaran untuk diekspor.');
       return;
     }
 
     final backupPayload = {
       'schemaVersion': 2,
-      'appVersion': '2.0.1+201',
+      'appVersion': '2.1.0+210',
       'exportedAt': DateTime.now().toIso8601String(),
       'totalCount': state.jobs.length,
       'jobs': state.jobs.map((j) => j.toJson()).toList(),
@@ -357,34 +371,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       subject: 'Backup_Ngelamar_v2_${DateTime.now().year}.json',
     );
     if (mounted) {
-      AppleToast.success(context, 'Backup data (JSON v2) berhasil dibuat!');
+      AppToast.success(context, 'Backup data (JSON v2) berhasil dibuat!');
     }
   }
 
   Future<void> _clearAllData() async {
-    final confirm = await showCupertinoDialog<bool>(
+    final confirm = await AppDialog.show<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
-        title: const Text('Hapus Seluruh Data Lamaran?'),
-        content: const Text(
+      icon: Icons.delete_outline_rounded,
+      iconColor: const Color(0xFFE53935),
+      title: 'Hapus Seluruh Data Lamaran?',
+      content:
           'Semua catatan lamaran kerja, riwayat interview, dan screenshot bukti akan dihapus secara permanen dari perangkat.',
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Batal'),
-            onPressed: () => Navigator.pop(context, false),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            child: const Text('Hapus Semua'),
-            onPressed: () => Navigator.pop(context, true),
-          ),
-        ],
-      ),
+      secondaryLabel: 'Batal',
+      primaryLabel: 'Hapus Semua',
+      isDestructive: true,
     );
     if (confirm == true) {
       await ref.read(jobProvider.notifier).clearAllJobs();
-      if (mounted) AppleToast.success(context, 'Semua data lamaran telah dibersihkan.');
+      if (mounted) AppToast.success(context, 'Semua data lamaran telah dibersihkan.');
     }
   }
 
@@ -528,21 +533,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 18),
             Container(
-              width: 64,
-              height: 64,
+              width: 68,
+              height: 68,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/app_icon.png'),
-                  fit: BoxFit.cover,
-                ),
+                color: const Color(0xFF19191B),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 10,
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
+                  width: 68,
+                  height: 68,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: const Color(0xFF19191B),
+                    child: const Center(
+                      child: Icon(Icons.mail_rounded, color: Color(0xFFF59E0B), size: 36),
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -551,7 +568,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
             ),
             const Text(
-              'Versi 2.0.1 (Build 201) • Production Ready',
+              'Versi 2.1.0 (Build 210) • Production Ready',
               style: TextStyle(fontSize: 12, color: Color(0xFF5C44E4), fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -561,8 +578,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(fontSize: 12.5, color: Color(0xFF555558), height: 1.45),
             ),
             const SizedBox(height: 16),
-
-            // Official Support & Contact Info
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -606,7 +621,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -627,246 +641,674 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showQuickActionsMenu() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Opsi Pengaturan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+            ),
+            const SizedBox(height: 14),
+            _buildActionItem(
+              icon: CupertinoIcons.person_crop_circle,
+              title: 'Edit Profil',
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditProfileDialog();
+              },
+            ),
+            _buildActionItem(
+              icon: CupertinoIcons.briefcase,
+              title: 'Atur Minat Karir',
+              onTap: () {
+                Navigator.pop(ctx);
+                _showCareerInterestsSheet();
+              },
+            ),
+            _buildActionItem(
+              icon: CupertinoIcons.arrow_down_doc,
+              title: 'Ekspor Data (Backup)',
+              onTap: () {
+                Navigator.pop(ctx);
+                _exportApplicationsData();
+              },
+            ),
+            _buildActionItem(
+              icon: CupertinoIcons.lock_shield,
+              title: 'Kebijakan Privasi',
+              onTap: () {
+                Navigator.pop(ctx);
+                _showPrivacyPolicyModal();
+              },
+            ),
+            _buildActionItem(
+              icon: CupertinoIcons.info_circle,
+              title: 'Tentang Aplikasi',
+              onTap: () {
+                Navigator.pop(ctx);
+                _showAboutAppModal();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF121214), size: 20),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      trailing: const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
-    final isDark = AppTheme.isDark(context);
-    final bg = AppTheme.getBackground(context);
-    final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
-    final txtPri = AppTheme.getTextPrimary(context);
-
     final hasPhoto = state.userProfilePhoto.isNotEmpty && File(state.userProfilePhoto).existsSync();
     final displayName = state.userName.isNotEmpty ? state.userName : 'Pencari Kerja';
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: Text(
-                  'PROFIL &\nPENGATURAN',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w900,
-                    color: txtPri,
-                    letterSpacing: -1.2,
-                    height: 1.0,
+      backgroundColor: const Color(0xFFF7FAF7), // Clean subtle off-white
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── TOP CURVED PASTEL BANNER WITH OVERLAPPING AVATAR (PERSIS MOCKUP FOTO) ──
+          SliverToBoxAdapter(
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // Curved Pastel Lilac Header Banner
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 52),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFE8D5FF), // Soft pastel purple from mockup
+                        Color(0xFFF3E8FF),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(38),
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Large Faint Watermark Text in Banner
+                      Positioned(
+                        right: -10,
+                        top: -15,
+                        child: Text(
+                          'PROFIL',
+                          style: TextStyle(
+                            fontSize: 70,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white.withValues(alpha: 0.35),
+                            letterSpacing: -2,
+                          ),
+                        ),
+                      ),
+
+                      // Banner Action Buttons & Title
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Left Circular Button (Back if canPop, else Info)
+                          FluidBounceButton(
+                            onTap: () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              } else {
+                                _showAboutAppModal();
+                              }
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Navigator.canPop(context)
+                                      ? CupertinoIcons.chevron_back
+                                      : CupertinoIcons.info,
+                                  size: 18,
+                                  color: const Color(0xFF121214),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Center Screen Title
+                          const Text(
+                            'Profil & Pengaturan',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF121214),
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+
+                          // Right Circular 3-Dots Button
+                          FluidBounceButton(
+                            onTap: _showQuickActionsMenu,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  CupertinoIcons.ellipsis_vertical,
+                                  size: 18,
+                                  color: Color(0xFF121214),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
 
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 120 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // User Profile Hero Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF19191B),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.16),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
+                // Central Overlapping Profile Avatar Badge (Persis Mockup Foto)
+                Positioned(
+                  bottom: -36,
+                  child: GestureDetector(
+                    onTap: _pickProfilePhoto,
+                    child: Stack(
+                      children: [
+                        Hero(
+                          tag: 'user_profile_avatar_hero',
+                          flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                            return Material(
+                              type: MaterialType.transparency,
+                              child: toHeroContext.widget,
+                            );
+                          },
+                          child: Container(
+                            width: 78,
+                            height: 78,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: hasPhoto
+                                  ? Image.file(
+                                      File(state.userProfilePhoto),
+                                      width: 78,
+                                      height: 78,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(
+                                      color: const Color(0xFF19191B),
+                                      child: const Center(
+                                        child: Icon(
+                                          CupertinoIcons.person_fill,
+                                          color: Colors.white,
+                                          size: 38,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF5C44E4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    child: Row(
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── USER NAME & STATUS HEADLINE ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 46, 20, 0),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF121214),
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: _showEditProfileDialog,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(CupertinoIcons.pencil, size: 14, color: Color(0xFF5C44E4)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.userEmail.isNotEmpty
+                        ? state.userEmail
+                        : 'Pencari Karir Pro • ${state.isProUser ? 'Member PRO ✨' : 'Akun Standar'}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF707074),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── 3 INFO SUMMARY CARDS (PERSIS MOCKUP: SALARY, JOB TIME, LOCATION) ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
+                children: [
+                  // Card 1: Total Lamaran
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Lamaran',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF88888D),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${state.totalCount}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF121214),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Card 2: Minat Karir
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _showCareerInterestsSheet,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Minat Karir',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF88888D),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _userInterests.isNotEmpty ? '${_userInterests.length} Bidang' : 'Pilih',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF5C44E4),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Card 3: Status Akun
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Status Akun',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF88888D),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              state.isProUser ? 'PRO ✨' : 'Aktif',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: state.isProUser ? const Color(0xFFF59E0B) : const Color(0xFF1E8E3E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── KUALIFIKASI & KESIAPAN KARIR (PERSIS KARTU "QUALIFICATIONS" DI MOCKUP) ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Row: Briefcase Icon + Title + Atur Action
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Avatar with Tap to Pick & Fluid Hero Transition
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5C44E4).withValues(alpha: 0.10),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(CupertinoIcons.briefcase, size: 18, color: Color(0xFF5C44E4)),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Kesiapan & Minat Karir',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF121214),
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
                         GestureDetector(
-                          onTap: _pickProfilePhoto,
-                          child: Stack(
-                            children: [
-                              Hero(
-                                tag: 'user_profile_avatar_hero',
-                                flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                                  return Material(
-                                    type: MaterialType.transparency,
-                                    child: toHeroContext.widget,
-                                  );
-                                },
-                                child: Container(
-                                  width: 58,
-                                  height: 58,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                  ),
-                                  child: ClipOval(
-                                    child: hasPhoto
-                                        ? Image.file(
-                                            File(state.userProfilePhoto),
-                                            width: 58,
-                                            height: 58,
-                                            fit: BoxFit.cover,
-                                          )
-                                        : const Center(
-                                            child: Icon(
-                                              CupertinoIcons.person_fill,
-                                              color: Color(0xFF19191B),
-                                              size: 32,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF5C44E4),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 11,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          onTap: _showCareerInterestsSheet,
+                          child: const Text(
+                            'Atur >',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF5C44E4),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                      ],
+                    ),
 
-                        // Name & Status
-                        Expanded(
+                    const SizedBox(height: 16),
+
+                    // Checkmarked Item 1: Minat Karir
+                    _buildCheckmarkItem(
+                      _userInterests.isNotEmpty
+                          ? 'Minat: ${_userInterests.take(2).join(", ")}${_userInterests.length > 2 ? " +${_userInterests.length - 2} lainnya" : ""}'
+                          : 'Belum memilih bidang minat karir (Ketuk untuk atur)',
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Checkmarked Item 2: Offline-First & Keamanan
+                    _buildCheckmarkItem('Database 100% Offline & Tersimpan di Perangkat'),
+                    const SizedBox(height: 10),
+
+                    // Checkmarked Item 3: Notifikasi Jadwal
+                    _buildCheckmarkItem('Pengingat Jadwal & Notifikasi H-1 Interview Siap'),
+                    const SizedBox(height: 10),
+
+                    // Checkmarked Item 4: Backup Data
+                    _buildCheckmarkItem('Fitur Backup & Ekspor Data Lamaran Siap Digunakan'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── RINGKASAN AKUN & PENGATURAN LENGKAP (PERSIS "JOB OVERVIEW" SECTION) ──
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ringkasan Akun & Preferensi',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF121214),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Kelola preferensi akun, paket langganan, dan keamanan data lamaran Anda.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF707074),
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── SETTINGS MENU TILES ──
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // 1. PRO Banner Card
+                if (state.isProUser)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF19191B),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 24),
+                        const SizedBox(width: 12),
+                        const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                displayName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.3,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                'Member PRO Aktif ✨',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13.5),
                               ),
-                              if (state.userEmail.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  state.userEmail,
-                                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12.5),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ] else ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Ketuk edit untuk isi email',
-                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.16),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${state.totalCount} Lamaran Terlacak',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Akses tak terbatas ekspor & fitur eksklusif',
+                                style: TextStyle(color: Colors.grey, fontSize: 11),
                               ),
                             ],
                           ),
                         ),
-
-                        IconButton(
-                          onPressed: _showEditProfileDialog,
-                          icon: const Icon(CupertinoIcons.pencil, color: Colors.white),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF59E0B),
+                            foregroundColor: const Color(0xFF19191B),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                          child: const Text('Kelola', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5)),
                         ),
                       ],
                     ),
-                  ),
-
-                  // ── PRO SUBSCRIPTION STATUS BANNER ──
-                  const SizedBox(height: 14),
-                  if (state.isProUser)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF231C3D), Color(0xFF19191B)],
-                        ),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                        border: Border.all(color: const Color(0xFFF59E0B), width: 1.2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 24),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Ngelamar PRO Member ✨',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13.5),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Semua fitur supercharger aktif (${state.proPlanType == "yearly" ? "Tahunan" : "Bulanan"})',
-                                  style: TextStyle(color: Colors.grey.shade300, fontSize: 11),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF59E0B),
-                              foregroundColor: const Color(0xFF19191B),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            ),
-                            child: const Text('Kelola', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5)),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
+                  )
+                else
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF5C44E4), Color(0xFF7B1FA2)],
                         ),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF5C44E4).withValues(alpha: 0.28),
-                            blurRadius: 12,
+                            color: const Color(0xFF5C44E4).withValues(alpha: 0.25),
+                            blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
                         ],
@@ -879,196 +1321,178 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 22),
+                            child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 12),
                           const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Upgrade ke Ngelamar PRO ✨', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13.5)),
+                                Text(
+                                  'Upgrade ke Ngelamar PRO ✨',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13.5),
+                                ),
                                 SizedBox(height: 2),
-                                Text('Hanya Rp 10.000 / bln • Buka semua fitur', style: TextStyle(color: Color(0xFFEDE9FE), fontSize: 11, fontWeight: FontWeight.w500)),
+                                Text(
+                                  'Rp 10.000 / bln • Buka seluruh fitur',
+                                  style: TextStyle(color: Color(0xFFEDE9FE), fontSize: 11),
+                                ),
                               ],
                             ),
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF5C44E4),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            child: const Text('Upgrade', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
-                          ),
+                          const Icon(CupertinoIcons.chevron_right, color: Colors.white, size: 16),
                         ],
                       ),
                     ),
-
-                  const SizedBox(height: 20),
-
-                  // Section 1: Preferensi Karir
-                  _sectionHeader('PREFERENSI KARIR'),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(color: const Color(0xFFE6E3D8)),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: CupertinoIcons.briefcase,
-                          color: AppTheme.cardPurple,
-                          title: 'Minat & Target Posisi',
-                          subtitle: _userInterests.isNotEmpty
-                              ? '${_userInterests.length} bidang dipilih: ${_userInterests.first}...'
-                              : 'Atur posisi lowongan yang kamu minati',
-                          onTap: _showCareerInterestsSheet,
-                        ),
-                      ],
-                    ),
                   ),
 
-                  const SizedBox(height: 18),
-
-                  // Section 2: Notifikasi & Pengingat
-                  _sectionHeader('NOTIFIKASI & PENGINGAT'),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(color: const Color(0xFFE6E3D8)),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: CupertinoIcons.bell,
-                          color: AppTheme.cardYellow,
-                          title: 'Alarm Jadwal Interview',
-                          subtitle: 'Otomatis aktif: Pengingat H-1 (09:00) & Jam Acara',
-                          onTap: () {
-                            AppleToast.info(context, 'Pengingat interview otomatis dijadwalkan saat ada tanggal interview.');
+                // 2. Settings Option Tiles Box
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Mode Gelap (Dark Mode OLED)
+                      _buildSettingTile(
+                        icon: state.isDarkMode ? CupertinoIcons.moon_stars_fill : CupertinoIcons.sun_max_fill,
+                        color: state.isDarkMode ? const Color(0xFFA78BFA) : const Color(0xFFF59E0B),
+                        title: 'Mode Gelap (Dark Mode OLED)',
+                        subtitle: state.isProUser
+                            ? (state.isDarkMode ? 'Tema Gelap Premium Aktif 🌙' : 'Tema Terang Aktif ☀️')
+                            : 'Fitur Eksklusif Ngelamar PRO ✨',
+                        trailing: CupertinoSwitch(
+                          value: state.isDarkMode,
+                          activeTrackColor: const Color(0xFF5C44E4),
+                          onChanged: (val) async {
+                            HapticFeedback.selectionClick();
+                            if (!state.isProUser) {
+                              Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
+                              return;
+                            }
+                            await ref.read(jobProvider.notifier).toggleThemeMode();
                           },
                         ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Section 3: Privasi & Penyimpanan
-                  _sectionHeader('KEAMANAN & PRIVASI'),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(color: const Color(0xFFE6E3D8)),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: CupertinoIcons.lock_shield,
-                          color: AppTheme.cardGreen,
-                          title: 'Penyimpanan Lokal 100% Offline',
-                          subtitle: 'Data dan dokumen tersimpan aman hanya di HP kamu (Ketuk detail)',
-                          onTap: _showPrivacyPolicyModal,
-                        ),
-                        Divider(height: 1, color: isDark ? const Color(0xFF2C2C30) : const Color(0xFFEFECE4)),
-                        _buildSettingTile(
-                          icon: CupertinoIcons.info_circle,
-                          color: const Color(0xFF0288D1),
-                          title: 'Tentang Aplikasi & Versi',
-                          subtitle: 'Informasi rilis, tim developer & lisensi',
-                          onTap: _showAboutAppModal,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Section 4: Manajemen Data & Ekspor
-                  _sectionHeader('MANAJEMEN DATA'),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(color: const Color(0xFFE6E3D8)),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: CupertinoIcons.arrow_down_doc_fill,
-                          color: const Color(0xFF5C44E4),
-                          title: 'Ekspor Riwayat Lamaran (Excel / CSV)',
-                          subtitle: state.isProUser
-                              ? 'Unduh seluruh riwayat catatan lamaran kerja'
-                              : 'Fitur Khusus Ngelamar PRO ✨',
-                          onTap: _exportApplicationsData,
-                        ),
-                        Divider(height: 1, color: isDark ? const Color(0xFF2C2C30) : const Color(0xFFEFECE4)),
-                        _buildSettingTile(
-                          icon: CupertinoIcons.trash,
-                          color: AppTheme.systemRed,
-                          title: 'Bersihkan Semua Data Lamaran',
-                          subtitle: 'Menghapus seluruh catatan lamaran dari penyimpanan',
-                          onTap: _clearAllData,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // App Info & Version with Clickable Modal
-                  GestureDetector(
-                    onTap: _showAboutAppModal,
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            'Ngelamar v$_appVersion ($_buildNumber)',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Aplikasi Pelacak Lamaran Kerja Offline • idka-solutions',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                          ),
-                        ],
+                        onTap: () async {
+                          HapticFeedback.selectionClick();
+                          if (!state.isProUser) {
+                            Navigator.push(context, CupertinoPageRoute(builder: (_) => const SubscriptionScreen()));
+                            return;
+                          }
+                          await ref.read(jobProvider.notifier).toggleThemeMode();
+                        },
                       ),
-                    ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Target & Minat Karir
+                      _buildSettingTile(
+                        icon: CupertinoIcons.briefcase,
+                        color: const Color(0xFF5C44E4),
+                        title: 'Target & Minat Karir',
+                        subtitle: _userInterests.isNotEmpty
+                            ? '${_userInterests.length} bidang: ${_userInterests.first}'
+                            : 'Atur posisi lowongan yang diminati',
+                        onTap: _showCareerInterestsSheet,
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Ekspor Data Lamaran
+                      _buildSettingTile(
+                        icon: CupertinoIcons.arrow_down_doc_fill,
+                        color: const Color(0xFF0A66C2),
+                        title: 'Ekspor Data (Backup JSON v2)',
+                        subtitle: state.isProUser ? 'Unduh seluruh riwayat lamaran' : 'Fitur Khusus Ngelamar PRO ✨',
+                        onTap: _exportApplicationsData,
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Notifikasi Interview
+                      _buildSettingTile(
+                        icon: CupertinoIcons.bell_fill,
+                        color: const Color(0xFFF59E0B),
+                        title: 'Pengingat Jadwal Interview',
+                        subtitle: 'Otomatis aktif H-1 & jam acara',
+                        onTap: () {
+                          AppleToast.info(context, 'Pengingat otomatis aktif saat ada jadwal interview.');
+                        },
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Kebijakan Privasi
+                      _buildSettingTile(
+                        icon: CupertinoIcons.lock_shield_fill,
+                        color: const Color(0xFF1E8E3E),
+                        title: 'Keamanan & Privasi 100% Offline',
+                        subtitle: 'Data hanya tersimpan di perangkat HP',
+                        onTap: _showPrivacyPolicyModal,
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Tentang Aplikasi
+                      _buildSettingTile(
+                        icon: CupertinoIcons.info_circle_fill,
+                        color: const Color(0xFF0288D1),
+                        title: 'Tentang Aplikasi & Versi',
+                        subtitle: 'Ngelamar v$_appVersion ($_buildNumber)',
+                        onTap: _showAboutAppModal,
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+
+                      // Bersihkan Data
+                      _buildSettingTile(
+                        icon: CupertinoIcons.trash,
+                        color: const Color(0xFFE53935),
+                        title: 'Bersihkan Semua Data Lamaran',
+                        subtitle: 'Hapus seluruh catatan dari penyimpanan',
+                        onTap: _clearAllData,
+                      ),
+                    ],
                   ),
-                ]),
-              ),
+                ),
+              ]),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _sectionHeader(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-          letterSpacing: 0.5,
+  Widget _buildCheckmarkItem(String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E8E3E).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(Icons.check_rounded, size: 13, color: Color(0xFF1E8E3E)),
+          ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF2D3748),
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1078,21 +1502,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Container(
-        width: 36,
-        height: 36,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
+          color: color.withValues(alpha: 0.12),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: color, size: 18),
       ),
-      title: Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-      trailing: const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 11.5, color: Color(0xFF707074)),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: trailing ?? const Icon(CupertinoIcons.chevron_right, size: 14, color: Color(0xFFA0A0A5)),
       onTap: onTap,
     );
   }

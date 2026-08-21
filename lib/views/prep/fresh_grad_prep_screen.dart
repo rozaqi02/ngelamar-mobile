@@ -23,6 +23,7 @@ class FreshGradPrepScreen extends ConsumerStatefulWidget {
 class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   int _selectedSegment = 0;
   int _expandedQaIndex = 0;
+  String? _copiedTemplateId;
 
   final List<Map<String, dynamic>> _docs = [
     {'title': 'CV Format ATS (PDF, maks. 2 halaman)', 'checked': false},
@@ -330,15 +331,25 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
-    final bg = AppTheme.getBackground(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final purpleGradient = isDark
+        ? const [Color(0xFF19142E), Color(0xFF151324), Color(0xFF121214)]
+        : const [Color(0xFFEFEAFF), Color(0xFFF7F4FF), Color(0xFFF5EFE6)];
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: purpleGradient,
+            stops: const [0.0, 0.35, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
@@ -458,14 +469,16 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
 
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
-                _selectedSegment == 2 ? 0 : 20,
+                20,
                 0,
-                _selectedSegment == 2 ? 0 : 20,
+                20,
                 120 + (bottomInset > 0 ? bottomInset : 0),
               ),
               sliver: SliverToBoxAdapter(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
                   child: _buildSelectedTabContent(context, isDark),
                 ),
               ),
@@ -473,7 +486,8 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSelectedTabContent(BuildContext context, bool isDark) {
@@ -498,50 +512,42 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     return Column(
       key: const ValueKey('tab_checklist'),
       children: [
-        Hero(
-          tag: 'prep_checklist_card_hero',
-          flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-            return Material(
-              type: MaterialType.transparency,
-              child: toHeroContext.widget,
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF19191B),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Kesiapan Berkas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.3,
-                      ),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF19191B),
+            borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Kesiapan Berkas',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.4,
                     ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '$_checkedCount / ${_docs.length}',
+                      '$_checkedCount/${_docs.length} Siap',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -575,7 +581,6 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             ],
           ),
         ),
-      ),
 
         const SizedBox(height: 18),
 
@@ -625,7 +630,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     ),
                     onTap: () => _toggleDoc(i),
                   ),
-                  if (!isLast) const Divider(height: 1, indent: 54),
+                  if (!isLast) const Divider(height: 1, indent: 16, endIndent: 16),
                 ],
               );
             }),
@@ -1004,7 +1009,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       children: [
         // Header Section with 5 Count Badge & Acak Soal Button
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+          padding: const EdgeInsets.only(bottom: 14),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1058,7 +1063,6 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           final isDarkText = cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
           final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
           final descColor = isDarkText ? const Color(0xFF333336) : Colors.white.withValues(alpha: 0.90);
-          final topMargin = idx == 0 ? 0.0 : -22.0;
 
           return GestureDetector(
             onTap: () {
@@ -1071,20 +1075,15 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               duration: const Duration(milliseconds: 280),
               curve: Curves.fastOutSlowIn,
               width: double.infinity,
-              margin: EdgeInsets.only(top: topMargin),
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius: BorderRadius.vertical(
-                  top: const Radius.circular(28),
-                  bottom: idx == _activeQaItems.length - 1 || isExpanded
-                      ? const Radius.circular(28)
-                      : const Radius.circular(0),
-                ),
+                borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -1093,7 +1092,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 curve: Curves.fastOutSlowIn,
                 alignment: Alignment.topCenter,
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1374,20 +1373,50 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         );
                         AppleToast.info(context, 'Buka Ngelamar PRO untuk menyalin templat ini!');
                       } else {
+                        final title = tpl['title'] as String;
+                        setState(() => _copiedTemplateId = title);
                         Clipboard.setData(ClipboardData(text: tpl['text'] as String));
                         AppleToast.success(context, 'Templat disalin ke clipboard');
+                        Future.delayed(const Duration(milliseconds: 1500), () {
+                          if (mounted && _copiedTemplateId == title) {
+                            setState(() => _copiedTemplateId = null);
+                          }
+                        });
                       }
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        shape: BoxShape.circle,
+                        color: _copiedTemplateId == tpl['title']
+                            ? const Color(0xFF10B981)
+                            : Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(
-                        isLocked ? Icons.lock_outline_rounded : CupertinoIcons.doc_on_doc,
-                        color: titleColor,
-                        size: 16,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isLocked
+                                ? Icons.lock_outline_rounded
+                                : (_copiedTemplateId == tpl['title']
+                                    ? Icons.check_rounded
+                                    : CupertinoIcons.doc_on_doc),
+                            color: _copiedTemplateId == tpl['title'] ? Colors.white : titleColor,
+                            size: 14,
+                          ),
+                          if (_copiedTemplateId == tpl['title']) ...[
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Tersalin',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),

@@ -195,4 +195,19 @@ class PrefsService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_keyProPlan) ?? 'monthly';
   }
+
+  // ── INITIAL SEED FLAG ──
+  static const _keyInitialDataSeeded = 'initial_sample_data_seeded_v2';
+
+  /// Returns whether initial sample jobs have been seeded.
+  static Future<bool> isInitialDataSeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyInitialDataSeeded) ?? false;
+  }
+
+  /// Marks initial sample jobs as seeded.
+  static Future<void> setInitialDataSeeded([bool seeded = true]) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyInitialDataSeeded, seeded);
+  }
 }

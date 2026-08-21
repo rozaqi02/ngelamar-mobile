@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,14 +8,13 @@ import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/apple_sheet_window.dart';
-import '../../widgets/apple_toast.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/container_morph_route.dart';
 import '../../widgets/crying_envelope_mascot.dart';
 import '../../services/notification_service.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
-import '../subscription/subscription_screen.dart';
 
 /// Screen 1: Jelajahi Lowongan (Priority Overlapping Deck & Smart Alerts).
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -29,8 +29,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  final GlobalKey _addBtnKey = GlobalKey();
   bool _isSearchActive = false;
   int _expandedIndex = 3; // Default kartu paling bawah terbuka
+  Timer? _debounce;
 
   String _getTimeGreeting() {
     final hour = DateTime.now().hour;
@@ -40,14 +42,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return 'Selamat Malam';
   }
 
-  void _openAddJob(BuildContext ctx) async {
+  void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
     HapticFeedback.mediumImpact();
-    final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
+    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
       context: ctx,
+      buttonKey: key ?? _addBtnKey,
       child: const AddEditJobScreen(),
     );
     if (result != null && mounted) {
-      AppleToast.success(context, 'Lamaran ${result.companyName} berhasil dicatat!');
+      AppToast.success(context, 'Lamaran ${result.companyName} berhasil dicatat!');
     }
   }
 
@@ -301,7 +304,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         body: 'Notifikasi lokal di HP Android Anda berfungsi dengan lancar! Persiapkan tahapan wawancara berikutnya.',
                       );
                       if (context.mounted) {
-                        AppleToast.success(context, 'Notifikasi berhasil dikirim ke perangkat!');
+                        AppToast.success(context, 'Notifikasi berhasil dikirim ke perangkat!');
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -497,21 +500,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Row(
                   children: [
-                    // Profile Avatar with Fluid Hero Transition
+                    // Profile Avatar with Navigation to Tab 4 (Settings)
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        widget.onNavigateTab?.call(4); // Navigasi ke Settings/Profil
+                        widget.onNavigateTab?.call(4);
                       },
-                      child: Hero(
-                        tag: 'user_profile_avatar_hero',
-                        flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                          return Material(
-                            type: MaterialType.transparency,
-                            child: toHeroContext.widget,
-                          );
-                        },
-                        child: Container(
+                      child: Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
@@ -526,22 +521,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               ),
                             ],
                           ),
-                          child: ClipOval(
-                            child: hasProfilePhoto
-                                ? Image.file(
-                                    File(state.userProfilePhoto),
-                                    fit: BoxFit.cover,
-                                    width: 44,
-                                    height: 44,
-                                  )
-                                : const Center(
-                                    child: Icon(
-                                      Icons.person_rounded,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
+                        child: ClipOval(
+                          child: hasProfilePhoto
+                              ? Image.file(
+                                  File(state.userProfilePhoto),
+                                  fit: BoxFit.cover,
+                                  width: 44,
+                                  height: 44,
+                                  cacheWidth: (44 * MediaQuery.of(context).devicePixelRatio).round(),
+                                  cacheHeight: (44 * MediaQuery.of(context).devicePixelRatio).round(),
+                                )
+                              : const Center(
+                                  child: Icon(
+                                    Icons.person_rounded,
+                                    color: Colors.white,
+                                    size: 24,
                                   ),
-                          ),
+                                ),
                         ),
                       ),
                     ),
@@ -711,107 +707,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     onChanged: (v) {
-                      setState(() {});
-                      ref.read(jobProvider.notifier).setSearchQuery(v);
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          setState(() {});
+                          ref.read(jobProvider.notifier).setSearchQuery(v);
+                        }
+                      });
                     },
                   ),
                 ),
               ],
 
-              const SizedBox(height: 12),
-
-              // ── QUICK PREP CHECKLIST PILL WITH FLUID HERO MORPH (Tab 3: Persiapan Karir) ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    widget.onNavigateTab?.call(3); // Navigasi ke Persiapan Karir
-                  },
-                  child: Hero(
-                    tag: 'prep_checklist_card_hero',
-                    flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                      return Material(
-                        type: MaterialType.transparency,
-                        child: toHeroContext.widget,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE5E0D5), width: 1.2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF5C44E4).withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.checklist_rtl_rounded, color: Color(0xFF5C44E4), size: 16),
-                          ),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Kesiapan Berkas & Karir',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF121214),
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                Text(
-                                  'CV ATS, Simulasi UMR & Interview STAR',
-                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF707074)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3EEFF),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFD6C8F8)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Cek',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF5C44E4),
-                                  ),
-                                ),
-                                SizedBox(width: 2),
-                                Icon(Icons.arrow_forward_ios_rounded, size: 9, color: Color(0xFF5C44E4)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // ── LARGE TITLE & ACTIONS ROW (NO OFFSIDE OVERFLOW) ──
               Padding(
@@ -899,7 +807,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                         // Tambah Capsule Pill Button with Fluid Touch Bounce
                         FluidBounceButton(
-                          onTap: () => _openAddJob(context),
+                          key: _addBtnKey,
+                          onTap: () => _openAddJob(context, _addBtnKey),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
@@ -1036,7 +945,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       children: List.generate(jobs.length, (index) {
         final job = jobs[index];
         final isExpanded = index == activeExpandedIndex;
-        final cardColor = AppTheme.getCompanyCardColor(job.companyName);
+        final cardColor = AppTheme.getCompanyCardColor(job.companyName, job.status);
         final isDarkText =
             cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
         final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;

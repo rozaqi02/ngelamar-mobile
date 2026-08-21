@@ -1,27 +1,21 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/job_application.dart';
-import '../../providers/job_provider.dart';
-import '../../services/job_search_service.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
-import '../../widgets/company_logo_badge.dart';
-import '../../widgets/fly_to_tracker_animator.dart';
-import '../jobs/job_detail_screen.dart';
-import '../subscription/subscription_screen.dart';
 import 'discovery_welcome_screen.dart';
 
-/// Screen: Eksplorasi Lowongan Kerja Resmi Terpercaya.
-/// Visual Header selaras dengan Homepage, Daftar Lamaran, dan Persiapan Karir.
-/// Dilengkapi filter portal resmi (Glints, JobStreet, LinkedIn, Indeed, Kalibrr, KitaLulus),
-/// kompatibilitas "Sesuai Minat Anda", logo autentik, dan retensi scroll posisi yang presisi.
+/// Screen 2: Eksplor Loker.
+/// Header style konsisten 100% dengan menu DAFTAR LAMARAN dan PERSIAPAN KARIR:
+/// - Header: "EKSPLOR LOKER" besar tebal + Tombol (?) Info di kanan atas + Subtitle deskriptif
+/// - Single Search Box yang bersih & elegan tanpa duplikasi
+/// - Category Filter Chips (Semua, Desainer UI/UX, Flutter Dev, Backend, dll.)
+/// - 6 Kartu Portal bergaya neo-modern pastel dengan watermark huruf raksasa,
+///   avatar stack pelamar (Applied), dan tombol aksi bulat hitam ↗.
 class JobDiscoveryScreen extends ConsumerStatefulWidget {
   const JobDiscoveryScreen({super.key});
 
@@ -30,81 +24,208 @@ class JobDiscoveryScreen extends ConsumerStatefulWidget {
 }
 
 class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
-  final ScrollController _scrollController = ScrollController();
+  Timer? _debounce;
   final TextEditingController _searchController = TextEditingController();
-  bool _isLoading = false;
-  String _selectedPlatform = 'Semua';
-  String _selectedWorkType = 'Semua Tipe';
+  String _selectedCategory = 'Semua';
 
-  List<JobApplication> _liveJobs = [];
-  List<String> _userInterests = [];
-  bool _isOffline = false;
-
-  final List<String> _platforms = [
+  final List<String> _categories = [
     'Semua',
-    'Glints',
-    'JobStreet',
-    'LinkedIn',
-    'Indeed',
-    'Kalibrr',
-    'KitaLulus',
+    'Desainer UI/UX',
+    'Flutter Developer',
+    'Backend Engineer',
+    'Desainer Produk',
+    'Data Analyst',
+    'Digital Marketing',
+    'Admin Operasional',
+    'Fresh Graduate',
+    'Remote / WFH',
+  ];
+
+  final List<Map<String, dynamic>> _portals = [
+    {
+      'name': 'LinkedIn Jobs',
+      'watermark': 'L',
+      'highlight': '10.000+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Senior & Entry-Level Roles',
+      'tagline': 'Jejaring Profesional Global',
+      'bgColor': Color(0xFFC7EAA7), // Pastel Soft Green
+      'portalColor': Color(0xFF0A66C2),
+      'icon': Icons.business_center_rounded,
+      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png',
+      'partnerCount': '50+',
+      'avatarColors': [
+        Color(0xFF4A90E2),
+        Color(0xFF50E3C2),
+        Color(0xFFF5A623),
+        Color(0xFFE94E77),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent(key.isEmpty ? 'Lowongan Kerja' : key);
+        return 'https://www.linkedin.com/jobs/search/?keywords=$q&location=Indonesia';
+      },
+    },
+    {
+      'name': 'Glints',
+      'watermark': 'G',
+      'highlight': '8.500+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Tech, Startup & Creative Roles',
+      'tagline': 'Pusat Karir Startup Asia',
+      'bgColor': Color(0xFFE2C8FF), // Pastel Soft Purple
+      'portalColor': Color(0xFFEC272B),
+      'icon': Icons.rocket_launch_rounded,
+      'logoUrl': 'https://images.glints.com/unsafe/glints-dashboard.s3.amazonaws.com/favicon.png',
+      'partnerCount': '40+',
+      'avatarColors': [
+        Color(0xFF9013FE),
+        Color(0xFFBD10E0),
+        Color(0xFF417505),
+        Color(0xFFF8E71C),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent(key.isEmpty ? 'Lowongan Kerja' : key);
+        return 'https://glints.com/id/opportunities/jobs/explore?keyword=$q&country=ID';
+      },
+    },
+    {
+      'name': 'JobStreet by SEEK',
+      'watermark': 'J',
+      'highlight': '25.000+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Corporate, BUMN & SME Roles',
+      'tagline': 'Semua Sektor Industri Terbesar',
+      'bgColor': Color(0xFFFEF08A), // Pastel Soft Yellow
+      'portalColor': Color(0xFF184178),
+      'icon': Icons.work_rounded,
+      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/JobStreet_Logo_2022.svg/512px-JobStreet_Logo_2022.svg.png',
+      'partnerCount': '100+',
+      'avatarColors': [
+        Color(0xFF184178),
+        Color(0xFFE60278),
+        Color(0xFF00B4D8),
+        Color(0xFFFFB703),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent((key.isEmpty ? 'Lowongan Kerja' : key).replaceAll(' ', '-'));
+        return 'https://www.jobstreet.co.id/id/job-search/$q-jobs';
+      },
+    },
+    {
+      'name': 'Kalibrr',
+      'watermark': 'K',
+      'highlight': '4.200+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Enterprise & BUMN Hiring',
+      'tagline': 'Perekrutan Berbasis Keahlian',
+      'bgColor': Color(0xFFBAE6FD), // Pastel Soft Sky Blue
+      'portalColor': Color(0xFF0284C7),
+      'icon': Icons.account_balance_rounded,
+      'logoUrl': 'https://res.cloudinary.com/kalibrr-development/image/upload/v1/kalibrr-logo-favicon.png',
+      'partnerCount': '35+',
+      'avatarColors': [
+        Color(0xFF0284C7),
+        Color(0xFF38BDF8),
+        Color(0xFF818CF8),
+        Color(0xFFA78BFA),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent(key.isEmpty ? 'Lowongan Kerja' : key);
+        return 'https://www.kalibrr.com/job-board/te/$q/1';
+      },
+    },
+    {
+      'name': 'KitaLulus',
+      'watermark': 'K',
+      'highlight': '12.000+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Loker Aman Bebas Biaya',
+      'tagline': '100% Terverifikasi & Anti Penipuan',
+      'bgColor': Color(0xFFFECDD3), // Pastel Soft Coral Pink
+      'portalColor': Color(0xFF00A5B5),
+      'icon': Icons.verified_user_rounded,
+      'logoUrl': 'https://kerja.kitalulus.com/favicon.ico',
+      'partnerCount': '60+',
+      'avatarColors': [
+        Color(0xFF00A5B5),
+        Color(0xFF2EC4B6),
+        Color(0xFFFF9F1C),
+        Color(0xFFE71D36),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent(key.isEmpty ? 'Lowongan Kerja' : key);
+        return 'https://kerja.kitalulus.com/id/lowongan?q=$q';
+      },
+    },
+    {
+      'name': 'Indeed',
+      'watermark': 'I',
+      'highlight': '50.000+',
+      'highlightUnit': 'Lowongan',
+      'roleTitle': 'Agregator Karir Nasional',
+      'tagline': 'Katalog Lowongan Terlengkap',
+      'bgColor': Color(0xFFCCFBF1), // Pastel Soft Mint Teal
+      'portalColor': Color(0xFF2164F3),
+      'icon': Icons.travel_explore_rounded,
+      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Indeed_logo.png/480px-Indeed_logo.png',
+      'partnerCount': '120+',
+      'avatarColors': [
+        Color(0xFF2164F3),
+        Color(0xFF3B82F6),
+        Color(0xFF10B981),
+        Color(0xFF6366F1),
+      ],
+      'getUrl': (String key) {
+        final q = Uri.encodeComponent(key.isEmpty ? 'Lowongan Kerja' : key);
+        return 'https://id.indeed.com/jobs?q=$q&l=Indonesia';
+      },
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadInitialData();
+    _loadUserDefault();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadInitialData() async {
+  Future<void> _loadUserDefault() async {
     final interests = await PrefsService.getUserInterests();
-    if (mounted) {
+    if (interests.isNotEmpty && mounted) {
       setState(() {
-        _userInterests = interests.isNotEmpty
-            ? interests
-            : ['Flutter / Mobile Dev', 'UI/UX Designer', 'Product Manager'];
+        _searchController.text = interests.first;
       });
-      _fetchJobs(initial: true);
     }
   }
 
-  Future<void> _fetchJobs({bool initial = false, bool forceRefresh = false}) async {
-    if (initial || forceRefresh) {
-      setState(() => _isLoading = true);
-    }
-    final query = _searchController.text.trim();
+  void _launchPortal(Map<String, dynamic> portal) async {
+    HapticFeedback.heavyImpact();
+    final keyword = _searchController.text.trim().isEmpty
+        ? (_selectedCategory == 'Semua' ? 'Lowongan Kerja' : _selectedCategory)
+        : _searchController.text.trim();
 
-    bool isOnline = true;
+    final url = portal['getUrl'](keyword) as String;
     try {
-      final ping = await http
-          .get(Uri.parse('https://httpbin.org/status/200'))
-          .timeout(const Duration(seconds: 2));
-      isOnline = ping.statusCode == 200;
+      final uri = Uri.parse(url);
+      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        await Clipboard.setData(ClipboardData(text: url));
+        if (mounted) {
+          AppleToast.info(context, 'Tautan ${portal['name']} disalin ke clipboard');
+        }
+      } else if (mounted) {
+        AppleToast.success(context, 'Membuka ${portal['name']}');
+      }
     } catch (_) {
-      isOnline = false;
-    }
-
-    final results = await JobSearchService.searchJobs(
-      query: query.isNotEmpty ? query : null,
-      userInterests: query.isEmpty ? _userInterests : null,
-      platformFilter: _selectedPlatform != 'Semua' ? _selectedPlatform : null,
-      workTypeFilter: _selectedWorkType != 'Semua Tipe' ? _selectedWorkType : null,
-      forceRefresh: forceRefresh,
-    );
-
-    if (mounted) {
-      setState(() {
-        _isOffline = !isOnline;
-        _liveJobs = results;
-        _isLoading = false;
-      });
+      await Clipboard.setData(ClipboardData(text: url));
+      if (mounted) {
+        AppleToast.info(context, 'Tautan ${portal['name']} disalin ke clipboard');
+      }
     }
   }
 
@@ -119,701 +240,498 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     );
   }
 
-  void _saveToTracker(JobApplication job, [GlobalKey? sourceKey, Color? accentColor]) async {
-    HapticFeedback.heavyImpact();
-    if (sourceKey != null && mounted) {
-      FlyToTrackerAnimator.runFlyAnimation(
-        context: context,
-        sourceKey: sourceKey,
-        companyName: job.companyName,
-        accentColor: accentColor ?? const Color(0xFF5C44E4),
-      );
-    }
-
-    final isAlreadySaved = ref.read(jobProvider).jobs.any(
-      (j) => j.id == job.id || (j.companyName == job.companyName && j.position == job.position),
+  Widget _buildAvatarStack(List<Color> avatarColors, String countText) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 80,
+          height: 28,
+          child: Stack(
+            children: [
+              for (int i = 0; i < avatarColors.length; i++)
+                Positioned(
+                  left: i * 16.0,
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: avatarColors[i],
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.8),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.person,
+                        size: 14,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white, width: 1.2),
+          ),
+          child: Text(
+            countText,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF121214),
+            ),
+          ),
+        ),
+      ],
     );
-
-    if (isAlreadySaved) {
-      ref.read(jobProvider.notifier).toggleFavorite(job.id);
-      if (mounted) {
-        AppleToast.success(context, 'Status bookmark diperbarui');
-      }
-      return;
-    }
-
-    final newJob = job.copyWith(
-      id: 'saved_${DateTime.now().millisecondsSinceEpoch}',
-      status: 'Tersedia',
-      appliedDate: DateTime.now(),
-      isFavorite: true,
-    );
-
-    await ref.read(jobProvider.notifier).addJob(newJob);
-
-    if (mounted) {
-      AppleToast.success(
-        context,
-        'Lowongan Tersimpan!',
-        subtitle: '${job.position} di ${job.companyName}',
-        actionLabel: 'Lihat',
-        onAction: () {
-          if (mounted) {
-            Navigator.push(
-              context,
-              CupertinoPageRoute(builder: (_) => JobDetailScreen(job: newJob)),
-            );
-          }
-        },
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     final isDark = AppTheme.isDark(context);
-    final bg = AppTheme.getBackground(context);
-    final txtPri = AppTheme.getTextPrimary(context);
+    final gradientColors = isDark
+        ? const [Color(0xFF0F1E14), Color(0xFF14241B), Color(0xFF121214)]
+        : const [Color(0xFFD8F3DC), Color(0xFFEEF8EE), Color(0xFFF5EFE6)];
 
     return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── 1. HEADER ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'EKSPLORASI\nLOKER',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: txtPri,
-                      letterSpacing: -1.2,
-                      height: 1.0,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _openWelcomeModal,
-                    child: Container(
-                      padding: const EdgeInsets.all(9),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFE5E0D5)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        CupertinoIcons.question_circle_fill,
-                        size: 18,
-                        color: Color(0xFF5C44E4),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── 2. SEARCH BAR ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF242428) : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF383840) : const Color(0xFFE5E0D5),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onSubmitted: (_) => _fetchJobs(),
-                  decoration: InputDecoration(
-                    hintText: 'Cari posisi, keahlian, atau perusahaan...',
-                    hintStyle: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade400,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    prefixIcon: const Icon(CupertinoIcons.search, size: 18, color: Color(0xFF5C44E4)),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 16, color: Colors.grey),
-                            onPressed: () {
-                              _searchController.clear();
-                              _fetchJobs();
-                            },
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF5C44E4)),
-                            onPressed: () => _fetchJobs(),
-                          ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── OFFLINE STATUS BANNER (Area A) ──
-            if (_isOffline)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wifi_off_rounded, size: 16, color: Color(0xFFB45309)),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Mode Offline: Menampilkan katalog tersimpan',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF92400E),
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _fetchJobs(forceRefresh: true);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD97706),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text(
-                            'Coba Lagi',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 6),
-
-            // ── REAL-TIME LIVE STATUS BAR ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 7.5,
-                        height: 7.5,
-                        decoration: BoxDecoration(
-                          color: _isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _isLoading
-                            ? 'Memuat data live...'
-                            : (_isOffline
-                                ? 'Katalog Lokal Aktif (${_liveJobs.length} Loker)'
-                                : 'Live API Terhubung (${_liveJobs.length} Loker)'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () => _fetchJobs(forceRefresh: true),
-                    child: const Row(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: gradientColors,
+            stops: const [0.0, 0.35, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── TOP HEADER (STYLE IDENTIK DENGAN DAFTAR LAMARAN & PERSIAPAN KARIR) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.refresh_rounded, size: 13, color: Color(0xFF5C44E4)),
-                        SizedBox(width: 3),
-                        Text(
-                          'Tarik Data Baru',
+                        const Text(
+                          'EKSPLOR\nLOKER',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF5C44E4),
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF121214),
+                            letterSpacing: -1.2,
+                            height: 1.0,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _openWelcomeModal,
+                          child: Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFE5E0D5)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.question_circle_fill,
+                              size: 18,
+                              color: Color(0xFF5C44E4),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            // ── 3. PLATFORM FILTER CHIPS ──
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _platforms.length,
-                itemBuilder: (context, idx) {
-                  final p = _platforms[idx];
-                  final isSel = _selectedPlatform == p;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FluidBounceButton(
-                      onTap: () {
-                        setState(() => _selectedPlatform = p);
-                        _fetchJobs();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSel ? const Color(0xFF19191B) : (isDark ? const Color(0xFF242428) : Colors.white),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: isSel ? const Color(0xFF19191B) : (isDark ? const Color(0xFF383840) : const Color(0xFFE5E0D5)),
-                            width: 1.2,
-                          ),
-                          boxShadow: isSel
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.12),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Text(
-                          p,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: isSel ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF121214)),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── 4. MAIN JOB LIST SECTION WITH PULL-TO-REFRESH ──
-            Expanded(
-              child: _isLoading && _liveJobs.isEmpty
-                  ? const Center(child: CupertinoActivityIndicator(radius: 14))
-                  : _liveJobs.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(30),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Tidak Ada Lowongan Ditemukan',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Coba ubah kata kunci pencarian atau reset filter platform.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedPlatform = 'Semua';
-                                      _searchController.clear();
-                                    });
-                                    _fetchJobs(forceRefresh: true);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF19191B),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                  ),
-                                  child: const Text('Tampilkan Semua Lowongan', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: () => _fetchJobs(forceRefresh: true),
-                          color: const Color(0xFF5C44E4),
-                          child: ListView.builder(
-                            key: const PageStorageKey('discovery_list_view'),
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                            padding: EdgeInsets.fromLTRB(20, 4, 20, 120 + (bottomInset > 0 ? bottomInset : 0)),
-                            itemCount: _liveJobs.length,
-                            itemBuilder: (context, index) {
-                              final job = _liveJobs[index];
-                              final matchScore = 96 - (index % 6) * 2;
-                              return _buildJobCard(job, matchScore);
-                            },
-                          ),
-                        ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJobCard(JobApplication job, int matchScore) {
-    final state = ref.watch(jobProvider);
-    final isSaved = state.jobs.any(
-      (j) => (j.id == job.id || (j.companyName == job.companyName && j.position == job.position)) && j.isFavorite,
-    );
-
-    final cardColor = AppTheme.getCompanyCardColor(job.companyName);
-    final isDarkText = cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
-    final titleColor = isDarkText ? const Color(0xFF111113) : Colors.white;
-    final subColor = isDarkText ? const Color(0xCC111113) : const Color(0xCCFFFFFF);
-
-    return AppleBouncyCard(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        Navigator.push(
-          context,
-          CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-          boxShadow: [
-            BoxShadow(
-              color: cardColor.withValues(alpha: 0.24),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Hero(
-                  tag: 'company_logo_${job.id}',
-                  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                    return Material(
-                      type: MaterialType.transparency,
-                      child: toHeroContext.widget,
-                    );
-                  },
-                  child: CompanyLogoBadge(
-                    companyName: job.companyName,
-                    size: 44,
-                    customImagePath: job.companyLogoPath,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job.companyName,
-                        style: TextStyle(
-                          fontSize: 17.5,
-                          fontWeight: FontWeight.w800,
-                          color: titleColor,
-                          letterSpacing: -0.3,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              job.position,
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: subColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: isDarkText
-                                  ? const Color(0xFF19191B).withValues(alpha: 0.12)
-                                  : Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              job.sourcePlatform,
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: titleColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Builder(
-                  builder: (btnCtx) {
-                    final btnKey = GlobalKey();
-                    return GestureDetector(
-                      key: btnKey,
-                      onTap: () => _saveToTracker(job, btnKey, cardColor),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: isDarkText ? const Color(0xFF111113) : Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            isSaved ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
-                            size: 16,
-                            color: isSaved
-                                ? const Color(0xFFE53935)
-                                : (isDarkText ? Colors.white : cardColor),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                if (job.salaryOffered != null && job.salaryOffered!.isNotEmpty) ...[
-                  Flexible(
-                    child: Text(
-                      job.salaryOffered!,
+                    const SizedBox(height: 6),
+                    Text(
+                      'Pencarian kata kunci lowongan kerja di 6 portal resmi terpercaya',
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: titleColor,
+                        fontSize: 12.5,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  '• ${job.workType}',
-                  style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w500),
+                  ],
                 ),
-                if (job.location != null && job.location!.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '• ${job.location}',
-                    style: TextStyle(fontSize: 12, color: subColor, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+              ),
             ),
 
-            const SizedBox(height: 12),
-
-            // ── SEGMENTED COMPATIBILITY PROGRESS BAR (SESUAI MINAT ANDA) ──
-            _buildSegmentedProgressBar(matchScore, isDarkText: isDarkText),
-
-            const SizedBox(height: 5),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Sesuai Minat Anda',
-                  style: TextStyle(fontSize: 11, color: subColor, fontWeight: FontWeight.w600),
+            // ── SINGLE SEARCH BAR (BERSIH & KONSISTEN TANPA EFEK DOUBLE BOX) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                child: CupertinoSearchTextField(
+                  controller: _searchController,
+                  placeholder: 'Ketik kata kunci posisi atau keahlian...',
+                  placeholderStyle: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFFA0A0A5) : const Color(0xFF8E8E93),
+                  ),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF121214),
+                  ),
+                  backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  onChanged: (_) {
+                    if (_debounce?.isActive ?? false) _debounce!.cancel();
+                    _debounce = Timer(const Duration(milliseconds: 400), () {
+                      if (mounted) setState(() {});
+                    });
+                  },
                 ),
-                Text(
-                  '$matchScore%',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: titleColor),
-                ),
-              ],
+              ),
             ),
 
-            const SizedBox(height: 14),
+            // ── CATEGORY FILTER CHIPS ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
+                child: SizedBox(
+                  height: 38,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, idx) {
+                      final cat = _categories[idx];
+                      final isSelected = _selectedCategory == cat;
 
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () async {
-                      HapticFeedback.selectionClick();
-                      try {
-                        final uri = Uri.parse(job.jobUrl ?? 'https://glints.com');
-                        final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        if (!success && context.mounted) {
-                          AppleToast.warning(context, 'Tidak dapat membuka tautan browser.');
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          AppleToast.warning(context, 'Tautan lowongan tidak valid atau browser tidak tersedia.');
-                        }
-                      }
+                      return GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _selectedCategory = cat;
+                            if (cat != 'Semua') {
+                              _searchController.text = cat;
+                            } else {
+                              _searchController.clear();
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF19191B) : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF19191B) : const Color(0xFFE5E0D5),
+                              width: 1.1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isSelected ? 0.10 : 0.02),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              cat,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                color: isSelected ? Colors.white : const Color(0xFF121214),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: isDarkText ? Colors.black.withValues(alpha: 0.10) : Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDarkText ? Colors.black.withValues(alpha: 0.20) : Colors.white.withValues(alpha: 0.40),
-                          width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+
+            // ── SECTION HEADER: "PILIHAN PORTAL LOKER" ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Pilihan Portal Loker',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF121214),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      '6 Portal Terpercaya',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, idx) {
+                    final portal = _portals[idx];
+                    final Color cardBg = portal['bgColor'] as Color;
+                    final Color portalColor = portal['portalColor'] as Color;
+                    final String name = portal['name'] as String;
+                    final String watermark = portal['watermark'] as String;
+                    final String highlight = portal['highlight'] as String;
+                    final String highlightUnit = portal['highlightUnit'] as String;
+                    final String roleTitle = portal['roleTitle'] as String;
+                    final String tagline = portal['tagline'] as String;
+                    final IconData icon = portal['icon'] as IconData;
+                    final String partnerCount = portal['partnerCount'] as String;
+                    final List<Color> avatarColors = portal['avatarColors'] as List<Color>;
+
+                    return GestureDetector(
+                      onTap: () => _launchPortal(portal),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            // ── GIANT FAINT WATERMARK LETTER ──
+                            Positioned(
+                              right: -12,
+                              bottom: -20,
+                              child: Text(
+                                watermark,
+                                style: TextStyle(
+                                  fontSize: 170,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white.withValues(alpha: 0.28),
+                                  letterSpacing: -10,
+                                ),
+                              ),
+                            ),
+
+                            // ── CARD FOREGROUND CONTENT ──
+                            Padding(
+                              padding: const EdgeInsets.all(22),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Top Row: Logo Badge + Name + 3-Dots Action
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 44,
+                                            height: 44,
+                                            padding: const EdgeInsets.all(7),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.08),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: ClipOval(
+                                              child: Image.network(
+                                                (portal['logoUrl'] as String?) ?? '',
+                                                width: 30,
+                                                height: 30,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error, stackTrace) => Center(
+                                                  child: Icon(icon, size: 20, color: portalColor),
+                                                ),
+                                                loadingBuilder: (context, child, loadingProgress) {
+                                                  if (loadingProgress == null) return child;
+                                                  return Center(
+                                                    child: Icon(icon, size: 20, color: portalColor),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            name,
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF121214),
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.06),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            CupertinoIcons.ellipsis_vertical,
+                                            size: 16,
+                                            color: Color(0xFF121214),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 18),
+
+                                  // Highlight Stat Row (e.g. 10.000+ Lowongan)
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    textBaseline: TextBaseline.alphabetic,
+                                    children: [
+                                      Text(
+                                        highlight,
+                                        style: const TextStyle(
+                                          fontSize: 30,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF121214),
+                                          letterSpacing: -1.0,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        highlightUnit,
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF4A5568),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 4),
+
+                                  // Role Title & Tagline
+                                  Text(
+                                    _searchController.text.trim().isNotEmpty
+                                        ? 'Mencari "${_searchController.text.trim()}" di $name'
+                                        : '$roleTitle • $tagline',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+
+                                  const SizedBox(height: 22),
+
+                                  // Bottom Row: Applied Avatar Stack + Black Circle Action Button ↗
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      // Left: Applied Avatar Stack (Persis Mockup)
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Applied',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF4A5568),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          _buildAvatarStack(avatarColors, partnerCount),
+                                        ],
+                                      ),
+
+                                      // Right: Solid Black Circle Action Button ↗
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF121214),
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.25),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            CupertinoIcons.arrow_up_right,
+                                            size: 20,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.open_in_new_rounded, size: 14, color: titleColor),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Buka di ${job.sourcePlatform}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: titleColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                    );
+                  },
+                  childCount: _portals.length,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _saveToTracker(job),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: isSaved
-                            ? const Color(0xFF1E8E3E)
-                            : (isDarkText ? const Color(0xFF111113) : Colors.white),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isSaved ? Icons.bookmark_added_rounded : Icons.bookmark_add_rounded,
-                            size: 14,
-                            color: isSaved ? Colors.white : (isDarkText ? Colors.white : cardColor),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            isSaved ? 'Tersimpan' : 'Simpan Loker',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSaved ? Colors.white : (isDarkText ? Colors.white : cardColor),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSegmentedProgressBar(int matchScore, {bool isDarkText = false}) {
-    const totalSegments = 10;
-    final activeSegments = (matchScore / 10).round().clamp(1, totalSegments);
-
-    return Row(
-      children: List.generate(totalSegments, (idx) {
-        final isActive = idx < activeSegments;
-        final activeColor = isDarkText ? const Color(0xFF19191B) : Colors.white;
-        final inactiveColor = isDarkText
-            ? const Color(0xFF19191B).withValues(alpha: 0.18)
-            : Colors.white.withValues(alpha: 0.28);
-
-        return Expanded(
-          child: Container(
-            height: 5.5,
-            margin: EdgeInsets.only(right: idx < totalSegments - 1 ? 3 : 0),
-            decoration: BoxDecoration(
-              color: isActive ? activeColor : inactiveColor,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        );
-      }),
-    );
-  }
+    ),
+  );
+}
 }

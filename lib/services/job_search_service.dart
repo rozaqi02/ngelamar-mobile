@@ -448,8 +448,8 @@ class JobSearchService {
           }
         }
       }
-    } catch (_) {
-      // Timeout or offline handled gracefully
+    } catch (e) {
+      if (forceRefresh) throw Exception('Koneksi internet terputus atau API timeout (Remotive).');
     }
 
     // 2. Fetch from Arbeitnow Public Live API
@@ -504,8 +504,8 @@ class JobSearchService {
           }
         }
       }
-    } catch (_) {
-      // Timeout or offline handled gracefully
+    } catch (e) {
+      if (forceRefresh) throw Exception('Koneksi internet terputus atau API timeout (Arbeitnow).');
     }
 
     if (liveResults.isNotEmpty) {

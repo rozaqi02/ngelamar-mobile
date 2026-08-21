@@ -5,10 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/job_provider.dart';
-import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/apple_toast.dart';
+import '../../widgets/app_dialog.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/pro_envelope_mascot.dart';
 
 /// Screen: Langganan Ngelamar PRO via WhatsApp Resmi (083136049987).
@@ -24,6 +24,84 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   String _selectedPlan = 'monthly'; // 'monthly' | 'yearly'
   static const String _adminWhatsAppNumber = '6283136049987';
+  static const String _validProCode = '2241760123';
+  final TextEditingController _codeController = TextEditingController();
+  bool _isActivating = false;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requestAdminCodeViaWhatsApp() async {
+    HapticFeedback.selectionClick();
+    final planName = _selectedPlan == 'monthly'
+        ? 'Paket Bulanan (Rp 10.000 / bln)'
+        : 'Paket Tahunan (Rp 99.000 / thn)';
+    final message = 'Halo Admin Ngelamar, saya telah melakukan pembayaran untuk *Ngelamar PRO* ($planName). Mohon kirimkan *10 digit Kode Akses Aktivasi* saya. Terima kasih!';
+    final encoded = Uri.encodeComponent(message);
+    final url = 'https://wa.me/$_adminWhatsAppNumber?text=$encoded';
+    try {
+      final uri = Uri.parse(url);
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        await Clipboard.setData(const ClipboardData(text: '083136049987'));
+        if (mounted) AppToast.info(context, 'Nomor Admin (0831-3604-9987) disalin ke clipboard');
+      }
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: '083136049987'));
+      if (mounted) AppToast.info(context, 'Nomor Admin (0831-3604-9987) disalin ke clipboard');
+    }
+  }
+
+  Future<void> _activateWithCode() async {
+    final input = _codeController.text.trim();
+    if (input.isEmpty) {
+      HapticFeedback.lightImpact();
+      AppToast.warning(context, 'Masukkan 10 digit kode aktivasi dari Admin');
+      return;
+    }
+
+    setState(() => _isActivating = true);
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (input == _validProCode) {
+      HapticFeedback.heavyImpact();
+      await ref.read(jobProvider.notifier).activateProSubscription(plan: _selectedPlan);
+      setState(() => _isActivating = false);
+      _codeController.clear();
+      if (mounted) {
+        AppDialog.show(
+          context: context,
+          icon: Icons.stars_rounded,
+          iconColor: const Color(0xFFF59E0B),
+          title: '🎉 Selamat! PRO Aktif',
+          content: 'Kode 10 digit valid. Seluruh fitur Ngelamar PRO (Pencatatan Unlimited, Ekspor Data, Alarm Otomatis, dan Bank Soal) kini terbuka penuh!',
+          primaryLabel: 'Mulai Gunakan',
+          onPrimary: () => Navigator.pop(context),
+        );
+      }
+    } else {
+      HapticFeedback.vibrate();
+      setState(() => _isActivating = false);
+      if (mounted) {
+        AppDialog.show(
+          context: context,
+          icon: Icons.error_outline_rounded,
+          iconColor: const Color(0xFFE53935),
+          title: 'Kode Aktivasi Tidak Valid',
+          content: 'Kode yang Anda masukkan tidak sesuai. Pastikan Anda telah melakukan pembayaran dan meminta kode 10 digit ke Admin via WhatsApp.',
+          secondaryLabel: 'Coba Lagi',
+          primaryLabel: 'Chat Admin WA',
+          onPrimary: () {
+            Navigator.pop(context);
+            _requestAdminCodeViaWhatsApp();
+          },
+        );
+      }
+    }
+  }
 
   final List<Map<String, dynamic>> _comparisonRows = [
     {
@@ -96,41 +174,37 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final uri = Uri.parse(waUrl);
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched && mounted) {
-        AppleToast.warning(context, 'Tidak dapat membuka WhatsApp. Silakan simpan nomor 083136049987');
+        await Clipboard.setData(const ClipboardData(text: '083136049987'));
+        if (mounted) {
+          AppToast.info(context, 'Nomor Admin (+62 831-3604-9987) disalin ke clipboard');
+        }
       }
     } catch (e) {
+      await Clipboard.setData(const ClipboardData(text: '083136049987'));
       if (mounted) {
-        AppleToast.error(context, 'Gagal membuka WhatsApp: $e');
+        AppToast.info(context, 'Nomor Admin (+62 831-3604-9987) disalin ke clipboard');
       }
     }
   }
 
   void _confirmCancelSubscription() {
     HapticFeedback.selectionClick();
-    showCupertinoDialog(
+    AppDialog.show(
       context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Batalkan Langganan PRO?'),
-        content: const Text('Akses fitur eksklusif PRO Anda akan dinonaktifkan kembali ke versi Free.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tetap Berlangganan'),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await ref.read(jobProvider.notifier).cancelProSubscription();
-              if (mounted) {
-                AppleToast.warning(context, 'Langganan PRO telah dinonaktifkan');
-              }
-            },
-            child: const Text('Ya, Batalkan'),
-          ),
-        ],
-      ),
+      icon: Icons.warning_amber_rounded,
+      iconColor: const Color(0xFFE53935),
+      title: 'Batalkan Langganan PRO?',
+      content: 'Akses fitur eksklusif PRO Anda akan dinonaktifkan kembali ke versi Free.',
+      secondaryLabel: 'Tetap Berlangganan',
+      primaryLabel: 'Ya, Batalkan',
+      isDestructive: true,
+      onPrimary: () async {
+        Navigator.pop(context);
+        await ref.read(jobProvider.notifier).cancelProSubscription();
+        if (mounted) {
+          AppToast.warning(context, 'Langganan PRO telah dinonaktifkan');
+        }
+      },
     );
   }
 
@@ -429,6 +503,189 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                     const SizedBox(height: 18),
 
+                    // ── KARTU AKTIVASI 10 DIGIT KODE AKSES PRO ──
+                    if (!isPro) ...[
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF7F2),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFF19191B), width: 1.8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF5C44E4),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.key_rounded, color: Colors.white, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Aktivasi Kode Akses PRO',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF121214),
+                                          letterSpacing: -0.3,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Masukkan 10 digit kode yang diberikan Admin',
+                                        style: TextStyle(fontSize: 11.5, color: Color(0xFF555558)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Panduan 3 Langkah
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE5E0D5)),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildActivationStep(
+                                    step: '1',
+                                    title: 'Lakukan Pembayaran',
+                                    desc: 'Pilih paket lalu transfer via WhatsApp Admin resmi.',
+                                  ),
+                                  const Divider(height: 14, thickness: 0.8),
+                                  _buildActivationStep(
+                                    step: '2',
+                                    title: 'Minta Kode Aktivasi',
+                                    desc: 'Kirim bukti bayar ke Admin untuk menerima 10 digit kode.',
+                                  ),
+                                  const Divider(height: 14, thickness: 0.8),
+                                  _buildActivationStep(
+                                    step: '3',
+                                    title: 'Input & Akses Fitur',
+                                    desc: 'Ketik 10 digit kode di bawah lalu tekan tombol Aktifkan.',
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Input Box Kode 10 Digit
+                            TextField(
+                              controller: _codeController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 4.0,
+                                color: Color(0xFF121214),
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Ketik 10 digit kode aktivasi...',
+                                hintStyle: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0,
+                                  color: Colors.grey.shade400,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                counterText: '',
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.4),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.4),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(color: Color(0xFF5C44E4), width: 2.2),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Tombol Submit Kode
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: _isActivating ? null : _activateWithCode,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5C44E4),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                ),
+                                child: _isActivating
+                                    ? const CupertinoActivityIndicator(color: Colors.white)
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.check_circle_rounded, size: 18, color: Colors.white),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Aktifkan PRO Sekarang ✨',
+                                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            // Tombol Minta Kode ke Admin
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton.icon(
+                                onPressed: _requestAdminCodeViaWhatsApp,
+                                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF25D366)),
+                                label: const Text(
+                                  'Minta / Konfirmasi Kode ke Admin (WhatsApp)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF121214),
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+
                     // WhatsApp Contact Direct Notice
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -599,6 +856,61 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActivationStep({
+    required String step,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: const BoxDecoration(
+            color: Color(0xFF19191B),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              step,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF121214),
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF555558),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

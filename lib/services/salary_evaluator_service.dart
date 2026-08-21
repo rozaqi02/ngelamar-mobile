@@ -129,10 +129,23 @@ class SalaryEvaluatorService {
       final numStr = clean
           .replaceAll('jt', '')
           .replaceAll('juta', '')
+          .replaceAll(' ', '')
           .replaceAll(',', '.')
           .trim();
       final parsed = double.tryParse(numStr);
       if (parsed != null) return parsed * 1000000;
+    }
+
+    if (clean.contains('rb') || clean.contains('ribu') || RegExp(r'\d+k\b').hasMatch(clean)) {
+      final numStr = clean
+          .replaceAll('rb', '')
+          .replaceAll('ribu', '')
+          .replaceAll('k', '')
+          .replaceAll(' ', '')
+          .replaceAll(',', '.')
+          .trim();
+      final parsed = double.tryParse(numStr);
+      if (parsed != null) return parsed * 1000;
     }
 
     clean = clean.replaceAll('.', '').replaceAll(',', '').trim();

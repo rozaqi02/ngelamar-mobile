@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,26 +7,32 @@ import 'package:flutter/services.dart';
 class FlyToTrackerAnimator {
   static void runFlyAnimation({
     required BuildContext context,
-    required GlobalKey sourceKey,
+    GlobalKey? sourceKey,
+    Offset? startOffset,
     String? companyName,
     Color accentColor = const Color(0xFF5C44E4),
   }) {
     try {
-      final renderBox = sourceKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox == null || !renderBox.attached) return;
+      Offset? startPos = startOffset;
+      if (startPos == null && sourceKey != null) {
+        final renderBox = sourceKey.currentContext?.findRenderObject() as RenderBox?;
+        if (renderBox != null && renderBox.attached) {
+          startPos = renderBox.localToGlobal(Offset.zero);
+        }
+      }
 
-      final overlay = Overlay.of(context);
-      final startPos = renderBox.localToGlobal(Offset.zero);
       final size = MediaQuery.of(context).size;
+      startPos ??= Offset(size.width * 0.8, size.height * 0.4);
 
-      // Destination: bottom navigation bar Daftar Lamaran icon
-      final endPos = Offset(size.width * 0.40, size.height - 65);
+      // Destination: bottom navigation bar tab "Lamaran" (approx center-left at 50% width on 5 items)
+      final endPos = Offset(size.width * 0.50, size.height - 55);
 
+      final overlay = Overlay.of(context, rootOverlay: true);
       late OverlayEntry entry;
 
       entry = OverlayEntry(
         builder: (ctx) => _FlyParticleWidget(
-          startPos: startPos,
+          startPos: startPos!,
           endPos: endPos,
           companyName: companyName,
           accentColor: accentColor,
@@ -39,7 +45,7 @@ class FlyToTrackerAnimator {
 
       overlay.insert(entry);
     } catch (_) {
-      // Fallback gracefully if overlay not accessible
+      // Fallback gracefully
     }
   }
 }
@@ -72,7 +78,7 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 620),
+      duration: const Duration(milliseconds: 700),
     );
 
     _progress = CurvedAnimation(
@@ -100,10 +106,10 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
       builder: (context, child) {
         final t = _progress.value;
 
-        // Quadratic Bezier curve calculation for a natural arched flight path
+        // Quadratic Bezier curve calculation with an obvious arched flight trajectory
         final controlPoint = Offset(
-          (widget.startPos.dx + widget.endPos.dx) / 2 - 30,
-          math.min(widget.startPos.dy, widget.endPos.dy) - 50,
+          (widget.startPos.dx + widget.endPos.dx) / 2 - 60,
+          math.min(widget.startPos.dy, widget.endPos.dy) - 120,
         );
 
         final x = (1 - t) * (1 - t) * widget.startPos.dx +
@@ -114,50 +120,60 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
             2 * (1 - t) * t * controlPoint.dy +
             t * t * widget.endPos.dy;
 
-        final scale = (1.15 - (t * 0.75)).clamp(0.2, 1.2);
-        final opacity = (1.0 - (t * 0.35)).clamp(0.0, 1.0);
-        final rotation = t * math.pi * 1.5;
+        final scale = (1.25 - (t * 0.70)).clamp(0.4, 1.35);
+        final opacity = (1.0 - (t * 0.25)).clamp(0.0, 1.0);
+        final rotation = t * math.pi * 1.8;
 
         return Positioned(
-          left: x,
-          top: y,
+          left: x - 45,
+          top: y - 20,
           child: IgnorePointer(
-            child: Opacity(
-              opacity: opacity,
-              child: Transform.scale(
-                scale: scale,
-                child: Transform.rotate(
-                  angle: rotation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: widget.accentColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.accentColor.withValues(alpha: 0.45),
-                          blurRadius: 14,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.folder_special_rounded, color: Colors.white, size: 16),
-                        if (widget.companyName != null && widget.companyName!.isNotEmpty && t < 0.4) ...[
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.companyName!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Opacity(
+                opacity: opacity,
+                child: Transform.scale(
+                  scale: scale,
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: widget.accentColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: widget.accentColor.withValues(alpha: 0.65),
+                            blurRadius: 18,
+                            spreadRadius: 3,
+                            offset: const Offset(0, 6),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
+                          if (widget.companyName != null && widget.companyName!.isNotEmpty && t < 0.5) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.companyName!,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

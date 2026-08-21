@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/prefs_service.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/running_envelope_mascot.dart';
+import '../../widgets/waving_greeting_mascot.dart';
 
 /// Authentic Dark-Themed Welcome Experience for Daftar Lamaran (Job Tracker).
 /// Minimalist, aesthetic, single-statement explanation with large canvas mascot & fluid action button.
@@ -58,7 +58,7 @@ class JobListWelcomeScreen extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.folder_rounded, size: 14, color: Color(0xFF4ADE80)),
+                        Icon(Icons.mail_rounded, size: 14, color: Color(0xFF4ADE80)),
                         SizedBox(width: 6),
                         Text(
                           'Daftar Lamaran',
@@ -77,11 +77,11 @@ class JobListWelcomeScreen extends StatelessWidget {
 
               const Spacer(),
 
-              // Large Running Mascot (Seamless without box/border)
+              // Large Cheerful Waving & Greeting Mascot (Pose ramah menyapa dengan lambaian tangan)
               const Center(
-                child: RunningEnvelopeMascot(
-                  width: 265,
-                  height: 190,
+                child: WavingGreetingMascot(
+                  width: 270,
+                  height: 205,
                 ),
               ),
 

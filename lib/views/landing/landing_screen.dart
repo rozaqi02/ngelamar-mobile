@@ -7,6 +7,7 @@ import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/running_envelope_mascot.dart';
 import '../main_navigation.dart';
 
@@ -60,6 +61,7 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
           } else {
             await ref.read(jobProvider.notifier).clearAllJobs();
           }
+          await PrefsService.setInitialDataSeeded(true);
           await PrefsService.setOnboardingDone();
 
           if (!mounted) return;
@@ -1005,14 +1007,10 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
 
                       _buildChoiceCard(
                         title: 'Mulai dengan Data Contoh',
-                        subtitle: 'Muat 6 contoh lamaran lengkap (BCA, Shopee, Tokopedia, dll) agar bisa langsung mencoba seluruh fitur.',
+                        subtitle: 'Muat 6 contoh lamaran lengkap (GoTo, Shopee, BCA, dll) agar bisa langsung mencoba seluruh fitur.',
                         isPrimary: true,
                         badgeText: 'REKOMENDASI',
-                        onTap: () async {
-                          HapticFeedback.heavyImpact();
-                          await PrefsService.setUserInterests(_selectedInterests.toList());
-                          widget.onComplete(true, _nameController.text.trim());
-                        },
+                        onTap: () => _handleSampleDataSelection(),
                       ),
                       const SizedBox(height: 12),
                       _buildChoiceCard(
@@ -1217,6 +1215,230 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _handleSampleDataSelection() {
+    HapticFeedback.mediumImpact();
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    // KONFIRMASI TAHAP 1: Modal Rincian 6 Data Contoh
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx1) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        padding: EdgeInsets.fromLTRB(22, 16, 22, bottomInset > 0 ? bottomInset + 14 : 22),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '📋 Rincian 6 Data Contoh',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF121214),
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Berikut data lamaran yang akan masuk ke Beranda & Daftar Lamaran Anda:',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12.5, color: Color(0xFF555558)),
+            ),
+            const SizedBox(height: 14),
+
+            // List of 6 Sample Jobs
+            Expanded(
+              child: ListView(
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildSamplePreviewItem(
+                    company: 'PT GoTo Gojek Tokopedia Tbk',
+                    role: 'Senior Flutter Developer',
+                    status: 'Tes / Psikotes',
+                    salary: 'Rp 22.000.000 / bln',
+                    statusColor: const Color(0xFFE55444),
+                  ),
+                  _buildSamplePreviewItem(
+                    company: 'PT Shopee International Indonesia',
+                    role: 'Software Development Engineer',
+                    status: 'Offering',
+                    salary: 'Rp 25.000.000 / bln',
+                    statusColor: const Color(0xFF9C27B0),
+                  ),
+                  _buildSamplePreviewItem(
+                    company: 'PT Bank Central Asia Tbk (BCA)',
+                    role: 'Mobile Application Specialist',
+                    status: 'Interview HR',
+                    salary: 'Rp 18.500.000 / bln',
+                    statusColor: const Color(0xFFF8BA38),
+                  ),
+                  _buildSamplePreviewItem(
+                    company: 'PT Telkom Indonesia Tbk',
+                    role: 'Lead Mobile Solution Architect',
+                    status: 'Interview User',
+                    salary: 'Rp 26.000.000 / bln',
+                    statusColor: const Color(0xFF5C44E4),
+                  ),
+                  _buildSamplePreviewItem(
+                    company: 'PT Bukalapak.com Tbk',
+                    role: 'Frontend Engineer (React & Mobile)',
+                    status: 'Dikirim',
+                    salary: 'Rp 16.000.000 / bln',
+                    statusColor: const Color(0xFF3884F5),
+                  ),
+                  _buildSamplePreviewItem(
+                    company: 'PT Traveloka Indonesia',
+                    role: 'QA Automation Engineer',
+                    status: 'Diterima',
+                    salary: 'Rp 19.000.000 / bln',
+                    statusColor: const Color(0xFF2E7D32),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Tombol Lanjut ke Konfirmasi Akhir (1/2)
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx1);
+                  _showFinalConfirmationDialog();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF19191B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                ),
+                child: const Text(
+                  'Lanjut ke Konfirmasi Akhir (1/2) →',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Opsi Mulai dari Nol (Kosong)
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx1);
+                  await PrefsService.setUserInterests(_selectedInterests.toList());
+                  widget.onComplete(false, _nameController.text.trim());
+                },
+                child: const Text(
+                  'Tidak Perlu, Mulai dari Nol (Kosong)',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF707074)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFinalConfirmationDialog() {
+    HapticFeedback.selectionClick();
+    // KONFIRMASI TAHAP 2: Dialog Konfirmasi Final
+    AppDialog.show(
+      context: context,
+      icon: Icons.help_outline_rounded,
+      iconColor: const Color(0xFF5C44E4),
+      title: 'Konfirmasi Akhir (2/2)',
+      content:
+          'Apakah Anda yakin ingin memuat 6 data contoh ini ke Beranda?\n\n(Catatan: Data contoh ini dapat diedit atau dihapus kapan saja di menu Pengaturan).',
+      secondaryLabel: 'Mulai Kosong',
+      primaryLabel: 'Ya, Muat Data Contoh',
+      onSecondary: () async {
+        Navigator.pop(context);
+        await PrefsService.setUserInterests(_selectedInterests.toList());
+        widget.onComplete(false, _nameController.text.trim());
+      },
+      onPrimary: () async {
+        Navigator.pop(context);
+        await PrefsService.setUserInterests(_selectedInterests.toList());
+        widget.onComplete(true, _nameController.text.trim());
+      },
+    );
+  }
+
+  Widget _buildSamplePreviewItem({
+    required String company,
+    required String role,
+    required String status,
+    required String salary,
+    required Color statusColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F7F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E0D5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  company,
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$role • $salary',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF555558)),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor),
+            ),
+          ),
+        ],
       ),
     );
   }

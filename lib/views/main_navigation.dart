@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/prefs_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/apple_toast.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'discovery/discovery_welcome_screen.dart';
 import 'discovery/job_discovery_screen.dart';
@@ -41,6 +42,7 @@ class MainNavigation extends ConsumerStatefulWidget {
 class _MainNavigationState extends ConsumerState<MainNavigation>
     with TickerProviderStateMixin {
   int _currentIndex = 0;
+  DateTime? _lastBackPressTime;
 
   late List<AnimationController> _scaleControllers;
   late List<Animation<double>> _scaleAnimations;
@@ -57,8 +59,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       label: 'Cari Loker',
     ),
     _NavItem(
-      activeIcon: Icons.folder_rounded,
-      inactiveIcon: Icons.folder_outlined,
+      activeIcon: Icons.mail_rounded,
+      inactiveIcon: Icons.mail_outline_rounded,
       label: 'Lamaran',
     ),
     _NavItem(
@@ -170,125 +172,142 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      backgroundColor: AppTheme.warmBackground,
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          // Active Screen with Authentic Fluid Slide + Fade Transition
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              final isMovingForward = _currentIndex >= _previousIndex;
-              final beginOffset = isMovingForward ? const Offset(0.06, 0.0) : const Offset(-0.06, 0.0);
-              final slideAnimation = Tween<Offset>(
-                begin: beginOffset,
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.fastOutSlowIn,
-              ));
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentIndex != 0) {
+          _onTabTapped(0);
+          return;
+        }
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          HapticFeedback.lightImpact();
+          AppleToast.info(context, 'Tekan sekali lagi untuk keluar');
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        backgroundColor: AppTheme.warmBackground,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            // Active Screen with Authentic Fluid Slide + Fade Transition
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                final isMovingForward = _currentIndex >= _previousIndex;
+                final beginOffset = isMovingForward ? const Offset(0.06, 0.0) : const Offset(-0.06, 0.0);
+                final slideAnimation = Tween<Offset>(
+                  begin: beginOffset,
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.fastOutSlowIn,
+                ));
 
-              return SlideTransition(
-                position: slideAnimation,
-                child: FadeTransition(
-                  opacity: CurvedAnimation(
-                    parent: animation,
-                    curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+                return SlideTransition(
+                  position: slideAnimation,
+                  child: FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+                    ),
+                    child: child,
                   ),
-                  child: child,
-                ),
-              );
-            },
-            child: KeyedSubtree(
-              key: ValueKey<int>(_currentIndex),
-              child: _screens[_currentIndex],
-            ),
-          ),
-
-          // Floating 5-Item Capsule Navbar (Safe for Android 3-button & iOS Home Bar)
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: bottomInset > 0 ? bottomInset + 12 : 24,
-                left: 20,
-                right: 20,
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(_currentIndex),
+                child: _screens[_currentIndex],
               ),
-              child: Container(
-                height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(36),
-                  border: Border.all(
-                    color: const Color(0xFFE5E0D5),
-                    width: 1.4,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(_items.length, (index) {
-                    final item = _items[index];
-                    final isSelected = _currentIndex == index;
+            ),
 
-                    return GestureDetector(
-                      onTap: () => _onTabTapped(index),
-                      behavior: HitTestBehavior.opaque,
-                      child: ScaleTransition(
-                        scale: _scaleAnimations[index],
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.fastOutSlowIn,
-                          width: isSelected ? 48 : 44,
-                          height: isSelected ? 48 : 44,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF1C1C1E)
-                                : Colors.transparent,
-                            shape: BoxShape.circle,
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.22),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              isSelected ? item.activeIcon : item.inactiveIcon,
+            // Floating 5-Item Capsule Navbar (Safe for Android 3-button & iOS Home Bar)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: bottomInset > 0 ? bottomInset + 12 : 24,
+                  left: 20,
+                  right: 20,
+                ),
+                child: Container(
+                  height: 64,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(36),
+                    border: Border.all(
+                      color: const Color(0xFFE5E0D5),
+                      width: 1.4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: List.generate(_items.length, (index) {
+                      final item = _items[index];
+                      final isSelected = _currentIndex == index;
+
+                      return GestureDetector(
+                        onTap: () => _onTabTapped(index),
+                        behavior: HitTestBehavior.opaque,
+                        child: ScaleTransition(
+                          scale: _scaleAnimations[index],
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: isSelected ? 48 : 44,
+                            height: isSelected ? 48 : 44,
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF8E8E93),
-                              size: isSelected ? 22 : 21,
+                                  ? const Color(0xFF1C1C1E)
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.22),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                isSelected ? item.activeIcon : item.inactiveIcon,
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF8E8E93),
+                                size: isSelected ? 22 : 21,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -86,26 +86,43 @@ class AppTheme {
     return colors[index % colors.length];
   }
 
-  static Color getCompanyCardColor(String companyName) {
-    final lower = companyName.toLowerCase();
-    if (lower.contains('uber') || lower.contains('meta') || lower.contains('facebook')) {
-      return cardPurple;
-    } else if (lower.contains('amazon') || lower.contains('bca') || lower.contains('shopee')) {
-      return cardYellow;
-    } else if (lower.contains('microsoft') || lower.contains('apple') || lower.contains('netflix')) {
-      return cardDark;
-    } else if (lower.contains('google') || lower.contains('tokopedia') || lower.contains('goto')) {
-      return cardGreen;
-    } else if (lower.contains('bukalapak') || lower.contains('traveloka')) {
-      return cardCoral;
+  static Color getJobCardColor(String status) {
+    switch (status) {
+      case 'Dikirim':
+        return cardBlue; // Biru: Tahap Baru Terkirim
+      case 'HR Screening':
+        return const Color(0xFF00838F); // Toska: Seleksi Dokumen HR
+      case 'Tes / Psikotes':
+        return cardCoral; // Oranye Merah: Ujian / Tes Kemampuan
+      case 'Interview HR':
+        return cardYellow; // Kuning Mustard: Wawancara HR
+      case 'Interview User':
+        return cardPurple; // Ungu Elektrik: Wawancara User / Manager
+      case 'Offering':
+        return const Color(0xFF9C27B0); // Magenta: Offering & Kontrak
+      case 'Diterima':
+        return cardGreen; // Hijau Zaitun Muda: Diterima Kerja
+      case 'Ditolak':
+        return cardDark; // Hitam Arang: Ditolak / Closed
+      default:
+        return cardBlue;
     }
+  }
 
-    final hash = companyName.codeUnits.fold(0, (prev, elem) => prev + elem);
-    return getCardColor(hash);
+  static Color getCompanyCardColor(String companyName, [String? status]) {
+    if (status != null && status.isNotEmpty) {
+      return getJobCardColor(status);
+    }
+    return getJobCardColor('Dikirim');
   }
 
   static bool isDarkCard(Color color) {
-    return color == cardPurple || color == cardDark || color == cardCoral || color == cardBlue;
+    return color == cardPurple ||
+        color == cardDark ||
+        color == cardCoral ||
+        color == cardBlue ||
+        color == const Color(0xFF00838F) ||
+        color == const Color(0xFF9C27B0);
   }
 
   // ─────────────────────────────────────────────────

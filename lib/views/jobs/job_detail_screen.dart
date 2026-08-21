@@ -12,9 +12,11 @@ import '../../services/followup_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/apple_sheet_window.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/container_morph_route.dart';
 import 'add_edit_job_screen.dart';
 import 'interview_stages_screen.dart';
 
@@ -106,7 +108,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   void _openEditJob(JobApplication currentJob) async {
     HapticFeedback.selectionClick();
-    final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
+    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
       context: context,
       child: AddEditJobScreen(jobToEdit: currentJob),
     );
@@ -135,36 +137,23 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   void _deleteJob(JobApplication currentJob) async {
     HapticFeedback.heavyImpact();
-    final confirm = await showDialog<bool>(
+    final confirm = await AppDialog.show<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Hapus Lamaran?', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(
+      icon: Icons.delete_outline_rounded,
+      iconColor: const Color(0xFFE53935),
+      title: 'Hapus Lamaran?',
+      content:
           'Apakah Anda yakin ingin menghapus data lamaran di ${currentJob.companyName} (${currentJob.position})?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+      secondaryLabel: 'Batal',
+      primaryLabel: 'Hapus',
+      isDestructive: true,
     );
 
     if (confirm == true && mounted) {
       await ref.read(jobProvider.notifier).deleteJob(currentJob.id);
       if (mounted) {
         Navigator.pop(context);
-        AppleToast.success(context, 'Lamaran di ${currentJob.companyName} dihapus.');
+        AppToast.success(context, 'Lamaran di ${currentJob.companyName} dihapus.');
       }
     }
   }
@@ -181,7 +170,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               child: InteractiveViewer(
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: Image.file(File(path)),
+                child: Image(
+                  image: ResizeImage(FileImage(File(path)), width: 1440),
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             Positioned(
@@ -230,21 +222,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       AppleToast.info(context, 'Tautan lowongan tidak tersedia');
       return;
     }
+    final cleanUrl = url.trim();
     try {
-      final uri = Uri.parse(url.trim());
-      if (await canLaunchUrl(uri)) {
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (!launched) {
-          await launchUrl(uri, mode: LaunchMode.platformDefault);
-        }
-      } else {
+      final uri = Uri.parse(cleanUrl);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await Clipboard.setData(ClipboardData(text: cleanUrl));
         if (mounted) {
-          AppleToast.error(context, 'Tidak dapat membuka tautan eksternal');
+          AppleToast.info(context, 'Tautan lowongan disalin ke clipboard');
         }
       }
     } catch (_) {
+      await Clipboard.setData(ClipboardData(text: cleanUrl));
       if (mounted) {
-        AppleToast.error(context, 'Format tautan web tidak valid');
+        AppleToast.info(context, 'Tautan lowongan disalin ke clipboard');
       }
     }
   }
@@ -254,10 +245,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(22, 14, 22, 32),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFBF8F2),
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
@@ -267,9 +259,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             Center(
               child: Container(
                 width: 40,
-                height: 4,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: const Color(0xFFD5CEBF),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -279,45 +271,78 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               'Perbarui Status Lamaran',
               style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
                 color: Color(0xFF121214),
+                letterSpacing: -0.4,
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Pilih tahapan seleksi terbaru untuk lamaran ini:',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+            const SizedBox(height: 4),
+            Text(
+              'Pilih tahapan seleksi terbaru untuk ${currentJob.companyName}:',
+              style: const TextStyle(fontSize: 13, color: Color(0xFF707074)),
             ),
             const SizedBox(height: 16),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 10,
+              runSpacing: 10,
               children: _statusOptions.map((status) {
                 final isSelected = status == currentJob.status;
                 final statusColor = AppTheme.getStatusColor(status);
 
-                return ChoiceChip(
-                  selected: isSelected,
-                  label: Text(status),
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF121214),
-                    fontWeight: FontWeight.w700,
-                  ),
-                  selectedColor: statusColor,
-                  backgroundColor: const Color(0xFFF5EFE6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide.none,
-                  ),
-                  onSelected: (_) {
+                return GestureDetector(
+                  onTap: () {
                     Navigator.pop(ctx);
                     ref.read(jobProvider.notifier).updateStatus(currentJob.id, status);
-                    AppleToast.success(context, 'Status diubah ke $status');
+                    AppleToast.success(context, 'Status berhasil diubah ke $status');
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? statusColor : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? statusColor : const Color(0xFFE5E0D5),
+                        width: 1.3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isSelected ? 0.15 : 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.white : statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          status,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected ? Colors.white : const Color(0xFF121214),
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                        ],
+                      ],
+                    ),
+                  ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -479,16 +504,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                 ElevatedButton.icon(
                                   onPressed: () async {
                                     final contact = currentJob.hrContact!;
-                                    if (tpl.type == FollowupType.whatsapp) {
-                                      final cleanNum = contact.replaceAll(RegExp(r'[^0-9+]'), '');
-                                      final encoded = Uri.encodeComponent(tpl.body);
-                                      final uri = Uri.parse('https://wa.me/$cleanNum?text=$encoded');
-                                      try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
-                                    } else {
-                                      final encodedSubject = Uri.encodeComponent(tpl.title);
-                                      final encodedBody = Uri.encodeComponent(tpl.body);
-                                      final uri = Uri.parse('mailto:$contact?subject=$encodedSubject&body=$encodedBody');
-                                      try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
+                                    try {
+                                      if (tpl.type == FollowupType.whatsapp) {
+                                        final cleanNum = contact.replaceAll(RegExp(r'[^0-9+]'), '');
+                                        final encoded = Uri.encodeComponent(tpl.body);
+                                        final uri = Uri.parse('https://wa.me/$cleanNum?text=$encoded');
+                                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        if (!launched) throw Exception('Gagal');
+                                      } else {
+                                        final encodedSubject = Uri.encodeComponent(tpl.title);
+                                        final encodedBody = Uri.encodeComponent(tpl.body);
+                                        final uri = Uri.parse('mailto:$contact?subject=$encodedSubject&body=$encodedBody');
+                                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        if (!launched) throw Exception('Gagal');
+                                      }
+                                    } catch (_) {
+                                      await Clipboard.setData(ClipboardData(text: contact));
+                                      if (context.mounted) {
+                                        AppleToast.info(context, 'Kontak disalin (Aplikasi tidak ditemukan)');
+                                      }
                                     }
                                   },
                                   icon: Icon(tpl.type == FollowupType.whatsapp ? Icons.chat_rounded : Icons.send_rounded, size: 15),
@@ -675,13 +709,22 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                 ElevatedButton.icon(
                                   onPressed: () async {
                                     final contact = currentJob.hrContact!;
-                                    if (contact.contains('@')) {
-                                      final uri = Uri.parse('mailto:$contact');
-                                      try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
-                                    } else {
-                                      final cleanNum = contact.replaceAll(RegExp(r'[^0-9+]'), '');
-                                      final uri = Uri.parse('https://wa.me/$cleanNum');
-                                      try { await launchUrl(uri, mode: LaunchMode.externalApplication); } catch (_) {}
+                                    try {
+                                      if (contact.contains('@')) {
+                                        final uri = Uri.parse('mailto:$contact');
+                                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        if (!launched) throw Exception('Gagal');
+                                      } else {
+                                        final cleanNum = contact.replaceAll(RegExp(r'[^0-9+]'), '');
+                                        final uri = Uri.parse('https://wa.me/$cleanNum');
+                                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                        if (!launched) throw Exception('Gagal');
+                                      }
+                                    } catch (_) {
+                                      await Clipboard.setData(ClipboardData(text: contact));
+                                      if (context.mounted) {
+                                        AppleToast.info(context, 'Kontak disalin (Aplikasi tidak ditemukan)');
+                                      }
                                     }
                                   },
                                   icon: const Icon(Icons.send_rounded, size: 14),
@@ -1382,7 +1425,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           trailingBadge: currentJob.status,
                           badgeColor: AppTheme.getStatusColor(currentJob.status),
                           heroTag: 'job_status_pill_${currentJob.id}',
-                          onTap: () => _showStatusPicker(context, currentJob),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (_) => InterviewStagesScreen(job: currentJob),
+                              ),
+                            );
+                          },
                         ),
 
                         const SizedBox(height: 10),
@@ -1504,7 +1555,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             ),
           ),
 
-          // ── STICKY BOTTOM ACTION BUTTON (PERSIS MOCKUP) ──
+          // ── STICKY BOTTOM ACTION BUTTON (ALWAYS SHOWS STATUS PICKER DOCK) ──
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -1523,15 +1574,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: () {
                     HapticFeedback.heavyImpact();
-                    if (canAdvance) {
-                      _advanceStage(currentJob);
-                    } else {
-                      _showStatusPicker(context, currentJob);
-                    }
+                    _showStatusPicker(context, currentJob);
                   },
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 20, color: Colors.white),
+                  label: const Text(
+                    'Perbarui Status Lamaran',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF19191B),
                     foregroundColor: Colors.white,
@@ -1540,14 +1596,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     ),
                     elevation: 8,
                     shadowColor: Colors.black.withValues(alpha: 0.35),
-                  ),
-                  child: Text(
-                    canAdvance ? 'Naik ke Tahap Berikutnya' : 'Perbarui Status Lamaran',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
-                    ),
                   ),
                 ),
               ),

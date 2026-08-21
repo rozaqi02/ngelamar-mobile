@@ -46,6 +46,7 @@ class CompanyLogoBadge extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
+                cacheWidth: (size * MediaQuery.of(context).devicePixelRatio).round(),
               )
             : Center(
                 child: _buildBrandIcon(lower),
