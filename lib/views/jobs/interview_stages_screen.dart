@@ -150,19 +150,67 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
               ),
             ),
 
-            // Large Title Header: "[Company]\nTahapan Seleksi"
+            // Large Title Header with Status Pill Morph
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: Text(
-                  '${currentJob.companyName}\nTahapan Seleksi',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF121214),
-                    letterSpacing: -1.2,
-                    height: 1.12,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Hero(
+                      tag: 'job_status_pill_${currentJob.id}',
+                      flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                        return Material(
+                          type: MaterialType.transparency,
+                          child: toHeroContext.widget,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.getStatusColor(currentJob.status).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.getStatusColor(currentJob.status).withValues(alpha: 0.4),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: AppTheme.getStatusColor(currentJob.status),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Status Saat Ini: ${currentJob.status}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.getStatusColor(currentJob.status),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '${currentJob.companyName}\nTahapan Seleksi',
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF121214),
+                        letterSpacing: -1.2,
+                        height: 1.12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

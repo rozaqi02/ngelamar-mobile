@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/fly_to_tracker_animator.dart';
 import '../jobs/job_detail_screen.dart';
 import '../subscription/subscription_screen.dart';
 import 'discovery_welcome_screen.dart';
@@ -104,8 +105,17 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     );
   }
 
-  void _saveToTracker(JobApplication job) async {
+  void _saveToTracker(JobApplication job, [GlobalKey? sourceKey, Color? accentColor]) async {
     HapticFeedback.heavyImpact();
+    if (sourceKey != null && mounted) {
+      FlyToTrackerAnimator.runFlyAnimation(
+        context: context,
+        sourceKey: sourceKey,
+        companyName: job.companyName,
+        accentColor: accentColor ?? const Color(0xFF5C44E4),
+      );
+    }
+
     final isAlreadySaved = ref.read(jobProvider).jobs.any(
       (j) => j.id == job.id || (j.companyName == job.companyName && j.position == job.position),
     );
@@ -532,25 +542,31 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => _saveToTracker(job),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isDarkText ? const Color(0xFF111113) : Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isSaved ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
-                        size: 16,
-                        color: isSaved
-                            ? const Color(0xFFE53935)
-                            : (isDarkText ? Colors.white : cardColor),
+                Builder(
+                  builder: (btnCtx) {
+                    final btnKey = GlobalKey();
+                    return GestureDetector(
+                      key: btnKey,
+                      onTap: () => _saveToTracker(job, btnKey, cardColor),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isDarkText ? const Color(0xFF111113) : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            isSaved ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
+                            size: 16,
+                            color: isSaved
+                                ? const Color(0xFFE53935)
+                                : (isDarkText ? Colors.white : cardColor),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),

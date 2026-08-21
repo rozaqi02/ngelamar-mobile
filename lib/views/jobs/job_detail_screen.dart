@@ -1364,7 +1364,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
 
-                        // Option 1: Timeline & Riwayat Seleksi
+                        // Option 1: Timeline & Riwayat Seleksi with Hero Morph
                         _buildOptionCard(
                           icon: Icons.timeline_rounded,
                           iconColor: const Color(0xFF5C44E4),
@@ -1372,6 +1372,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           subtitle: 'Status saat ini: ${currentJob.status}',
                           trailingBadge: currentJob.status,
                           badgeColor: AppTheme.getStatusColor(currentJob.status),
+                          heroTag: 'job_status_pill_${currentJob.id}',
                           onTap: () => _showStatusPicker(context, currentJob),
                         ),
 
@@ -1765,6 +1766,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     required String subtitle,
     String? trailingBadge,
     Color? badgeColor,
+    String? heroTag,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -1818,21 +1820,47 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               ),
             ),
             if (trailingBadge != null && badgeColor != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  trailingBadge,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
+              if (heroTag != null)
+                Hero(
+                  tag: heroTag,
+                  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                    return Material(
+                      type: MaterialType.transparency,
+                      child: toHeroContext.widget,
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      trailingBadge,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    trailingBadge,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: badgeColor,
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(width: 6),
             ],
             const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),

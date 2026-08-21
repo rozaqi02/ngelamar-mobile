@@ -493,34 +493,42 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     return Column(
       key: const ValueKey('tab_checklist'),
       children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF19191B),
-            borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Kesiapan Berkas',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
+        Hero(
+          tag: 'prep_checklist_card_hero',
+          flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+            return Material(
+              type: MaterialType.transparency,
+              child: toHeroContext.widget,
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF19191B),
+              borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Kesiapan Berkas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -562,6 +570,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             ],
           ),
         ),
+      ),
 
         const SizedBox(height: 18),
 

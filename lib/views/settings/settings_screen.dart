@@ -628,34 +628,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Avatar with Tap to Pick
+                        // Avatar with Tap to Pick & Fluid Hero Transition
                         GestureDetector(
                           onTap: _pickProfilePhoto,
                           child: Stack(
                             children: [
-                              Container(
-                                width: 58,
-                                height: 58,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: ClipOval(
-                                  child: hasPhoto
-                                      ? Image.file(
-                                          File(state.userProfilePhoto),
-                                          width: 58,
-                                          height: 58,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : const Center(
-                                          child: Icon(
-                                            CupertinoIcons.person_fill,
-                                            color: Color(0xFF19191B),
-                                            size: 32,
+                              Hero(
+                                tag: 'user_profile_avatar_hero',
+                                flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                                  return Material(
+                                    type: MaterialType.transparency,
+                                    child: toHeroContext.widget,
+                                  );
+                                },
+                                child: Container(
+                                  width: 58,
+                                  height: 58,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: ClipOval(
+                                    child: hasPhoto
+                                        ? Image.file(
+                                            File(state.userProfilePhoto),
+                                            width: 58,
+                                            height: 58,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              CupertinoIcons.person_fill,
+                                              color: Color(0xFF19191B),
+                                              size: 32,
+                                            ),
                                           ),
-                                        ),
+                                  ),
                                 ),
                               ),
                               Positioned(
