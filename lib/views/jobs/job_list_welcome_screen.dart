@@ -2,11 +2,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/prefs_service.dart';
+import '../../widgets/animated_envelope_stack_graphic.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/running_envelope_mascot.dart';
 
-/// Authentic Dark-Themed Welcome Experience for Daftar Lamaran (Job Tracker).
-/// Minimalist, aesthetic, single-statement explanation with large canvas mascot & fluid action button.
+/// Authentic Dark-Themed Welcome Screen for Daftar Lamaran (Job Tracker).
 class JobListWelcomeScreen extends StatelessWidget {
   const JobListWelcomeScreen({super.key});
 
@@ -19,9 +18,10 @@ class JobListWelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF111113),
+      backgroundColor: const Color(0xFF09090B),
       body: SafeArea(
         bottom: false,
         child: Padding(
@@ -31,7 +31,7 @@ class JobListWelcomeScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 12),
 
-              // Top Bar with Fluid Bounce Back Button
+              // ── TOP NAV BAR ──
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -41,9 +41,9 @@ class JobListWelcomeScreen extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E22),
+                        color: const Color(0xFF18181B),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF2E2E34)),
+                        border: Border.all(color: const Color(0xFF27272A)),
                       ),
                       child: const Icon(CupertinoIcons.chevron_back, color: Colors.white, size: 20),
                     ),
@@ -51,9 +51,9 @@ class JobListWelcomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E8E3E).withValues(alpha: 0.20),
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF1E8E3E).withValues(alpha: 0.40)),
+                      border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.35)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -71,42 +71,61 @@ class JobListWelcomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 42), // Balanced spacer
+                  const SizedBox(width: 42),
                 ],
               ),
 
-              const Spacer(),
+              const Spacer(flex: 2),
 
-              // Large Running Mascot (Seamless without box/border)
-              const Center(
-                child: RunningEnvelopeMascot(
-                  width: 230,
-                  height: 165,
+              // ── ANIMATED ENVELOPE STACK ILLUSTRATION ──
+              Center(
+                child: AnimatedEnvelopeStackGraphic(
+                  width: (size.width * 0.82).clamp(280.0, 360.0),
+                  height: 250,
+                  accentColor: const Color(0xFF22C55E),
+                  topBadgeText: 'Interview HR • H-1',
+                  heroBadgeText: 'Status Terpantau',
                 ),
               ),
 
-              const Spacer(),
+              const Spacer(flex: 3),
 
-              // Title
-              const Text(
-                'Kelola Karir Terstruktur',
+              // ── HEADLINE & ACCENT HIGHLIGHT (STYLE REFERENSI) ──
+              RichText(
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -0.8,
-                  height: 1.15,
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Kelola Lamaran\nLebih ',
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.8,
+                        height: 1.18,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Terstruktur',
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF22C55E),
+                        letterSpacing: -0.8,
+                        height: 1.18,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
 
-              // Exactly 1 Clear Explanation Sentence (mepet dengan tombol)
+              // ── SUBTITLE IN INDONESIAN ──
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
-                  'Pantau seluruh tahapan seleksi karir, jadwal interview, serta catatan perkembangan lamaran Anda secara rapi dan otomatis.',
+                  'Pantau seluruh tahapan seleksi, jadwal interview, bukti screenshot, dan riwayat follow-up secara rapi dalam satu tempat.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13.5,
@@ -117,47 +136,40 @@ class JobListWelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 26),
 
-              // Fluid Action Button
+              // ── FULL-WIDTH ACTION BUTTON ──
               FluidBounceButton(
                 onTap: () => _handleClose(context),
                 child: Container(
                   width: double.infinity,
-                  height: 54,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E8E3E),
+                    color: const Color(0xFF22C55E),
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1E8E3E).withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                        color: const Color(0xFF22C55E).withValues(alpha: 0.40),
+                        blurRadius: 18,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
                   child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Mulai Kelola Lamaran',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                      ],
+                    child: Text(
+                      'Mulai Kelola Lamaran',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
+              SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 28),
             ],
           ),
         ),
@@ -165,3 +177,4 @@ class JobListWelcomeScreen extends StatelessWidget {
     );
   }
 }
+
