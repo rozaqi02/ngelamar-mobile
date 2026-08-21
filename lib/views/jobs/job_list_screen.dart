@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
@@ -10,6 +11,7 @@ import '../../widgets/apple_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
+import 'job_list_welcome_screen.dart';
 
 /// Full Vacancies / Job Management Screen.
 /// Clean, Neo-Modern list with status tabs, quick WFH/Favorite pills, and vibrant company cards.
@@ -23,6 +25,7 @@ class JobListScreen extends ConsumerStatefulWidget {
 class _JobListScreenState extends ConsumerState<JobListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _tabScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _tabs = const [
@@ -40,18 +43,35 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) {
+        setState(() {});
+        _scrollToActiveTab();
+      }
+    });
+  }
+
+  void _scrollToActiveTab() {
+    if (!_tabScrollController.hasClients) return;
+    final targetOffset = (_tabController.index * 110.0) - 50.0;
+    _tabScrollController.animateTo(
+      targetOffset.clamp(0.0, _tabScrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _tabScrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _openAddJob(BuildContext context) async {
+  void _openAddJob(BuildContext ctx) async {
     final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
-      context: context,
+      context: ctx,
       child: const AddEditJobScreen(),
     );
 
@@ -62,12 +82,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         subtitle: '${result.position} di ${result.companyName}',
         actionLabel: 'Lihat',
         onAction: () {
-          Navigator.push(
-            context,
-            CupertinoPageRoute(
-              builder: (_) => JobDetailScreen(job: result),
-            ),
-          );
+          if (mounted) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => JobDetailScreen(job: result),
+              ),
+            );
+          }
         },
       );
     }
@@ -79,11 +101,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       final matchesSearch = q.isEmpty ||
           job.position.toLowerCase().contains(q) ||
           job.companyName.toLowerCase().contains(q) ||
-          (job.location?.toLowerCase().contains(q) ?? false);
+          (job.location?.toLowerCase().contains(q) ?? false) ||
+          (job.notes?.toLowerCase().contains(q) ?? false) ||
+          (job.hrContact?.toLowerCase().contains(q) ?? false) ||
+          job.jobDescription.toLowerCase().contains(q);
 
       if (!matchesSearch) return false;
       if (state.onlyFavoritesFilter && !job.isFavorite) return false;
-      if (state.onlyWfhFilter && job.workType != 'WFH') return false;
+      if (state.onlyWfhFilter && job.workType != 'WFH' && !job.jobDescription.toLowerCase().contains('remote')) return false;
 
       if (category == 'Semua') return true;
       return job.status == category;
@@ -119,52 +144,170 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       height: 1.0,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _openAddJob(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1E),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'Tambah',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -0.2,
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              fullscreenDialog: true,
+                              builder: (_) => const JobListWelcomeScreen(),
                             ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFE5E0D5)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
+                          child: const Icon(CupertinoIcons.question_circle_fill, size: 18, color: Color(0xFF1E8E3E)),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _openAddJob(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C1C1E),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'Tambah',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // Search Box
+            // Search Box & Quick Filter Pills
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-              child: CupertinoSearchTextField(
-                controller: _searchController,
-                placeholder: 'Cari posisi, perusahaan, atau kota...',
-                onChanged: (v) => ref.read(jobProvider.notifier).setSearchQuery(v),
-                backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
+              child: Column(
+                children: [
+                  CupertinoSearchTextField(
+                    controller: _searchController,
+                    placeholder: 'Cari posisi, perusahaan, atau kota...',
+                    onChanged: (v) => ref.read(jobProvider.notifier).setSearchQuery(v),
+                    backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        FluidBounceButton(
+                          onTap: () => ref.read(jobProvider.notifier).toggleOnlyFavoritesFilter(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: state.onlyFavoritesFilter ? const Color(0xFF1C1C1E) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: state.onlyFavoritesFilter ? const Color(0xFF1C1C1E) : const Color(0xFFDCD8CE),
+                              ),
+                              boxShadow: state.onlyFavoritesFilter
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  state.onlyFavoritesFilter ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  size: 14,
+                                  color: state.onlyFavoritesFilter ? Colors.white : const Color(0xFF121214),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Bookmark (${state.favoriteCount})',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: state.onlyFavoritesFilter ? Colors.white : const Color(0xFF121214),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FluidBounceButton(
+                          onTap: () => ref.read(jobProvider.notifier).toggleOnlyWfhFilter(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: state.onlyWfhFilter ? const Color(0xFF5C44E4) : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: state.onlyWfhFilter ? const Color(0xFF5C44E4) : const Color(0xFFDCD8CE),
+                              ),
+                              boxShadow: state.onlyWfhFilter
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFF5C44E4).withValues(alpha: 0.25),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Text(
+                              'WFH / Remote',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: state.onlyWfhFilter ? Colors.white : const Color(0xFF121214),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -172,6 +315,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             SizedBox(
               height: 44,
               child: SingleChildScrollView(
+                controller: _tabScrollController,
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -183,7 +327,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
+                      child: FluidBounceButton(
                         onTap: () {
                           setState(() {
                             _tabController.animateTo(i);
@@ -199,8 +343,17 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                             border: Border.all(
                               color: isSelected
                                   ? const Color(0xFF19191B)
-                                  : (isDark ? const Color(0xFF383840) : const Color(0xFFE6E3D8)),
+                                  : (isDark ? const Color(0xFF333338) : const Color(0xFFE5E0D5)),
                             ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.12),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -209,30 +362,30 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                 tabName,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : (isDark ? Colors.white70 : const Color(0xFF333333)),
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                  color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF333338)),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Colors.white.withValues(alpha: 0.25)
-                                      : Colors.black.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '$count',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.white : const Color(0xFF333333),
+                              if (count > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withValues(alpha: 0.25)
+                                        : (isDark ? const Color(0xFF333338) : const Color(0xFFF0EBE0)),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF555558)),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -245,7 +398,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
             const SizedBox(height: 10),
 
-            // TabBarView List of Jobs
+            // TabBarView List of Jobs with Swipe-to-Delete
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -275,7 +428,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 120 + MediaQuery.of(context).padding.bottom),
                     physics: const BouncingScrollPhysics(),
                     itemCount: jobs.length,
                     itemBuilder: (context, i) {
@@ -285,11 +438,63 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildJobCard(
-                          context: context,
-                          job: job,
-                          cardColor: cardColor,
-                          isDarkText: isDarkText,
+                        child: Dismissible(
+                          key: Key(job.id),
+                          direction: DismissDirection.endToStart,
+                          confirmDismiss: (direction) async {
+                            HapticFeedback.heavyImpact();
+                            return await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                title: const Text('Hapus Lamaran?', style: TextStyle(fontWeight: FontWeight.bold)),
+                                content: Text('Hapus lamaran ${job.position} di ${job.companyName}?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFE53935),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    child: const Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          onDismissed: (_) {
+                            ref.read(jobProvider.notifier).deleteJob(job.id);
+                            AppleToast.success(context, 'Lamaran di ${job.companyName} dihapus.');
+                          },
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Icon(Icons.delete_outline_rounded, color: Colors.white, size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Hapus',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                          child: _buildJobCard(
+                            context: context,
+                            job: job,
+                            cardColor: cardColor,
+                            isDarkText: isDarkText,
+                          ),
                         ),
                       );
                     },
@@ -339,7 +544,20 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
           children: [
             Row(
               children: [
-                CompanyLogoBadge(companyName: job.companyName, size: 40),
+                Hero(
+                  tag: 'company_logo_${job.id}',
+                  flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                    return Material(
+                      type: MaterialType.transparency,
+                      child: toHeroContext.widget,
+                    );
+                  },
+                  child: CompanyLogoBadge(
+                    companyName: job.companyName,
+                    size: 40,
+                    customImagePath: job.companyLogoPath,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -390,25 +608,32 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    if (job.salaryOffered != null) ...[
-                      Text(
-                        job.salaryOffered!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: titleColor,
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (job.salaryOffered != null) ...[
+                        Flexible(
+                          child: Text(
+                            job.salaryOffered!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: titleColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        '• ${job.workType}',
+                        style: TextStyle(fontSize: 12, color: subColor),
                       ),
-                      const SizedBox(width: 8),
                     ],
-                    Text(
-                      '• ${job.workType}',
-                      style: TextStyle(fontSize: 12, color: subColor),
-                    ),
-                  ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(

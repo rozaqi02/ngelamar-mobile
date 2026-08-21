@@ -1,10 +1,15 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/prefs_service.dart';
 import '../theme/app_theme.dart';
 import 'dashboard/dashboard_screen.dart';
+import 'discovery/discovery_welcome_screen.dart';
 import 'discovery/job_discovery_screen.dart';
 import 'jobs/job_list_screen.dart';
+import 'jobs/job_list_welcome_screen.dart';
+import 'prep/career_prep_welcome_screen.dart';
 import 'prep/fresh_grad_prep_screen.dart';
 import 'settings/settings_screen.dart';
 
@@ -68,6 +73,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     ),
   ];
 
+  int _previousIndex = 0;
   late final List<Widget> _screens;
 
   @override
@@ -98,14 +104,54 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         TweenSequenceItem(tween: Tween(begin: 1.05, end: 1.0), weight: 20),
       ]).animate(CurvedAnimation(parent: ctrl, curve: Curves.easeOut));
     }).toList();
+
+    _scaleControllers[_currentIndex].value = 1.0;
   }
 
   @override
   void dispose() {
-    for (var c in _scaleControllers) {
-      c.dispose();
+    for (var ctrl in _scaleControllers) {
+      ctrl.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _checkAndShowTabWelcomeScreen(int index) async {
+    if (!mounted) return;
+    if (index == 1) {
+      final seen = await PrefsService.isDiscoveryIntroSeen();
+      if (!seen && mounted) {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => const DiscoveryWelcomeScreen(),
+          ),
+        );
+      }
+    } else if (index == 2) {
+      final seen = await PrefsService.isJobListIntroSeen();
+      if (!seen && mounted) {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => const JobListWelcomeScreen(),
+          ),
+        );
+      }
+    } else if (index == 3) {
+      final seen = await PrefsService.isPrepIntroSeen();
+      if (!seen && mounted) {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => const CareerPrepWelcomeScreen(),
+          ),
+        );
+      }
+    }
   }
 
   void _onTabTapped(int index) {
@@ -113,29 +159,64 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       HapticFeedback.selectionClick();
       _scaleControllers[index].forward(from: 0.0);
       setState(() {
+        _previousIndex = _currentIndex;
         _currentIndex = index;
       });
+      _checkAndShowTabWelcomeScreen(index);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: AppTheme.warmBackground,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          // Active Screen
-          IndexedStack(
-            index: _currentIndex,
-            children: _screens,
+          // Active Screen with Authentic Fluid Slide + Fade Transition
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              final isMovingForward = _currentIndex >= _previousIndex;
+              final beginOffset = isMovingForward ? const Offset(0.06, 0.0) : const Offset(-0.06, 0.0);
+              final slideAnimation = Tween<Offset>(
+                begin: beginOffset,
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: Curves.fastOutSlowIn,
+              ));
+
+              return SlideTransition(
+                position: slideAnimation,
+                child: FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+                  ),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_currentIndex),
+              child: _screens[_currentIndex],
+            ),
           ),
 
-          // Floating 5-Item Capsule Navbar
+          // Floating 5-Item Capsule Navbar (Safe for Android 3-button & iOS Home Bar)
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 24, left: 24, right: 24),
+              padding: EdgeInsets.only(
+                bottom: bottomInset > 0 ? bottomInset + 12 : 24,
+                left: 20,
+                right: 20,
+              ),
               child: Container(
                 height: 64,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

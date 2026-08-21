@@ -1,23 +1,29 @@
-import 'package:flutter/cupertino.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 
-/// Renders authentic company icons (GoTo, Shopee, BCA, Google, Uber, Amazon, Microsoft, etc.)
-/// or a crisp stylized monogram inside a white circular badge.
+/// Renders authentic company icons (GoTo, Shopee, BCA, Google, Uber, Amazon, Microsoft, etc.),
+/// custom uploaded company photos/logos, or a crisp stylized monogram inside a circular badge.
 class CompanyLogoBadge extends StatelessWidget {
   final String companyName;
   final double size;
   final Color? backgroundColor;
+  final String? customImagePath;
 
   const CompanyLogoBadge({
     super.key,
     required this.companyName,
     this.size = 40.0,
     this.backgroundColor,
+    this.customImagePath,
   });
 
   @override
   Widget build(BuildContext context) {
     final lower = companyName.toLowerCase().trim();
+
+    final hasCustomImage = customImagePath != null &&
+        customImagePath!.isNotEmpty &&
+        File(customImagePath!).existsSync();
 
     return Container(
       width: size,
@@ -33,8 +39,17 @@ class CompanyLogoBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: _buildBrandIcon(lower),
+      child: ClipOval(
+        child: hasCustomImage
+            ? Image.file(
+                File(customImagePath!),
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+              )
+            : Center(
+                child: _buildBrandIcon(lower),
+              ),
       ),
     );
   }
@@ -60,6 +75,18 @@ class CompanyLogoBadge extends StatelessWidget {
       return Icon(Icons.facebook, size: size * 0.58, color: const Color(0xFF1877F2));
     } else if (lower.contains('telkom')) {
       return Icon(Icons.hub, size: size * 0.52, color: const Color(0xFFED1B24));
+    } else if (lower.contains('glints')) {
+      return _buildGlintsLogo();
+    } else if (lower.contains('jobstreet')) {
+      return _buildJobStreetLogo();
+    } else if (lower.contains('linkedin')) {
+      return _buildLinkedInLogo();
+    } else if (lower.contains('indeed')) {
+      return _buildIndeedLogo();
+    } else if (lower.contains('kalibrr')) {
+      return _buildKalibrrLogo();
+    } else if (lower.contains('kitalulus')) {
+      return _buildKitaLulusLogo();
     }
 
     // Default stylized monogram
@@ -216,5 +243,140 @@ class CompanyLogoBadge extends StatelessWidget {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
     return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
+  }
+  Widget _buildGlintsLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0E7090),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            fontSize: size * 0.44,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobStreetLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1C3F94),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'JS',
+          style: TextStyle(
+            fontSize: size * 0.34,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinkedInLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0A66C2),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'in',
+          style: TextStyle(
+            fontSize: size * 0.38,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIndeedLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF2164F3),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'i',
+          style: TextStyle(
+            fontSize: size * 0.44,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'serif',
+            color: Colors.white,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKalibrrLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF00A859),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'K',
+          style: TextStyle(
+            fontSize: size * 0.42,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKitaLulusLogo() {
+    return Container(
+      width: size * 0.72,
+      height: size * 0.72,
+      decoration: const BoxDecoration(
+        color: Color(0xFF5C44E4),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          'KL',
+          style: TextStyle(
+            fontSize: size * 0.34,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+            height: 1.0,
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -19,7 +19,9 @@ class JobApplication {
   final DateTime? testDate; // Tanggal Tes / Psikotes
   final DateTime? interviewDate; // Tanggal Wawancara / Interview
   final String? notes;
-  final bool isFavorite;
+  final bool isFavorite; // Status bookmark / simpan
+  final String? screenshotPath; // Path file lampiran screenshot poster loker
+  final String? companyLogoPath; // Path file custom logo / foto perusahaan yang diunggah
 
   JobApplication({
     required this.id,
@@ -41,7 +43,12 @@ class JobApplication {
     this.interviewDate,
     this.notes,
     this.isFavorite = false,
+    this.screenshotPath,
+    this.companyLogoPath,
   });
+
+  bool get needsFollowup =>
+      status == 'Dikirim' && DateTime.now().difference(appliedDate).inDays >= 7;
 
   JobApplication copyWith({
     String? id,
@@ -63,6 +70,8 @@ class JobApplication {
     DateTime? interviewDate,
     String? notes,
     bool? isFavorite,
+    String? screenshotPath,
+    String? companyLogoPath,
   }) {
     return JobApplication(
       id: id ?? this.id,
@@ -84,6 +93,8 @@ class JobApplication {
       interviewDate: interviewDate ?? this.interviewDate,
       notes: notes ?? this.notes,
       isFavorite: isFavorite ?? this.isFavorite,
+      screenshotPath: screenshotPath ?? this.screenshotPath,
+      companyLogoPath: companyLogoPath ?? this.companyLogoPath,
     );
   }
 
@@ -108,6 +119,8 @@ class JobApplication {
       'interviewDate': interviewDate?.toIso8601String(),
       'notes': notes,
       'isFavorite': isFavorite,
+      'screenshotPath': screenshotPath,
+      'companyLogoPath': companyLogoPath,
     };
   }
 
@@ -139,6 +152,8 @@ class JobApplication {
           : null,
       notes: map['notes'],
       isFavorite: map['isFavorite'] ?? false,
+      screenshotPath: map['screenshotPath'],
+      companyLogoPath: map['companyLogoPath'],
     );
   }
 

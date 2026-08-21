@@ -49,3 +49,9 @@ app.*.map.json
 !/Ngelamar.apk
 *.aab
 /build/app/outputs/
+
+# Local Scratch & Scripts
+scratch/
+generate_mascot_png.js
+serve_web.js
+

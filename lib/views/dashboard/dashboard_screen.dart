@@ -1,21 +1,22 @@
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_sheet_window.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/crying_envelope_mascot.dart';
+import '../../services/notification_service.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
+import '../subscription/subscription_screen.dart';
 
 /// Screen 1: Jelajahi Lowongan (Priority Overlapping Deck & Smart Alerts).
-/// Fitur:
-/// - 4 Kartu Prioritas bertumpuk edge-to-edge (0 margin horizontal)
-/// - Peringatan pintar: "⏳ Waktunya Follow-Up HR (H+7)" & "🔴 Interview Mendatang"
-/// - Tombol "+ Tambah" dan "Filter"
-/// - Transisi fluid dan integrasi penuh dengan CRM
 class DashboardScreen extends ConsumerStatefulWidget {
   final ValueChanged<int>? onNavigateTab;
 
@@ -29,12 +30,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearchActive = false;
-  int _expandedIndex = 3; // Default kartu ke-4 terbuka
+  int _expandedIndex = 3; // Default kartu paling bawah terbuka
 
-  void _openAddJob(BuildContext context) async {
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+    if (hour >= 11 && hour < 15) return 'Selamat Siang';
+    if (hour >= 15 && hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
+
+  void _openAddJob(BuildContext ctx) async {
     HapticFeedback.mediumImpact();
     final result = await AppleSheetWindow.showAppleModalSheet<JobApplication>(
-      context: context,
+      context: ctx,
       child: const AddEditJobScreen(),
     );
     if (result != null && mounted) {
@@ -114,7 +123,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   children: [
                     FilterChip(
                       selected: isFav,
-                      label: const Text('Hanya Favorit ★'),
+                      label: const Text('Bookmark'),
                       onSelected: (_) {
                         ref.read(jobProvider.notifier).toggleOnlyFavoritesFilter();
                         setModalState(() {});
@@ -193,6 +202,263 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+  void _showNotificationCenter(BuildContext context, List<JobApplication> jobs) {
+    HapticFeedback.selectionClick();
+    final now = DateTime.now();
+    final upcomingInterviews = jobs.where((j) {
+      final date = j.interviewDate ?? j.testDate;
+      return date != null && date.isAfter(now) && j.status != 'Ditolak' && j.status != 'Diterima';
+    }).toList();
+
+    final followupJobs = jobs.where((j) => j.needsFollowup).toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFBF8F2),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.notifications_active_rounded, color: Color(0xFF5C44E4), size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Pusat Notifikasi',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF121214),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF121214)),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Uji Coba Notifikasi Button
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3EEFF),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFD6C8F8)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.bolt_rounded, color: Color(0xFF5C44E4), size: 22),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Uji Notifikasi Perangkat',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Kirim tes notifikasi langsung ke status bar HP Anda',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF555558)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      HapticFeedback.heavyImpact();
+                      await NotificationService.showInstantNotification(
+                        title: '⏰ Pengingat Seleksi Loker',
+                        body: 'Notifikasi lokal di HP Android Anda berfungsi dengan lancar! Persiapkan tahapan wawancara berikutnya.',
+                      );
+                      if (context.mounted) {
+                        AppleToast.success(context, 'Notifikasi berhasil dikirim ke perangkat!');
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5C44E4),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Tes 🔔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            const Text(
+              'JADWAL & PENGINGAT AKTIF',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 8),
+
+            if (upcomingInterviews.isEmpty && followupJobs.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFE5E0D5)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded, size: 36, color: Colors.green.shade400),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Semua Jadwal Rapi!',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF121214)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tidak ada jadwal interview mendesak atau follow-up tertunda.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              ...upcomingInterviews.map((job) {
+                final date = job.interviewDate ?? job.testDate!;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E0D5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFFE8B2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.event_available_rounded, color: Color(0xFFD97706), size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Interview di ${job.companyName}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                              ),
+                              Text(
+                                '${date.day}/${date.month}/${date.year} • Posisi ${job.position}',
+                                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              ...followupJobs.map((job) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.pop(ctx);
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFFCDD2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFFEBEE),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.mark_email_unread_rounded, color: Color(0xFFE53935), size: 18),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Waktunya Follow-Up ${job.companyName}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                              ),
+                              Text(
+                                'Sudah > 7 hari sejak melamar posisi ${job.position}',
+                                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
@@ -200,18 +466,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     const txtPri = AppTheme.textDark;
     const txtSec = AppTheme.textMuted;
 
-    final displayName = state.userName.isNotEmpty ? state.userName : 'Rizki Pratama';
-    const displayRole = 'Pencari Kerja Aktif';
+    final displayName = state.userName.isNotEmpty ? state.userName : 'Pencari Kerja';
+    final greeting = _getTimeGreeting();
+    final displayJobs = state.priorityJobs;
+    final activeExpandedIndex = displayJobs.isEmpty
+        ? 0
+        : (_expandedIndex >= displayJobs.length ? displayJobs.length - 1 : _expandedIndex);
 
-    // Jika sedang mencari, filter dari seluruh database; jika tidak, tampilkan 4 lamaran prioritas!
-    final displayJobs = _isSearchActive && state.searchQuery.isNotEmpty
-        ? state.jobs.where((job) {
-            final q = state.searchQuery.trim().toLowerCase();
-            return job.position.toLowerCase().contains(q) ||
-                job.companyName.toLowerCase().contains(q) ||
-                (job.location?.toLowerCase().contains(q) ?? false);
-          }).toList()
-        : state.priorityJobs;
+    final hasProfilePhoto = state.userProfilePhoto.isNotEmpty && File(state.userProfilePhoto).existsSync();
+
+    final alertCount = state.jobs.where((j) {
+      final hasUpcomingInterview = j.interviewDate != null && j.interviewDate!.isAfter(DateTime.now());
+      return hasUpcomingInterview || j.needsFollowup;
+    }).length;
 
     return Scaffold(
       backgroundColor: bg,
@@ -219,64 +486,79 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── TOP PROFILE BAR ──
+              // ── TOP PROFILE & GREETING BAR ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
                 child: Row(
                   children: [
                     // Profile Avatar
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF333336),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.person_rounded,
-                          color: Colors.white,
-                          size: 24,
+                    GestureDetector(
+                      onTap: () {
+                        widget.onNavigateTab?.call(4); // Navigasi ke Settings/Profil
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF333336),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: hasProfilePhoto
+                              ? Image.file(
+                                  File(state.userProfilePhoto),
+                                  fit: BoxFit.cover,
+                                  width: 44,
+                                  height: 44,
+                                )
+                              : const Center(
+                                  child: Icon(
+                                    Icons.person_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
 
-                    // User Name & Role
+                    // Greeting & User Name
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
+                            greeting,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: txtSec,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
                             displayName,
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w900,
                               color: txtPri,
                               letterSpacing: -0.3,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 1),
-                          const Text(
-                            displayRole,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: txtSec,
-                              fontWeight: FontWeight.w500,
-                            ),
                           ),
                         ],
                       ),
@@ -312,11 +594,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.search_rounded,
+                        child: Icon(
+                          _isSearchActive ? Icons.close_rounded : Icons.search_rounded,
                           size: 20,
-                          color: Color(0xFF121214),
+                          color: const Color(0xFF121214),
                         ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // Circular Notification Bell Button
+                    GestureDetector(
+                      onTap: () => _showNotificationCenter(context, state.jobs),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFDCD8CE),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none_rounded,
+                              size: 21,
+                              color: Color(0xFF121214),
+                            ),
+                          ),
+                          if (alertCount > 0)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE53935),
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  alertCount > 9 ? '9+' : '$alertCount',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],
@@ -332,101 +675,134 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: 'Cari posisi, perusahaan, atau kota...',
-                      prefixIcon: const Icon(Icons.search_rounded),
+                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF121214)),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                ref.read(jobProvider.notifier).setSearchQuery('');
+                                setState(() {});
+                              },
+                            )
+                          : null,
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    onChanged: (v) => ref.read(jobProvider.notifier).setSearchQuery(v),
+                    onChanged: (v) {
+                      setState(() {});
+                      ref.read(jobProvider.notifier).setSearchQuery(v);
+                    },
                   ),
                 ),
               ],
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // ── LARGE TITLE & ACTIONS ROW ──
+              // ── LARGE TITLE & ACTIONS ROW (NO OFFSIDE OVERFLOW) ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    // JELAJAHI LOWONGAN
-                    const Text(
-                      'JELAJAHI\nLOWONGAN',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF121214),
-                        letterSpacing: -1.2,
-                        height: 1.0,
+                    Expanded(
+                      child: const Text(
+                        'JELAJAHI\nLOWONGAN',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                          letterSpacing: -1.2,
+                          height: 1.05,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
 
-                    // Actions: [+ Tambah] & [Filter]
-                    Row(
+                    // Actions: Filter (Atas) & Tambah (Bawah) - Rata Kanan
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // "+ Tambah" Action Pill
-                        GestureDetector(
-                          onTap: () => _openAddJob(context),
+                        // Filter Pill Button with Fluid Touch Bounce
+                        FluidBounceButton(
+                          onTap: () => _showFilterModal(context),
                           child: Container(
-                            margin: const EdgeInsets.only(top: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1C1C1E),
-                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: (state.selectedStatusFilter != 'Semua' ||
+                                        state.onlyFavoritesFilter ||
+                                        state.onlyWfhFilter)
+                                    ? const Color(0xFF5C44E4)
+                                    : const Color(0xFFDCD8CE),
+                                width: 1.2,
+                              ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  Icons.add_rounded,
-                                  size: 16,
-                                  color: Colors.white,
+                                  Icons.tune_rounded,
+                                  size: 13,
+                                  color: (state.selectedStatusFilter != 'Semua' ||
+                                          state.onlyFavoritesFilter ||
+                                          state.onlyWfhFilter)
+                                      ? const Color(0xFF5C44E4)
+                                      : const Color(0xFF121214),
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Tambah',
+                                  (state.selectedStatusFilter != 'Semua' ||
+                                          state.onlyFavoritesFilter ||
+                                          state.onlyWfhFilter)
+                                      ? 'Filter (Aktif)'
+                                      : 'Filter',
                                   style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    letterSpacing: -0.2,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: (state.selectedStatusFilter != 'Semua' ||
+                                            state.onlyFavoritesFilter ||
+                                            state.onlyWfhFilter)
+                                        ? const Color(0xFF5C44E4)
+                                        : const Color(0xFF121214),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 6),
 
-                        // "Filter" Pill Button
-                        GestureDetector(
-                          onTap: () => _showFilterModal(context),
+                        // Tambah Capsule Pill Button with Fluid Touch Bounce
+                        FluidBounceButton(
+                          onTap: () => _openAddJob(context),
                           child: Container(
-                            margin: const EdgeInsets.only(top: 2),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFDCD8CE),
-                                width: 1.4,
-                              ),
+                              color: const Color(0xFF19191B),
+                              borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
+                                  color: Colors.black.withValues(alpha: 0.16),
                                   blurRadius: 6,
                                   offset: const Offset(0, 2),
                                 ),
@@ -435,19 +811,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.tune_rounded,
-                                  size: 15,
-                                  color: Color(0xFF121214),
-                                ),
-                                SizedBox(width: 5),
+                                Icon(Icons.add_rounded, color: Colors.white, size: 14),
+                                SizedBox(width: 3),
                                 Text(
-                                  'Filter',
+                                  'Tambah',
                                   style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF121214),
-                                    letterSpacing: -0.2,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
@@ -460,46 +831,71 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
               // ── FULL-WIDTH EDGE-TO-EDGE OVERLAPPING CARD STACK ──
               if (displayJobs.isEmpty)
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(40),
+                    padding: const EdgeInsets.fromLTRB(30, 24, 30, 60),
                     child: Column(
                       children: [
-                        const Icon(
-                          Icons.folder_open_rounded,
-                          size: 48,
-                          color: Color(0xFF8E8E93),
-                        ),
+                        const CryingEnvelopeMascot(width: 170, height: 130),
                         const SizedBox(height: 14),
                         const Text(
-                          'Belum ada lamaran tersimpan',
+                          'Belum Ada Lamaran Aktif',
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
                             color: Color(0xFF121214),
+                            letterSpacing: -0.4,
                           ),
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Ketuk "+ Tambah" atau cari loker di tab "Cari Loker"!',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF707074)),
+                          'Surat lamaranmu masih sedih nih karena belum dikirim. Yuk mulai cari dan catat lowongan impianmu hari ini!',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF707074), height: 1.45),
                           textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () => _openAddJob(context),
+                              icon: const Icon(Icons.add_rounded, size: 17),
+                              label: const Text('Catat Lamaran'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF19191B),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            OutlinedButton.icon(
+                              onPressed: () => widget.onNavigateTab?.call(1), // Navigasi ke Eksplorasi Loker
+                              icon: const Icon(Icons.explore_rounded, size: 17, color: Color(0xFF5C44E4)),
+                              label: const Text('Cari Lowongan', style: TextStyle(color: Color(0xFF5C44E4), fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFD6C8F8), width: 1.2),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 )
               else
-                _buildEdgeToEdgeStackedDeck(displayJobs),
+                _buildEdgeToEdgeStackedDeck(displayJobs, activeExpandedIndex),
 
               // ── TOMBOL PINTAS: LIHAT SEMUA LAMARAN ──
               if (state.jobs.length > 4) ...[
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 120 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
                   child: Center(
                     child: TextButton.icon(
                       onPressed: () {
@@ -518,7 +914,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ),
               ] else ...[
-                const SizedBox(height: 120),
+                SizedBox(height: 120 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
               ],
             ],
           ),
@@ -527,11 +923,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs) {
+  Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs, int activeExpandedIndex) {
     return Column(
       children: List.generate(jobs.length, (index) {
         final job = jobs[index];
-        final isExpanded = index == _expandedIndex;
+        final isExpanded = index == activeExpandedIndex;
         final cardColor = AppTheme.getCompanyCardColor(job.companyName);
         final isDarkText =
             cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
@@ -547,9 +943,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return GestureDetector(
           onTap: () {
             HapticFeedback.selectionClick();
-            setState(() {
-              _expandedIndex = index;
-            });
+            if (isExpanded) {
+              Navigator.push(
+                context,
+                CupertinoPageRoute(
+                  builder: (_) => JobDetailScreen(job: job),
+                ),
+              );
+            } else {
+              setState(() {
+                _expandedIndex = index;
+              });
+            }
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 320),
@@ -590,9 +995,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     // Top Row: Logo + Company Name + Smart Alert / Arrow
                     Row(
                       children: [
-                        CompanyLogoBadge(
-                          companyName: job.companyName,
-                          size: 42,
+                        Hero(
+                          tag: 'company_logo_${job.id}',
+                          flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                            return Material(
+                              type: MaterialType.transparency,
+                              child: toHeroContext.widget,
+                            );
+                          },
+                          child: CompanyLogoBadge(
+                            companyName: job.companyName,
+                            size: 42,
+                            customImagePath: job.companyLogoPath,
+                          ),
                         ),
                         const SizedBox(width: 14),
 
@@ -621,7 +1036,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Text(
-                                    '⏳ H+7 Waktunya Follow-Up',
+                                    'H+7 Waktunya Follow-Up',
                                     style: TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
@@ -634,34 +1049,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           ),
                         ),
 
-                        // Diagonal Arrow in Circular White Container
-                        if (!isExpanded)
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => JobDetailScreen(job: job),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.arrow_outward_rounded,
-                                  size: 18,
-                                  color: Color(0xFF121214),
+                        // Diagonal Arrow in Circular White Container with Fluid Fade Animation
+                        AnimatedOpacity(
+                          opacity: isExpanded ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.fastOutSlowIn,
+                          child: AnimatedScale(
+                            scale: isExpanded ? 0.82 : 1.0,
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.fastOutSlowIn,
+                            child: IgnorePointer(
+                              ignoring: isExpanded,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.push(
+                                    context,
+                                    CupertinoPageRoute(
+                                      builder: (_) => JobDetailScreen(job: job),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.arrow_outward_rounded,
+                                      size: 18,
+                                      color: Color(0xFF121214),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
+                        ),
                       ],
                     ),
 
@@ -691,7 +1118,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           HapticFeedback.selectionClick();
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            CupertinoPageRoute(
                               builder: (_) => JobDetailScreen(job: job),
                             ),
                           );
@@ -700,17 +1127,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              job.salaryOffered != null && job.salaryOffered!.isNotEmpty
-                                  ? job.salaryOffered!
-                                  : 'Rp 25.000.000 / bln',
-                              style: TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w800,
-                                color: titleColor,
-                                letterSpacing: -0.2,
+                            Expanded(
+                              child: Text(
+                                job.salaryOffered != null && job.salaryOffered!.isNotEmpty
+                                    ? job.salaryOffered!
+                                    : 'Rp 25.000.000 / bln',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Row(
                               children: [
                                 Text(

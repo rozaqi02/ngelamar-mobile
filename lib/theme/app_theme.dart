@@ -154,7 +154,6 @@ class AppTheme {
     final isDark = brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF121214) : warmBackground;
     final surf = isDark ? const Color(0xFF1E1E22) : warmSurface;
-    final surfSec = isDark ? const Color(0xFF2A2A30) : warmSurfaceAlt;
     final bdr = isDark ? const Color(0xFF3A3A42) : warmBorder;
     final txtPri = isDark ? textLight : textDark;
     final txtSec = isDark ? const Color(0xFFA1A1AA) : textMuted;

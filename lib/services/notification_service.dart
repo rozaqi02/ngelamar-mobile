@@ -75,8 +75,11 @@ class NotificationService {
     if (!_initialized) return;
 
     final id = notificationIdFor(job.id);
+    final idH1 = id + 1;
     await _notificationsPlugin.cancel(id);
-    final interviewDate = job.interviewDate;
+    await _notificationsPlugin.cancel(idH1);
+
+    final interviewDate = job.interviewDate ?? job.testDate;
     if (interviewDate == null ||
         !interviewDate.isAfter(DateTime.now()) ||
         job.status == 'Diterima' ||
@@ -87,7 +90,7 @@ class NotificationService {
     const androidDetails = AndroidNotificationDetails(
       _channelId,
       'Pengingat Interview',
-      channelDescription: 'Pengingat jadwal interview lamaran kerja',
+      channelDescription: 'Pengingat jadwal interview & tes lamaran kerja',
       importance: Importance.high,
       priority: Priority.high,
     );
@@ -99,10 +102,11 @@ class NotificationService {
     );
 
     try {
+      // 1. Notifikasi Tepat Waktu
       await _notificationsPlugin.zonedSchedule(
         id,
-        'Interview ${job.position}',
-        'Jadwal interview dengan ${job.companyName} dimulai sekarang.',
+        '⏰ Wawancara ${job.position}',
+        'Jadwal seleksi dengan ${job.companyName} dimulai sekarang. Semoga sukses!',
         tz.TZDateTime.from(interviewDate, tz.local),
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -110,6 +114,23 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: job.id,
       );
+
+      // 2. Notifikasi Persiapan H-1 (Pukul 09:00 Pagi)
+      final h1Date = interviewDate.subtract(const Duration(days: 1));
+      final h1Morning = DateTime(h1Date.year, h1Date.month, h1Date.day, 9, 0);
+      if (h1Morning.isAfter(DateTime.now())) {
+        await _notificationsPlugin.zonedSchedule(
+          idH1,
+          '🔔 H-1 Interview ${job.companyName}',
+          'Besok ada jadwal ${job.status} untuk posisi ${job.position}. Siapkan berkas dan istirahat yang cukup!',
+          tz.TZDateTime.from(h1Morning, tz.local),
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: job.id,
+        );
+      }
     } catch (error) {
       debugPrint('Gagal menjadwalkan pengingat ${job.id}: $error');
     }
@@ -118,13 +139,46 @@ class NotificationService {
   static Future<void> cancelInterviewReminder(String jobId) async {
     if (!_initialized) await init();
     if (_initialized) {
-      await _notificationsPlugin.cancel(notificationIdFor(jobId));
+      final id = notificationIdFor(jobId);
+      await _notificationsPlugin.cancel(id);
+      await _notificationsPlugin.cancel(id + 1);
     }
   }
 
   static Future<void> syncAll(Iterable<JobApplication> jobs) async {
     for (final job in jobs) {
       await syncInterviewReminder(job);
+    }
+  }
+
+  static Future<void> showInstantNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (!_initialized) await init();
+    await requestPermission();
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      'Pengingat Interview & Notifikasi Loker',
+      channelDescription: 'Pengingat jadwal seleksi dan update lamaran kerja',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+    const darwinDetails = DarwinNotificationDetails();
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    try {
+      final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await _notificationsPlugin.show(id, title, body, details, payload: payload);
+    } catch (error) {
+      debugPrint('Gagal menampilkan notifikasi instan: $error');
     }
   }
 

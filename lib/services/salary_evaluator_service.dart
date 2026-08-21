@@ -145,6 +145,7 @@ class SalaryEvaluatorService {
     required String workType,
     bool needsKos = true,
     double? customKosCost,
+    double? customUmr,
   }) {
     final range = parseSalaryRange(rawSalaryInput);
     final minGross = range.min;
@@ -159,11 +160,13 @@ class SalaryEvaluatorService {
       orElse: () => const UmrData('Nasional (Rata-rata)', 3500000),
     );
 
-    final minUmrRatio = umrItem.umrAmount > 0 ? (minGross / umrItem.umrAmount) : 1.0;
-    final maxUmrRatio = umrItem.umrAmount > 0 ? (maxGross / umrItem.umrAmount) : 1.0;
+    final effectiveUmr = customUmr != null && customUmr > 0 ? customUmr : umrItem.umrAmount;
+
+    final minUmrRatio = effectiveUmr > 0 ? (minGross / effectiveUmr) : 1.0;
+    final maxUmrRatio = effectiveUmr > 0 ? (maxGross / effectiveUmr) : 1.0;
 
     double operationalCost = 0.0;
-    if (needsKos && customKosCost != null && customKosCost > 0) {
+    if (customKosCost != null && customKosCost > 0) {
       operationalCost = customKosCost;
     } else if (workType == 'WFH') {
       operationalCost = needsKos ? 2000000 : 1200000;
@@ -182,7 +185,7 @@ class SalaryEvaluatorService {
       isRange: isRange,
       minNetTakeHome: minNetTHP,
       maxNetTakeHome: maxNetTHP,
-      umrAmount: umrItem.umrAmount,
+      umrAmount: effectiveUmr,
       city: umrItem.city,
       minUmrRatio: minUmrRatio,
       maxUmrRatio: maxUmrRatio,
@@ -197,12 +200,16 @@ class SalaryEvaluatorService {
     required String city,
     required String workType,
     bool needsKos = true,
+    double? customKosCost,
+    double? customUmr,
   }) {
     final res = evaluateSalaryRange(
       rawSalaryInput: grossSalary.toString(),
       city: city,
       workType: workType,
       needsKos: needsKos,
+      customKosCost: customKosCost,
+      customUmr: customUmr,
     );
     return SalaryEvaluationResult(
       grossSalary: res.minGross,

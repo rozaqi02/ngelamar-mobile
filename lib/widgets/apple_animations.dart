@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Apple iOS Bouncy Touch Feedback Widget
 /// Adds a subtle spring-scale effect when tapped or pressed.
@@ -12,8 +13,8 @@ class AppleBouncyCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.scaleFactor = 0.975,
-    this.duration = const Duration(milliseconds: 150),
+    this.scaleFactor = 0.965,
+    this.duration = const Duration(milliseconds: 140),
   });
 
   @override
@@ -26,6 +27,7 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
         setState(() => _isPressed = false);
@@ -35,10 +37,62 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
       child: AnimatedScale(
         scale: _isPressed ? widget.scaleFactor : 1.0,
         duration: widget.duration,
-        curve: Curves.easeOutCubic,
+        curve: Curves.fastOutSlowIn,
         child: AnimatedOpacity(
-          opacity: _isPressed ? 0.7 : 1.0,
+          opacity: _isPressed ? 0.88 : 1.0,
           duration: widget.duration,
+          curve: Curves.fastOutSlowIn,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Ultra-fluid Bouncy Scale Button with Spring Curve & Haptic Feedback.
+/// Wrap any Button, Chip, Pill, or Icon with fluid micro-spring bounce on tap.
+class FluidBounceButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final double scaleFactor;
+  final Duration duration;
+
+  const FluidBounceButton({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.scaleFactor = 0.935,
+    this.duration = const Duration(milliseconds: 130),
+  });
+
+  @override
+  State<FluidBounceButton> createState() => _FluidBounceButtonState();
+}
+
+class _FluidBounceButtonState extends State<FluidBounceButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        HapticFeedback.selectionClick();
+        setState(() => _isPressed = true);
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap?.call();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? widget.scaleFactor : 1.0,
+        duration: widget.duration,
+        curve: Curves.fastOutSlowIn,
+        child: AnimatedOpacity(
+          opacity: _isPressed ? 0.82 : 1.0,
+          duration: widget.duration,
+          curve: Curves.fastOutSlowIn,
           child: widget.child,
         ),
       ),

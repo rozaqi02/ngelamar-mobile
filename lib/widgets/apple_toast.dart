@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
@@ -27,9 +25,12 @@ class _ToastItem {
   });
 }
 
-/// Apple iOS Dynamic Island & Floating Glass Capsule Toast Notification System.
-/// Provides compact, high-precision floating toast notifications with queuing support,
-/// spring animations, and native Apple HIG design aesthetics.
+/// Neo-Modern Floating Capsule Toast Notification System.
+/// Features:
+/// - Clean Material wrapper (Zero yellow text underlines)
+/// - Crisp typography & micro-interactions
+/// - Safe bottom navigation padding
+/// - Dynamic Island / Floating pill design aesthetics
 class AppleToast {
   static final List<_ToastItem> _queue = [];
   static bool _isShowing = false;
@@ -42,14 +43,14 @@ class AppleToast {
     Color? color,
     String? actionLabel,
     VoidCallback? onAction,
-    Duration duration = const Duration(milliseconds: 2800),
+    Duration duration = const Duration(milliseconds: 2600),
   }) {
     final item = _ToastItem(
       context: context,
       message: message,
       subtitle: subtitle,
-      icon: icon ?? CupertinoIcons.checkmark_alt,
-      color: color ?? AppTheme.systemGreen,
+      icon: icon ?? Icons.check_circle_rounded,
+      color: color ?? const Color(0xFF10B981),
       actionLabel: actionLabel,
       onAction: onAction,
       duration: duration,
@@ -88,7 +89,7 @@ class AppleToast {
         onDismiss: () {
           entry.remove();
           _isShowing = false;
-          Future.delayed(const Duration(milliseconds: 100), _processQueue);
+          Future.delayed(const Duration(milliseconds: 80), _processQueue);
         },
       ),
     );
@@ -108,8 +109,8 @@ class AppleToast {
       context,
       message: message,
       subtitle: subtitle,
-      icon: CupertinoIcons.checkmark_circle_fill,
-      color: AppTheme.systemGreen,
+      icon: Icons.check_circle_rounded,
+      color: const Color(0xFF10B981),
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -127,8 +128,8 @@ class AppleToast {
       context,
       message: message,
       subtitle: subtitle,
-      icon: CupertinoIcons.xmark_circle_fill,
-      color: AppTheme.systemRed,
+      icon: Icons.error_rounded,
+      color: const Color(0xFFEF4444),
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -146,8 +147,8 @@ class AppleToast {
       context,
       message: message,
       subtitle: subtitle,
-      icon: CupertinoIcons.exclamationmark_triangle_fill,
-      color: AppTheme.systemOrange,
+      icon: Icons.warning_amber_rounded,
+      color: const Color(0xFFF59E0B),
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -165,8 +166,8 @@ class AppleToast {
       context,
       message: message,
       subtitle: subtitle,
-      icon: CupertinoIcons.info_circle_fill,
-      color: AppTheme.systemBlue,
+      icon: Icons.info_rounded,
+      color: const Color(0xFF3B82F6),
       actionLabel: actionLabel,
       onAction: onAction,
     );
@@ -213,11 +214,11 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 360),
-      reverseDuration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 320),
+      reverseDuration: const Duration(milliseconds: 220),
     );
 
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.8), end: Offset.zero)
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
         .animate(
           CurvedAnimation(
             parent: _animController,
@@ -229,11 +230,11 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       ),
     );
 
-    _scaleAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
+    _scaleAnim = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
     );
 
@@ -258,151 +259,135 @@ class _AppleToastWidgetState extends State<_AppleToastWidget>
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
-    final txtPri = widget.isDark ? Colors.white : const Color(0xFF1C1C1E);
-    final txtSec = widget.isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : Colors.black.withValues(alpha: 0.55);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Positioned(
-      bottom: bottomInset + 78,
-      left: 16,
-      right: 16,
-      child: SlideTransition(
-        position: _slideAnim,
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: ScaleTransition(
-            scale: _scaleAnim,
-            child: GestureDetector(
-              onTap: _dismiss,
-              onVerticalDragEnd: (details) {
-                if (details.velocity.pixelsPerSecond.dy > 50) _dismiss();
-              },
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(26),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
+      bottom: bottomInset > 0 ? bottomInset + 88 : 96,
+      left: 18,
+      right: 18,
+      child: Material(
+        type: MaterialType.transparency,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: ScaleTransition(
+              scale: _scaleAnim,
+              child: GestureDetector(
+                onTap: _dismiss,
+                onVerticalDragEnd: (details) {
+                  if (details.velocity.pixelsPerSecond.dy > 50) _dismiss();
+                },
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF19191B),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 1.0,
                         ),
-                        decoration: BoxDecoration(
-                          color: widget.isDark
-                              ? const Color(0xF21C1C1E)
-                              : const Color(0xF5FFFFFF),
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(
-                            color: widget.isDark
-                                ? Colors.white.withValues(alpha: 0.16)
-                                : Colors.black.withValues(alpha: 0.08),
-                            width: AppTheme.borderHairline,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.28),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: widget.isDark ? 0.45 : 0.10,
-                              ),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Color Icon Indicator
+                          Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: widget.color.withValues(alpha: 0.18),
+                              shape: BoxShape.circle,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Icon Badge
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: widget.color.withValues(alpha: 0.14),
-                                shape: BoxShape.circle,
-                              ),
+                            child: Center(
                               child: Icon(
                                 widget.icon,
                                 color: widget.color,
-                                size: 16,
+                                size: 17,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                          ),
+                          const SizedBox(width: 12),
 
-                            // Text message & subtitle
-                            Flexible(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                          // Text Content (No yellow underlines)
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.message,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.none,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (widget.subtitle != null && widget.subtitle!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
                                   Text(
-                                    widget.message,
+                                    widget.subtitle!,
                                     style: TextStyle(
-                                      color: txtPri,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: -0.2,
+                                      color: Colors.white.withValues(alpha: 0.72),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w400,
+                                      decoration: TextDecoration.none,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (widget.subtitle != null) ...[
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      widget.subtitle!,
-                                      style: TextStyle(
-                                        color: txtSec,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
                                 ],
-                              ),
+                              ],
                             ),
+                          ),
 
-                            // Glass Action Button
-                            if (widget.actionLabel != null &&
-                                widget.onAction != null) ...[
-                              const SizedBox(width: 10),
-                              GestureDetector(
-                                onTap: () {
-                                  _dismiss();
-                                  widget.onAction?.call();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4.5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: widget.color.withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: widget.color.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      width: AppTheme.borderHairline,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    widget.actionLabel!,
-                                    style: TextStyle(
-                                      color: widget.color,
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.1,
-                                    ),
+                          // Optional Action Button
+                          if (widget.actionLabel != null && widget.onAction != null) ...[
+                            const SizedBox(width: 12),
+                            GestureDetector(
+                              onTap: () {
+                                _dismiss();
+                                widget.onAction?.call();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Text(
+                                  widget.actionLabel!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    decoration: TextDecoration.none,
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
                     ),
                   ),

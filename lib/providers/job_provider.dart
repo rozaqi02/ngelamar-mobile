@@ -14,7 +14,11 @@ class JobState {
   final bool isLoading;
   final String userName;
   final String userEmail;
+  final String userProfilePhoto;
   final bool isDarkMode;
+  final bool isProUser;
+  final DateTime? proExpiryDate;
+  final String proPlanType;
 
   JobState({
     required this.jobs,
@@ -25,7 +29,11 @@ class JobState {
     this.isLoading = false,
     this.userName = '',
     this.userEmail = '',
+    this.userProfilePhoto = '',
     this.isDarkMode = false,
+    this.isProUser = false,
+    this.proExpiryDate,
+    this.proPlanType = 'monthly',
   });
 
   JobState copyWith({
@@ -37,7 +45,11 @@ class JobState {
     bool? isLoading,
     String? userName,
     String? userEmail,
+    String? userProfilePhoto,
     bool? isDarkMode,
+    bool? isProUser,
+    DateTime? proExpiryDate,
+    String? proPlanType,
   }) {
     return JobState(
       jobs: jobs ?? this.jobs,
@@ -48,7 +60,11 @@ class JobState {
       isLoading: isLoading ?? this.isLoading,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
+      userProfilePhoto: userProfilePhoto ?? this.userProfilePhoto,
       isDarkMode: isDarkMode ?? this.isDarkMode,
+      isProUser: isProUser ?? this.isProUser,
+      proExpiryDate: proExpiryDate ?? this.proExpiryDate,
+      proPlanType: proPlanType ?? this.proPlanType,
     );
   }
 
@@ -73,12 +89,42 @@ class JobState {
     return (responded / jobs.length) * 100;
   }
 
+  /// Daftar lamaran yang telah disaring berdasarkan kata kunci dan filter aktif
+  List<JobApplication> get filteredJobs {
+    return jobs.where((job) {
+      if (searchQuery.isNotEmpty) {
+        final q = searchQuery.trim().toLowerCase();
+        final inPos = job.position.toLowerCase().contains(q);
+        final inComp = job.companyName.toLowerCase().contains(q);
+        final inLoc = (job.location ?? '').toLowerCase().contains(q);
+        final inDesc = job.jobDescription.toLowerCase().contains(q);
+        final inNotes = (job.notes ?? '').toLowerCase().contains(q);
+        final inHr = (job.hrContact ?? '').toLowerCase().contains(q);
+        if (!inPos && !inComp && !inLoc && !inDesc && !inNotes && !inHr) return false;
+      }
+      if (selectedStatusFilter != 'Semua' && job.status != selectedStatusFilter) {
+        return false;
+      }
+      if (onlyFavoritesFilter && !job.isFavorite) {
+        return false;
+      }
+      if (onlyWfhFilter && job.workType != 'WFH' && !job.jobDescription.toLowerCase().contains('remote')) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
   /// Mengembalikan maksimal 4 lamaran prioritas untuk tumpukan kartu Beranda.
   /// Urutan prioritas: Offering / Interview / Tes ➔ Favorit ➔ Terbaru.
   List<JobApplication> get priorityJobs {
-    if (jobs.isEmpty) return [];
+    final baseList = (selectedStatusFilter != 'Semua' || onlyFavoritesFilter || onlyWfhFilter || searchQuery.isNotEmpty)
+        ? filteredJobs
+        : jobs;
 
-    final list = List<JobApplication>.from(jobs);
+    if (baseList.isEmpty) return [];
+
+    final list = List<JobApplication>.from(baseList);
     list.sort((a, b) {
       int score(JobApplication j) {
         if (j.status == 'Offering') return 10;
@@ -149,16 +195,24 @@ class JobNotifier extends StateNotifier<JobState> {
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
     // Muat preferensi pengguna
-    final name = await PrefsService.getUserName() ?? 'Rizki Pratama';
-    final email = await PrefsService.getUserEmail() ?? 'rizki.pratama@email.com';
+    final name = await PrefsService.getUserName() ?? 'Rozaqi';
+    final email = await PrefsService.getUserEmail() ?? '';
+    final photo = await PrefsService.getProfilePhoto() ?? '';
     final theme = await PrefsService.getThemeMode();
+    final isPro = await PrefsService.isProSubscriber();
+    final proExpiry = await PrefsService.getProExpiryDate();
+    final proPlan = await PrefsService.getProPlanPeriod();
 
     state = state.copyWith(
       jobs: loaded,
       isLoading: false,
       userName: name,
       userEmail: email,
+      userProfilePhoto: photo,
       isDarkMode: theme == 'dark',
+      isProUser: isPro,
+      proExpiryDate: proExpiry,
+      proPlanType: proPlan,
     );
 
     _syncRemindersQuietly(loaded);
@@ -233,8 +287,18 @@ class JobNotifier extends StateNotifier<JobState> {
     _scheduleReminderQuietly(job);
   }
 
-  /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet).
+  /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet) dengan proteksi anti-duplikasi.
   Future<JobApplication> saveFromSearchEngine(JobApplication searchJob) async {
+    final existingIndex = state.jobs.indexWhere(
+      (j) =>
+          j.companyName.trim().toLowerCase() == searchJob.companyName.trim().toLowerCase() &&
+          j.position.trim().toLowerCase() == searchJob.position.trim().toLowerCase(),
+    );
+
+    if (existingIndex != -1) {
+      return state.jobs[existingIndex];
+    }
+
     final now = DateTime.now();
     final newJob = searchJob.copyWith(
       id: 'job_${now.millisecondsSinceEpoch}',
@@ -265,7 +329,12 @@ class JobNotifier extends StateNotifier<JobState> {
       state.jobs.map((j) => j.id == job.id ? job : j),
     );
     state = state.copyWith(jobs: updated);
-    _scheduleReminderQuietly(job);
+
+    if (job.status == 'Ditolak' || job.status == 'Diterima') {
+      _cancelReminderQuietly(job.id);
+    } else {
+      _scheduleReminderQuietly(job);
+    }
   }
 
   Future<void> deleteJob(String id) async {
@@ -321,6 +390,11 @@ class JobNotifier extends StateNotifier<JobState> {
   Future<void> setUserEmail(String email) async {
     await PrefsService.setUserEmail(email);
     state = state.copyWith(userEmail: email);
+  }
+
+  Future<void> setUserProfilePhoto(String path) async {
+    await PrefsService.setProfilePhoto(path);
+    state = state.copyWith(userProfilePhoto: path);
   }
 
   Future<void> toggleThemeMode() async {
@@ -413,6 +487,41 @@ class JobNotifier extends StateNotifier<JobState> {
         isFavorite: true,
       ),
     ];
+  }
+
+  /// Mengaktifkan status langganan PRO pengguna (Bulanan / Tahunan)
+  Future<void> activateProSubscription({String plan = 'monthly'}) async {
+    final now = DateTime.now();
+    final expiry = plan == 'yearly'
+        ? now.add(const Duration(days: 365))
+        : now.add(const Duration(days: 30));
+
+    await PrefsService.setProSubscription(
+      isPro: true,
+      expiry: expiry,
+      plan: plan,
+    );
+
+    state = state.copyWith(
+      isProUser: true,
+      proExpiryDate: expiry,
+      proPlanType: plan,
+    );
+  }
+
+  /// Membatalkan status langganan PRO
+  Future<void> cancelProSubscription() async {
+    await PrefsService.setProSubscription(
+      isPro: false,
+      expiry: null,
+      plan: 'monthly',
+    );
+
+    state = state.copyWith(
+      isProUser: false,
+      proExpiryDate: null,
+      proPlanType: 'monthly',
+    );
   }
 }
 
