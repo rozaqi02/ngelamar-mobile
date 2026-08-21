@@ -80,33 +80,49 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
               // Large Prep Mascot (Seamless without box/border)
               const Center(
                 child: CareerPrepMascot(
-                  width: 230,
-                  height: 165,
+                  width: 265,
+                  height: 190,
                 ),
               ),
 
               const Spacer(),
 
-              // Title
-              const Text(
-                'Kuasai Tahapan Seleksi',
+              // Simple Headline with 1 Purple Keyword
+              RichText(
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -0.8,
-                  height: 1.15,
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Kuasai Tahapan ',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.8,
+                        height: 1.15,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Seleksi',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFA78BFA),
+                        letterSpacing: -0.8,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 8),
 
-              // Exactly 1 Clear Explanation Sentence (mepet dengan tombol)
+              // Simple 1-sentence explanation
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  'Kuasai checklist berkas lolos HR, simulasi gaji UMR daerah, cheat-sheet interview metode STAR, dan templat komunikasi profesional.',
+                  'Siapkan checklist berkas ATS, latihan interview metode STAR, dan simulasi gaji UMR.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13.5,

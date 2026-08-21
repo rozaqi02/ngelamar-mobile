@@ -80,33 +80,49 @@ class JobListWelcomeScreen extends StatelessWidget {
               // Large Running Mascot (Seamless without box/border)
               const Center(
                 child: RunningEnvelopeMascot(
-                  width: 230,
-                  height: 165,
+                  width: 265,
+                  height: 190,
                 ),
               ),
 
               const Spacer(),
 
-              // Title
-              const Text(
-                'Kelola Karir Terstruktur',
+              // Simple Headline with 1 Purple Keyword
+              RichText(
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -0.8,
-                  height: 1.15,
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Kelola Lamaran ',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.8,
+                        height: 1.15,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Terstruktur',
+                      style: TextStyle(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFA78BFA),
+                        letterSpacing: -0.8,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
               const SizedBox(height: 8),
 
-              // Exactly 1 Clear Explanation Sentence (mepet dengan tombol)
+              // Simple 1-sentence explanation
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  'Pantau seluruh tahapan seleksi karir, jadwal interview, serta catatan perkembangan lamaran Anda secara rapi dan otomatis.',
+                  'Pantau seluruh tahapan seleksi, jadwal interview, dan progres karirmu secara rapi.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13.5,
