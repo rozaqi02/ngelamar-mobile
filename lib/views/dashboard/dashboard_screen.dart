@@ -860,27 +860,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 18),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: [
                             ElevatedButton.icon(
                               onPressed: () => _openAddJob(context),
-                              icon: const Icon(Icons.add_rounded, size: 17),
-                              label: const Text('Catat Lamaran'),
+                              icon: const Icon(Icons.add_rounded, size: 16),
+                              label: const Text('Catat Lamaran', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF19191B),
                                 foregroundColor: Colors.white,
+                                elevation: 0,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               ),
                             ),
-                            const SizedBox(width: 10),
                             OutlinedButton.icon(
                               onPressed: () => widget.onNavigateTab?.call(1), // Navigasi ke Eksplorasi Loker
-                              icon: const Icon(Icons.explore_rounded, size: 17, color: Color(0xFF5C44E4)),
-                              label: const Text('Cari Lowongan', style: TextStyle(color: Color(0xFF5C44E4), fontWeight: FontWeight.bold)),
+                              icon: const Icon(Icons.explore_rounded, size: 16, color: Color(0xFF5C44E4)),
+                              label: const Text('Cari Lowongan', style: TextStyle(color: Color(0xFF5C44E4), fontSize: 12.5, fontWeight: FontWeight.bold)),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Color(0xFFD6C8F8), width: 1.2),
+                                backgroundColor: const Color(0xFFF6F2FF),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               ),

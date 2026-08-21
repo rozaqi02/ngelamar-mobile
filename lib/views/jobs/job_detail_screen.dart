@@ -994,77 +994,45 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
 
-                        Row(
-                          children: [
-                            // Share Button with Fluid Bounce
-                            FluidBounceButton(
-                              onTap: () => _shareJob(currentJob),
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.06),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.share_outlined,
-                                    size: 19,
-                                    color: Color(0xFF121214),
+                        // Circular Bookmark Button with Animated Scale & Pop Feedback
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.heavyImpact();
+                            _bookmarkAnimController.forward(from: 0.0);
+                            ref.read(jobProvider.notifier).toggleFavorite(currentJob.id);
+                            AppleToast.success(
+                              context,
+                              currentJob.isFavorite ? 'Dihapus dari Bookmark' : 'Disimpan ke Bookmark',
+                              subtitle: currentJob.companyName,
+                            );
+                          },
+                          child: ScaleTransition(
+                            scale: _bookmarkScaleAnim,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: currentJob.isFavorite ? const Color(0xFF19191B) : Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: currentJob.isFavorite
+                                        ? const Color(0xFF19191B).withValues(alpha: 0.35)
+                                        : Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
                                   ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  currentJob.isFavorite ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
+                                  size: 20,
+                                  color: currentJob.isFavorite ? const Color(0xFFFFD54F) : const Color(0xFF121214),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-
-                            // Circular Bookmark Button with Animated Scale & Pop Feedback
-                            GestureDetector(
-                              onTap: () {
-                                HapticFeedback.heavyImpact();
-                                _bookmarkAnimController.forward(from: 0.0);
-                                ref.read(jobProvider.notifier).toggleFavorite(currentJob.id);
-                                AppleToast.success(
-                                  context,
-                                  currentJob.isFavorite ? 'Dihapus dari Bookmark' : 'Disimpan ke Bookmark',
-                                  subtitle: currentJob.companyName,
-                                );
-                              },
-                              child: ScaleTransition(
-                                scale: _bookmarkScaleAnim,
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: currentJob.isFavorite ? const Color(0xFF19191B) : Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: currentJob.isFavorite
-                                            ? const Color(0xFF19191B).withValues(alpha: 0.35)
-                                            : Colors.black.withValues(alpha: 0.06),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      currentJob.isFavorite ? CupertinoIcons.bookmark_fill : CupertinoIcons.bookmark,
-                                      size: 20,
-                                      color: currentJob.isFavorite ? const Color(0xFFFFD54F) : const Color(0xFF121214),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -1476,13 +1444,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
                         const SizedBox(height: 14),
 
-                        // Edit & Hapus Buttons
+                        // Edit, Bagikan & Hapus Buttons
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () => _openEditJob(currentJob),
-                                icon: const Icon(Icons.edit_outlined, size: 16),
+                                icon: const Icon(Icons.edit_outlined, size: 15),
                                 label: const Text('Edit Lamaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1493,17 +1461,28 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
-                              onPressed: () => _deleteJob(currentJob),
-                              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFE53935)),
-                              label: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFE53935))),
+                              onPressed: () => _shareJob(currentJob),
+                              icon: const Icon(Icons.share_outlined, size: 15, color: Color(0xFF5C44E4)),
+                              label: const Text('Bagikan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF5C44E4))),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+                                backgroundColor: Colors.white,
+                                side: const BorderSide(color: Color(0xFFD6C8F8)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () => _deleteJob(currentJob),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
                                 backgroundColor: Colors.white,
                                 side: const BorderSide(color: Color(0xFFFFCDD2)),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               ),
+                              child: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFE53935)),
                             ),
                           ],
                         ),
