@@ -226,16 +226,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   }
 
   void _openOriginalUrl(String? url) async {
-    if (url == null || url.isEmpty) return;
-    final uri = Uri.parse(url);
+    if (url == null || url.trim().isEmpty) {
+      AppleToast.info(context, 'Tautan lowongan tidak tersedia');
+      return;
+    }
     try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      final uri = Uri.parse(url.trim());
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!launched) {
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
+        }
+      } else {
+        if (mounted) {
+          AppleToast.error(context, 'Tidak dapat membuka tautan eksternal');
+        }
       }
     } catch (_) {
       if (mounted) {
-        AppleToast.info(context, 'Membuka tautan portal lowongan...');
+        AppleToast.error(context, 'Format tautan web tidak valid');
       }
     }
   }

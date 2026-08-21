@@ -480,7 +480,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       }
 
       if (newJob.interviewDate != null && mounted) {
-        NotificationService.requestPermission().catchError((Object error) {
+        NotificationService.promptPermissionIfNeeded(context).catchError((Object error) {
           debugPrint('Permintaan izin notifikasi gagal: $error');
           return false;
         });
@@ -825,12 +825,14 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   children: [
                     TextFormField(
                       controller: _salaryController,
+                      maxLength: 50,
                       keyboardType: TextInputType.number,
                       inputFormatters: [RupiahInputFormatter()],
                       decoration: const InputDecoration(
                         labelText: 'Gaji Penawaran (Bulan)',
                         hintText: 'Rp 15.000.000',
                         prefixIcon: Icon(Icons.monetization_on_outlined, size: 18),
+                        counterText: '',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -840,11 +842,13 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                           flex: 3,
                           child: TextFormField(
                             controller: _locationController,
+                            maxLength: 80,
                             textCapitalization: TextCapitalization.words,
                             decoration: InputDecoration(
                               labelText: 'Lokasi / Link Maps',
                               hintText: 'Kota atau link Google Maps...',
                               prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
+                              counterText: '',
                               suffixIcon: IconButton(
                                 icon: const Icon(Icons.content_paste_rounded, size: 16, color: Color(0xFF5C44E4)),
                                 tooltip: 'Tempel Link Maps / Lokasi',
@@ -984,20 +988,24 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                     TextFormField(
                       controller: _hrContactController,
+                      maxLength: 80,
                       decoration: const InputDecoration(
                         labelText: 'Kontak HR (WhatsApp / Email)',
                         hintText: 'hr.recruitment@perusahaan.com / +628...',
                         prefixIcon: Icon(Icons.contact_mail_outlined, size: 18),
+                        counterText: '',
                       ),
                     ),
                     const SizedBox(height: 12),
 
                     TextFormField(
                       controller: _descriptionController,
+                      maxLength: 500,
                       maxLines: 3,
                       decoration: const InputDecoration(
                         labelText: 'Deskripsi / Kualifikasi Singkat',
                         hintText: 'Persyaratan utama lowongan...',
+                        counterText: '',
                       ),
                     ),
                   ],

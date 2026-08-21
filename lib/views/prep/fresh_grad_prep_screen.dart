@@ -118,6 +118,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       result = result.replaceAll('[Nama Posisi]', defaultPosition);
       result = result.replaceAll('[Posisi]', defaultPosition);
     }
+    final now = DateTime.now();
+    result = result.replaceAll('[Tanggal]', '${now.day}/${now.month}/${now.year}');
+    result = result.replaceAll('[Hari/Tanggal]', '${now.day}/${now.month}/${now.year}');
+    result = result.replaceAll('[Waktu]', '10:00 WIB');
+    result = result.replaceAll('[Lokasi]', 'Google Meet / Kantor');
     return result;
   }
 

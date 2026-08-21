@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
@@ -340,18 +342,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
 
-    final buffer = StringBuffer();
-    buffer.writeln('ID,Perusahaan,Posisi,Status,Tipe Kerja,Lokasi,Gaji Ditawarkan,Tanggal Melamar,Kontak HR,Catatan');
-    for (final j in state.jobs) {
-      buffer.writeln('"${j.id}","${j.companyName}","${j.position}","${j.status}","${j.workType}","${j.location ?? '-'}","${j.salaryOffered ?? '-'}","${j.appliedDate.toIso8601String()}","${j.hrContact ?? '-'}","${(j.notes ?? '').replaceAll('\n', ' ')}"');
-    }
+    final backupPayload = {
+      'schemaVersion': 2,
+      'appVersion': '2.0.1+201',
+      'exportedAt': DateTime.now().toIso8601String(),
+      'totalCount': state.jobs.length,
+      'jobs': state.jobs.map((j) => j.toJson()).toList(),
+    };
+
+    final jsonString = const JsonEncoder.withIndent('  ').convert(backupPayload);
 
     await Share.share(
-      buffer.toString(),
-      subject: 'Rekap_Lamaran_Ngelamar_${DateTime.now().year}.csv',
+      jsonString,
+      subject: 'Backup_Ngelamar_v2_${DateTime.now().year}.json',
     );
     if (mounted) {
-      AppleToast.success(context, 'Data lamaran berhasil diekspor!');
+      AppleToast.success(context, 'Backup data (JSON v2) berhasil dibuat!');
     }
   }
 
@@ -545,16 +551,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
             ),
             const Text(
-              'Versi 2.0.0 (Build 200)',
+              'Versi 2.0.1 (Build 201) • Production Ready',
               style: TextStyle(fontSize: 12, color: Color(0xFF5C44E4), fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             const Text(
               'Asisten pelacak lamaran kerja modern dan persiapan karir all-in-one untuk pencari kerja dan fresh graduate di Indonesia.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12.5, color: Color(0xFF555558), height: 1.45),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Official Support & Contact Info
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9F7F2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E0D5)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.email_outlined, size: 16, color: Color(0xFF5C44E4)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Email Bantuan:',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'support@ngelamar.id',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF25D366)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'WhatsApp Resmi:',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '+62 831-3604-9987',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
               height: 50,

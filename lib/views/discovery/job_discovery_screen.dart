@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
@@ -37,6 +38,7 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
   List<JobApplication> _liveJobs = [];
   List<String> _userInterests = [];
+  bool _isOffline = false;
 
   final List<String> _platforms = [
     'Semua',
@@ -78,6 +80,17 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       setState(() => _isLoading = true);
     }
     final query = _searchController.text.trim();
+
+    bool isOnline = true;
+    try {
+      final ping = await http
+          .get(Uri.parse('https://httpbin.org/status/200'))
+          .timeout(const Duration(seconds: 2));
+      isOnline = ping.statusCode == 200;
+    } catch (_) {
+      isOnline = false;
+    }
+
     final results = await JobSearchService.searchJobs(
       query: query.isNotEmpty ? query : null,
       userInterests: query.isEmpty ? _userInterests : null,
@@ -88,6 +101,7 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
     if (mounted) {
       setState(() {
+        _isOffline = !isOnline;
         _liveJobs = results;
         _isLoading = false;
       });
@@ -260,6 +274,57 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
               ),
             ),
 
+            // ── OFFLINE STATUS BANNER (Area A) ──
+            if (_isOffline)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, size: 16, color: Color(0xFFB45309)),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Mode Offline: Menampilkan katalog tersimpan',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _fetchJobs(forceRefresh: true);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD97706),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'Coba Lagi',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             const SizedBox(height: 6),
 
             // ── REAL-TIME LIVE STATUS BAR ──
@@ -273,8 +338,8 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                       Container(
                         width: 7.5,
                         height: 7.5,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF16A34A),
+                        decoration: BoxDecoration(
+                          color: _isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -282,11 +347,13 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                       Text(
                         _isLoading
                             ? 'Memuat data live...'
-                            : 'Live API Terhubung (${_liveJobs.length} Loker)',
-                        style: const TextStyle(
+                            : (_isOffline
+                                ? 'Katalog Lokal Aktif (${_liveJobs.length} Loker)'
+                                : 'Live API Terhubung (${_liveJobs.length} Loker)'),
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF16A34A),
+                          color: _isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
                         ),
                       ),
                     ],
