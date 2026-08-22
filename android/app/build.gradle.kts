@@ -25,6 +25,7 @@ android {
         applicationId = "com.ngelamar.app.ngelamar"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Secure storage relies on Android Keystore APIs available from Android 6.0.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -33,8 +34,7 @@ android {
 
     buildTypes {
         release {
-            // Signing with debug keystore allows direct installation on Android devices.
-            // When publishing to Google Play Store, replace with your custom release keystore.
+            // Distribusi APK pribadi memakai konfigurasi debug bawaan Flutter.
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

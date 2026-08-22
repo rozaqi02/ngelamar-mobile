@@ -21,7 +21,8 @@ class CompanyLogoBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final lower = companyName.toLowerCase().trim();
 
-    final hasCustomImage = customImagePath != null &&
+    final hasCustomImage =
+        customImagePath != null &&
         customImagePath!.isNotEmpty &&
         File(customImagePath!).existsSync();
 
@@ -46,11 +47,10 @@ class CompanyLogoBadge extends StatelessWidget {
                 width: size,
                 height: size,
                 fit: BoxFit.cover,
-                cacheWidth: (size * MediaQuery.of(context).devicePixelRatio).round(),
+                cacheWidth: (size * MediaQuery.of(context).devicePixelRatio)
+                    .round(),
               )
-            : Center(
-                child: _buildBrandIcon(lower),
-              ),
+            : Center(child: _buildBrandIcon(lower)),
       ),
     );
   }
@@ -73,7 +73,11 @@ class CompanyLogoBadge extends StatelessWidget {
     } else if (lower.contains('apple')) {
       return Icon(Icons.apple, size: size * 0.58, color: Colors.black);
     } else if (lower.contains('meta') || lower.contains('facebook')) {
-      return Icon(Icons.facebook, size: size * 0.58, color: const Color(0xFF1877F2));
+      return Icon(
+        Icons.facebook,
+        size: size * 0.58,
+        color: const Color(0xFF1877F2),
+      );
     } else if (lower.contains('telkom')) {
       return Icon(Icons.hub, size: size * 0.52, color: const Color(0xFFED1B24));
     } else if (lower.contains('glints')) {
@@ -245,6 +249,7 @@ class CompanyLogoBadge extends StatelessWidget {
     }
     return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
   }
+
   Widget _buildGlintsLogo() {
     return Container(
       width: size * 0.72,

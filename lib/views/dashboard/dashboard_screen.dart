@@ -7,12 +7,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_search_field.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/container_morph_route.dart';
 import '../../widgets/crying_envelope_mascot.dart';
+import '../../widgets/fly_to_tracker_animator.dart';
+import '../../widgets/delight_celebration.dart';
 import '../../services/notification_service.dart';
+import '../../services/prefs_service.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
 
@@ -33,24 +37,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   bool _isSearchActive = false;
   int _expandedIndex = 3; // Default kartu paling bawah terbuka
   Timer? _debounce;
+  String _profileSubtitle = 'Minat belum dipilih';
 
-  String _getTimeGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour >= 4 && hour < 11) return 'Selamat Pagi';
-    if (hour >= 11 && hour < 15) return 'Selamat Siang';
-    if (hour >= 15 && hour < 18) return 'Selamat Sore';
-    return 'Selamat Malam';
+  @override
+  void initState() {
+    super.initState();
+    PrefsService.getUserInterests().then((interests) {
+      if (mounted && interests.isNotEmpty) {
+        setState(() => _profileSubtitle = 'Minat: ${interests.first}');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
-    HapticFeedback.mediumImpact();
     final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
       context: ctx,
       buttonKey: key ?? _addBtnKey,
-      child: const AddEditJobScreen(),
+      child: const AddEditJobScreen(startQuickMode: true),
     );
     if (result != null && mounted) {
-      AppToast.success(context, 'Lamaran ${result.companyName} berhasil dicatat!');
+      FlyToTrackerAnimator.runFlyAnimation(
+        context: context,
+        sourceKey: key ?? _addBtnKey,
+        companyName: result.companyName,
+      );
+      DelightCelebration.show(
+        context,
+        message: 'Satu langkah lebih dekat ke karier impian!',
+        accent: const Color(0xFFF8BA38),
+        icon: Icons.rocket_launch_rounded,
+        preset: DelightPreset.homeSave,
+      );
+      AppToast.success(
+        context,
+        'Lamaran ${result.companyName} berhasil dicatat!',
+      );
     }
   }
 
@@ -67,7 +95,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           final currentStatus = ref.watch(jobProvider).selectedStatusFilter;
 
           return Container(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset > 0 ? bottomInset + 16 : 24),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              bottomInset > 0 ? bottomInset + 16 : 24,
+            ),
             decoration: const BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -129,7 +162,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       selected: isFav,
                       label: const Text('Bookmark'),
                       onSelected: (_) {
-                        ref.read(jobProvider.notifier).toggleOnlyFavoritesFilter();
+                        ref
+                            .read(jobProvider.notifier)
+                            .toggleOnlyFavoritesFilter();
                         setModalState(() {});
                       },
                     ),
@@ -157,25 +192,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    'Semua',
-                    'Dikirim',
-                    'Tes / Psikotes',
-                    'Interview HR',
-                    'Interview User',
-                    'Offering',
-                    'Diterima',
-                  ].map((status) {
-                    final isSel = currentStatus == status;
-                    return ChoiceChip(
-                      selected: isSel,
-                      label: Text(status),
-                      onSelected: (_) {
-                        ref.read(jobProvider.notifier).setStatusFilter(status);
-                        setModalState(() {});
-                      },
-                    );
-                  }).toList(),
+                  children:
+                      [
+                        'Semua',
+                        'Dikirim',
+                        'Tes / Psikotes',
+                        'Interview HR',
+                        'Interview User',
+                        'Offering',
+                        'Diterima',
+                      ].map((status) {
+                        final isSel = currentStatus == status;
+                        return ChoiceChip(
+                          selected: isSel,
+                          label: Text(status),
+                          onSelected: (_) {
+                            ref
+                                .read(jobProvider.notifier)
+                                .setStatusFilter(status);
+                            setModalState(() {});
+                          },
+                        );
+                      }).toList(),
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -206,26 +244,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  void _showNotificationCenter(BuildContext context, List<JobApplication> jobs) {
+  void showNotificationCenter(BuildContext context, List<JobApplication> jobs) {
     HapticFeedback.selectionClick();
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final now = DateTime.now();
     final upcomingInterviews = jobs.where((j) {
       final date = j.interviewDate ?? j.testDate;
-      return date != null && date.isAfter(now) && j.status != 'Ditolak' && j.status != 'Diterima';
+      return date != null &&
+          date.isAfter(now) &&
+          j.status != 'Ditolak' &&
+          j.status != 'Diterima';
     }).toList();
 
     final followupJobs = jobs.where((j) => j.needsFollowup).toList();
+
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : const Color(0xFFFBF8F2);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF555558);
+    final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFF3EEFF);
+    final cardBorder = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFD6C8F8);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset > 0 ? bottomInset + 16 : 24),
-        decoration: const BoxDecoration(
-          color: Color(0xFFFBF8F2),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          bottomInset > 0 ? bottomInset + 16 : 24,
+        ),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -236,7 +291,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: isDark ? Colors.white24 : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -245,23 +300,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.notifications_active_rounded, color: Color(0xFF5C44E4), size: 22),
-                    SizedBox(width: 8),
+                    const Icon(
+                      Icons.notifications_active_rounded,
+                      color: Color(0xFF5C44E4),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       'Pusat Notifikasi',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF121214),
+                        color: txtPri,
                         letterSpacing: -0.5,
                       ),
                     ),
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF121214)),
+                  icon: Icon(Icons.close_rounded, size: 20, color: txtPri),
                   onPressed: () => Navigator.pop(ctx),
                 ),
               ],
@@ -272,26 +331,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3EEFF),
+                color: cardBg,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFD6C8F8)),
+                border: Border.all(color: cardBorder),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.bolt_rounded, color: Color(0xFF5C44E4), size: 22),
+                  const Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF5C44E4),
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Uji Notifikasi Perangkat',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: txtPri,
+                          ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Kirim tes notifikasi langsung ke status bar HP Anda',
-                          style: TextStyle(fontSize: 11.5, color: Color(0xFF555558)),
+                          style: TextStyle(fontSize: 11.5, color: txtSec),
                         ),
                       ],
                     ),
@@ -301,19 +368,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       HapticFeedback.heavyImpact();
                       await NotificationService.showInstantNotification(
                         title: '⏰ Pengingat Seleksi Loker',
-                        body: 'Notifikasi lokal di HP Android Anda berfungsi dengan lancar! Persiapkan tahapan wawancara berikutnya.',
+                        body:
+                            'Notifikasi lokal di HP Android Anda berfungsi dengan lancar! Persiapkan tahapan wawancara berikutnya.',
                       );
                       if (context.mounted) {
-                        AppToast.success(context, 'Notifikasi berhasil dikirim ke perangkat!');
+                        AppToast.success(
+                          context,
+                          'Notifikasi berhasil dikirim ke perangkat!',
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5C44E4),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    child: const Text('Tes 🔔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: const Text(
+                      'Tes 🔔',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -322,7 +404,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             const SizedBox(height: 16),
             const Text(
               'JADWAL & PENGINGAT AKTIF',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 0.5),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                color: Colors.grey,
+                letterSpacing: 0.5,
+              ),
             ),
             const SizedBox(height: 8),
 
@@ -337,17 +424,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.check_circle_outline_rounded, size: 36, color: Colors.green.shade400),
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 36,
+                      color: Colors.green.shade400,
+                    ),
                     const SizedBox(height: 8),
                     const Text(
                       'Semua Jadwal Rapi!',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF121214)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: Color(0xFF121214),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Tidak ada jadwal interview mendesak atau follow-up tertunda.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
@@ -362,7 +460,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Navigator.pop(ctx);
                     Navigator.push(
                       context,
-                      CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                      CupertinoPageRoute(
+                        builder: (_) => JobDetailScreen(job: job),
+                      ),
                     );
                   },
                   child: Container(
@@ -381,7 +481,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             color: Color(0xFFFFE8B2),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.event_available_rounded, color: Color(0xFFD97706), size: 18),
+                          child: const Icon(
+                            Icons.event_available_rounded,
+                            color: Color(0xFFD97706),
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -390,16 +494,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             children: [
                               Text(
                                 'Interview di ${job.companyName}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  color: Color(0xFF121214),
+                                ),
                               ),
                               Text(
                                 '${date.day}/${date.month}/${date.year} • Posisi ${job.position}',
-                                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+                        const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                   ),
@@ -413,7 +528,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Navigator.pop(ctx);
                     Navigator.push(
                       context,
-                      CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+                      CupertinoPageRoute(
+                        builder: (_) => JobDetailScreen(job: job),
+                      ),
                     );
                   },
                   child: Container(
@@ -432,7 +549,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             color: Color(0xFFFFEBEE),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.mark_email_unread_rounded, color: Color(0xFFE53935), size: 18),
+                          child: const Icon(
+                            Icons.mark_email_unread_rounded,
+                            color: Color(0xFFE53935),
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -441,16 +562,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             children: [
                               Text(
                                 'Waktunya Follow-Up ${job.companyName}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF121214)),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  color: Color(0xFF121214),
+                                ),
                               ),
                               Text(
                                 'Sudah > 7 hari sejak melamar posisi ${job.position}',
-                                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(CupertinoIcons.chevron_right, size: 14, color: Colors.grey),
+                        const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 14,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                   ),
@@ -467,23 +599,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
-    const bg = AppTheme.warmBackground;
-    const txtPri = AppTheme.textDark;
-    const txtSec = AppTheme.textMuted;
+    final isDark = AppTheme.isDark(context);
+    final bg = isDark ? const Color(0xFF121214) : AppTheme.warmBackground;
+    final txtPri = isDark ? Colors.white : AppTheme.textDark;
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : AppTheme.textMuted;
 
-    final displayName = state.userName.isNotEmpty ? state.userName : 'Pencari Kerja';
-    final greeting = _getTimeGreeting();
+    final displayName = state.userName.isNotEmpty
+        ? state.userName
+        : 'Pencari Kerja';
     final displayJobs = state.priorityJobs;
     final activeExpandedIndex = displayJobs.isEmpty
         ? 0
-        : (_expandedIndex >= displayJobs.length ? displayJobs.length - 1 : _expandedIndex);
+        : (_expandedIndex >= displayJobs.length
+              ? displayJobs.length - 1
+              : _expandedIndex);
 
-    final hasProfilePhoto = state.userProfilePhoto.isNotEmpty && File(state.userProfilePhoto).existsSync();
-
-    final alertCount = state.jobs.where((j) {
-      final hasUpcomingInterview = j.interviewDate != null && j.interviewDate!.isAfter(DateTime.now());
-      return hasUpcomingInterview || j.needsFollowup;
-    }).length;
+    final hasProfilePhoto =
+        state.userProfilePhoto.isNotEmpty &&
+        File(state.userProfilePhoto).existsSync();
 
     return Scaffold(
       backgroundColor: bg,
@@ -507,29 +640,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         widget.onNavigateTab?.call(4);
                       },
                       child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF333336),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF333336),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
                         child: ClipOval(
                           child: hasProfilePhoto
                               ? Image.file(
                                   File(state.userProfilePhoto),
                                   fit: BoxFit.cover,
+                                  alignment: Alignment.center,
+                                  filterQuality: FilterQuality.medium,
                                   width: 44,
                                   height: 44,
-                                  cacheWidth: (44 * MediaQuery.of(context).devicePixelRatio).round(),
-                                  cacheHeight: (44 * MediaQuery.of(context).devicePixelRatio).round(),
                                 )
                               : const Center(
                                   child: Icon(
@@ -543,27 +676,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     ),
                     const SizedBox(width: 12),
 
-                    // Greeting & User Name
+                    // Personal identity, kept deliberately minimal.
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            greeting,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: txtSec,
-                              fontWeight: FontWeight.w600,
+                            displayName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: txtPri,
+                              letterSpacing: -0.25,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 1),
                           Text(
-                            displayName,
-                            style: const TextStyle(
-                              fontSize: 16.5,
-                              fontWeight: FontWeight.w900,
-                              color: txtPri,
-                              letterSpacing: -0.3,
+                            _profileSubtitle,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: txtSec,
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -588,86 +723,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark
+                              ? const Color(0xFF242428)
+                              : Colors.white,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFDCD8CE),
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : const Color(0xFFDCD8CE),
                             width: 1.4,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: Icon(
-                          _isSearchActive ? Icons.close_rounded : Icons.search_rounded,
+                          _isSearchActive
+                              ? Icons.close_rounded
+                              : Icons.search_rounded,
                           size: 20,
-                          color: const Color(0xFF121214),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF121214),
                         ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Circular Notification Bell Button
-                    GestureDetector(
-                      onTap: () => _showNotificationCenter(context, state.jobs),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFDCD8CE),
-                                width: 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.notifications_none_rounded,
-                              size: 21,
-                              color: Color(0xFF121214),
-                            ),
-                          ),
-                          if (alertCount > 0)
-                            Positioned(
-                              top: -2,
-                              right: -2,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE53935),
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 16,
-                                  minHeight: 16,
-                                ),
-                                child: Text(
-                                  alertCount > 9 ? '9+' : '$alertCount',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
                       ),
                     ),
                   ],
@@ -675,37 +759,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
 
               // Search Bar (if active)
-              if (_isSearchActive) ...[
+              if (_isSearchActive)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: TextField(
+                  child: AppSearchField(
                     controller: _searchController,
                     autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: 'Cari posisi, perusahaan, atau kota...',
-                      prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF121214)),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                ref.read(jobProvider.notifier).setSearchQuery('');
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
+                    hintText: 'Cari posisi, perusahaan, atau kota...',
+                    onClear: () {
+                      ref.read(jobProvider.notifier).setSearchQuery('');
+                      setState(() {});
+                    },
                     onChanged: (v) {
                       if (_debounce?.isActive ?? false) _debounce!.cancel();
                       _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -717,7 +781,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     },
                   ),
                 ),
-              ],
 
               const SizedBox(height: 16),
 
@@ -728,14 +791,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: const Text(
-                        'JELAJAHI\nLOWONGAN',
+                      child: Text(
+                        'LANGKAH\nKARIERMU',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 36,
                           fontWeight: FontWeight.w900,
                           color: txtPri,
-                          letterSpacing: -1.2,
-                          height: 1.05,
+                          letterSpacing: -1.65,
+                          height: 0.94,
                         ),
                       ),
                     ),
@@ -750,21 +813,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         FluidBounceButton(
                           onTap: () => _showFilterModal(context),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark
+                                  ? const Color(0xFF242428)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: (state.selectedStatusFilter != 'Semua' ||
+                                color:
+                                    (state.selectedStatusFilter != 'Semua' ||
                                         state.onlyFavoritesFilter ||
                                         state.onlyWfhFilter)
                                     ? const Color(0xFF5C44E4)
-                                    : const Color(0xFFDCD8CE),
+                                    : (isDark
+                                          ? const Color(0xFF383842)
+                                          : const Color(0xFFDCD8CE)),
                                 width: 1.2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -776,11 +849,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 Icon(
                                   Icons.tune_rounded,
                                   size: 13,
-                                  color: (state.selectedStatusFilter != 'Semua' ||
+                                  color:
+                                      (state.selectedStatusFilter != 'Semua' ||
                                           state.onlyFavoritesFilter ||
                                           state.onlyWfhFilter)
                                       ? const Color(0xFF5C44E4)
-                                      : const Color(0xFF121214),
+                                      : (isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF121214)),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -792,47 +868,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: (state.selectedStatusFilter != 'Semua' ||
+                                    color:
+                                        (state.selectedStatusFilter !=
+                                                'Semua' ||
                                             state.onlyFavoritesFilter ||
                                             state.onlyWfhFilter)
                                         ? const Color(0xFF5C44E4)
-                                        : const Color(0xFF121214),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        // Tambah Capsule Pill Button with Fluid Touch Bounce
-                        FluidBounceButton(
-                          key: _addBtnKey,
-                          onTap: () => _openAddJob(context, _addBtnKey),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF19191B),
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.16),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add_rounded, color: Colors.white, size: 14),
-                                SizedBox(width: 3),
-                                Text(
-                                  'Tambah',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                        : (isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF121214)),
                                   ),
                                 ),
                               ],
@@ -856,48 +900,112 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       children: [
                         const CryingEnvelopeMascot(width: 170, height: 130),
                         const SizedBox(height: 14),
-                        const Text(
+                        Text(
                           'Belum Ada Lamaran Aktif',
                           style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF121214),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF121214),
                             letterSpacing: -0.4,
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Surat lamaranmu masih sedih nih karena belum dikirim. Yuk mulai cari dan catat lowongan impianmu hari ini!',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF707074), height: 1.45),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFFA0A0A8)
+                                : const Color(0xFF707074),
+                            height: 1.45,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 18),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 10,
-                          runSpacing: 10,
+                        Column(
                           children: [
-                            ElevatedButton.icon(
-                              onPressed: () => _openAddJob(context),
-                              icon: const Icon(Icons.add_rounded, size: 16),
-                              label: const Text('Catat Lamaran', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF19191B),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            FluidBounceButton(
+                              key: _addBtnKey,
+                              onTap: () => _openAddJob(context),
+                              child: Container(
+                                width: double.infinity,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF5C44E4)
+                                      : const Color(0xFF19191B),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.16,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      color: Colors.white,
+                                      size: 21,
+                                    ),
+                                    SizedBox(width: 9),
+                                    Text(
+                                      'Catat Lamaran',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            OutlinedButton.icon(
-                              onPressed: () => widget.onNavigateTab?.call(1), // Navigasi ke Eksplorasi Loker
-                              icon: const Icon(Icons.explore_rounded, size: 16, color: Color(0xFF5C44E4)),
-                              label: const Text('Cari Lowongan', style: TextStyle(color: Color(0xFF5C44E4), fontSize: 12.5, fontWeight: FontWeight.bold)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFD6C8F8), width: 1.2),
-                                backgroundColor: const Color(0xFFF6F2FF),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            const SizedBox(height: 11),
+                            FluidBounceButton(
+                              onTap: () => widget.onNavigateTab?.call(1),
+                              child: Container(
+                                width: double.infinity,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E8E3E),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF1E8E3E,
+                                      ).withValues(alpha: 0.24),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.explore_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 9),
+                                    Text(
+                                      'Cari Lowongan',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -908,31 +1016,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 )
               else
                 _buildEdgeToEdgeStackedDeck(displayJobs, activeExpandedIndex),
-
-              // ── TOMBOL PINTAS: LIHAT SEMUA LAMARAN ──
-              if (state.jobs.length > 4) ...[
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20, 16, 20, 120 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
-                  child: Center(
-                    child: TextButton.icon(
-                      onPressed: () {
-                        widget.onNavigateTab?.call(2); // Navigasi ke Tab Lamaran Lengkap
-                      },
-                      icon: const Icon(Icons.list_alt_rounded, color: Color(0xFF1C1C1E)),
-                      label: Text(
-                        'Lihat Seluruh ${state.jobs.length} Lamaran Tersimpan →',
-                        style: const TextStyle(
-                          color: Color(0xFF1C1C1E),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                SizedBox(height: 120 + (MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom : 0)),
-              ],
             ],
           ),
         ),
@@ -940,21 +1023,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs, int activeExpandedIndex) {
+  Widget _buildEdgeToEdgeStackedDeck(
+    List<JobApplication> jobs,
+    int activeExpandedIndex,
+  ) {
     return Column(
       children: List.generate(jobs.length, (index) {
         final job = jobs[index];
         final isExpanded = index == activeExpandedIndex;
-        final cardColor = AppTheme.getCompanyCardColor(job.companyName, job.status);
+        final cardColor = AppTheme.getCompanyCardColor(
+          job.companyName,
+          job.status,
+        );
         final isDarkText =
             cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
         final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
 
         final isLast = index == jobs.length - 1;
-        final topMargin = index == 0 ? 0.0 : -24.0;
+        final topMargin = index == 0 ? 0.0 : -30.0;
+        final minimumLastHeight =
+            (MediaQuery.sizeOf(context).height - 350 - ((jobs.length - 1) * 74))
+                .clamp(280.0, 520.0)
+                .toDouble();
 
         // Cek peringatan pintar H+7 Follow-Up
-        final daysSinceApplied = DateTime.now().difference(job.appliedDate).inDays;
+        final daysSinceApplied = DateTime.now()
+            .difference(job.appliedDate)
+            .inDays;
         final needsFollowup = job.status == 'Dikirim' && daysSinceApplied >= 7;
 
         return GestureDetector(
@@ -963,9 +1058,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             if (isExpanded) {
               Navigator.push(
                 context,
-                CupertinoPageRoute(
-                  builder: (_) => JobDetailScreen(job: job),
-                ),
+                CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
               );
             } else {
               setState(() {
@@ -977,20 +1070,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             duration: const Duration(milliseconds: 320),
             curve: Curves.fastOutSlowIn,
             width: double.infinity,
+            constraints: BoxConstraints(
+              minHeight: isLast ? minimumLastHeight : 0,
+            ),
             margin: EdgeInsets.only(top: topMargin),
             decoration: BoxDecoration(
               color: cardColor,
               borderRadius: BorderRadius.vertical(
                 top: const Radius.circular(32),
-                bottom: isLast || isExpanded
+                bottom: isLast
                     ? const Radius.circular(32)
                     : const Radius.circular(0),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  blurRadius: 18,
-                  offset: const Offset(0, -4),
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
@@ -1001,9 +1097,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   22,
-                  20,
+                  18,
                   22,
-                  isExpanded ? 50 : 42,
+                  isLast
+                      ? 135 + MediaQuery.paddingOf(context).bottom
+                      : (isExpanded ? 48 : 44),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1014,12 +1112,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       children: [
                         Hero(
                           tag: 'company_logo_${job.id}',
-                          flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                            return Material(
-                              type: MaterialType.transparency,
-                              child: toHeroContext.widget,
-                            );
-                          },
+                          flightShuttleBuilder:
+                              (
+                                flightContext,
+                                animation,
+                                flightDirection,
+                                fromHeroContext,
+                                toHeroContext,
+                              ) {
+                                return Material(
+                                  type: MaterialType.transparency,
+                                  child: toHeroContext.widget,
+                                );
+                              },
                           child: CompanyLogoBadge(
                             companyName: job.companyName,
                             size: 42,
@@ -1047,7 +1152,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               if (needsFollowup) ...[
                                 const SizedBox(height: 2),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.black.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
@@ -1146,9 +1254,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           children: [
                             Expanded(
                               child: Text(
-                                job.salaryOffered != null && job.salaryOffered!.isNotEmpty
+                                job.salaryOffered != null &&
+                                        job.salaryOffered!.isNotEmpty
                                     ? job.salaryOffered!
-                                    : 'Rp 25.000.000 / bln',
+                                    : 'Gaji belum dicantumkan',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,

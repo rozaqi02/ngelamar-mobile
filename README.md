@@ -1,6 +1,6 @@
-# Ngelamar App (v1.7.6)
+# Ngelamar App (v2.20.0)
 
-Aplikasi Personal Career CRM dan Pelacak Lamaran Kerja dengan Desain Liquid Glass Apple iOS 26, navbar dinamis Apple HIG, dan Hub Persiapan Karir untuk fresh graduate.
+Aplikasi personal career CRM dan pelacak lamaran kerja yang menggabungkan pencarian portal, persiapan karier, pengingat, CV, dan tracker lamaran dalam satu pengalaman mobile.
 
 Dikembangkan oleh **idka-solutions team**.
 
@@ -8,13 +8,20 @@ Dikembangkan oleh **idka-solutions team**.
 
 ## Fitur Utama & Keunggulan Unik
 
-### Pembaruan v1.7.6
+### Pembaruan v2.20.0
 
-- **100% Bebas Halusinasi Text OCR**: Pemindaian teks poster iklan loker dari kamera/galeri foto kini jujur dan transparan tanpa teks sampel hardcode.
-- **Dukungan Penuh Cross-Platform Web & Desktop**: TabBarView & ScrollController telah dipisah secara efisien per-tab tanpa hambatan constraint atau crash *multi-attach*.
-- **Liquid Glass 5-Layer Navbar Overhaul**: Peningkatan bayangan melayang (*floating drop shadow*), specular rim highlight, dan translusensi adaptif untuk Web & Mobile.
-- **Zero RenderFlex Overflow**: Optimasi navigasi dengan `FittedBox` scale-down dan proteksi font scaling tingkat tinggi.
-- **Rilis APK Resmi `Ngelamar.apk`**: Nama file instalasi APK utama konsisten dengan huruf kapital "Ngelamar.apk".
+- **Detail lowongan baru:** Kualifikasi, deskripsi, dan benefit memakai selector tiga kolom yang selalu terlihat tanpa perlu menggeser tab.
+- **Bubble informasi presisi:** Gaji, mode kerja, dan tahap memakai satu permukaan serta satu border; bubble yang menyusut selalu berbentuk lingkaran 50×50.
+- **Cari Lokerku:** Pencarian portal dan Siapkan Karirmu disatukan dalam Career Hub yang dapat digeser, dengan identitas portal resmi dan konfirmasi sebelum membuka situs eksternal.
+- **Lamaran Saya:** Mendukung tampilan grid/list tersimpan, kontrol bookmark–urutan–tampilan yang ringkas, serta filter status yang lebih jelas.
+- **Beranda personal:** Foto profil tidak terdistorsi, label minat mengambil pilihan pengguna, dan stacked card mempunyai ruang judul yang lebih lega.
+- **Data contoh konsisten:** Tutorial memuat tepat enam lamaran dummy pada kategori `Contoh`; status data panduan dikunci dan seed lama dimigrasikan otomatis.
+- **Notifikasi terpusat:** Menu Kabar menampilkan jadwal seleksi, follow-up, status izin, dan pengingat berikutnya.
+- **Form lamaran lebih cepat:** Mode Catat Cepat, impor dari teks/tautan, feedback animasi, dan transisi dari tombol tambah ke form.
+- **Interaksi yang lebih hidup:** Animasi status, micro-interaction, haptic terpusat, morph route, dan animasi kartu menuju tracker.
+- **Profil dan CV:** Bagian Tentang dapat diisi manual dan tombol CV membuka PDF milik pengguna.
+- **Backup aman:** Ekspor ZIP terenkripsi dengan konfirmasi dan visibilitas kata sandi serta peringatan bahwa kata sandi tidak dapat dipulihkan.
+- **PRO tervalidasi backend:** Entitlement diverifikasi melalui Supabase dan tidak mempercayai status premium lokal.
 
 1. **Apple iOS 26 Liquid Glass Bottom Navbar**
    - Dual-layer glassmorphic blur (`sigmaX: 35, sigmaY: 35`).
@@ -60,9 +67,11 @@ Dikembangkan oleh **idka-solutions team**.
 
 ## Privasi & Keamanan Data
 
-- **100% Lokal:** Seluruh data lamaran kerja tersimpan secara aman di dalam penyimpanan lokal perangkat Anda (Hive Local Database).
-- **Tanpa Akun:** Tidak memerlukan registrasi, login, atau pembuatan akun.
-- **Tanpa Server Luar:** Data Anda tidak pernah dikirim ke server pihak ketiga manapun.
+- **Offline-first & terenkripsi:** Catatan lamaran disimpan di perangkat dalam basis data Hive terenkripsi; preferensi profil yang sensitif memakai penyimpanan aman perangkat.
+- **Tanpa formulir registrasi:** Aplikasi membuat sesi anonim Supabase untuk identitas instalasi, validasi PRO, dan pencatatan aktivitas minimal.
+- **Koneksi terkontrol:** Membuka portal loker atau meminta isi otomatis dari tautan HTTPS akan terhubung ke situs terkait setelah konfirmasi pengguna. Isi lamaran tetap disimpan lokal.
+- **Backup & pemulihan:** Anda dapat membuat dan memulihkan cadangan ZIP terenkripsi berisi riwayat serta lampiran. Kata sandi backup tidak disimpan aplikasi; simpan sendiri dengan aman. Backup JSON versi lama masih bisa diimpor, tetapi tidak membawa lampiran.
+- **Hapus tuntas:** Menghapus seluruh data juga menghapus lampiran yang dikelola aplikasi.
 
 ---
 
@@ -81,7 +90,8 @@ Dikembangkan oleh **idka-solutions team**.
 - **Framework:** Flutter (Dart)
 - **State Management:** Flutter Riverpod
 - **Local Database:** Hive / Hive Flutter
-- **Penyimpanan Preferensi:** SharedPreferences
+- **Penyimpanan Aman:** Hive terenkripsi, Flutter Secure Storage, dan SharedPreferences untuk preferensi non-sensitif
+- **Backend:** Supabase anonymous authentication, RLS, dan RPC untuk validasi entitlement PRO
 - **Notifikasi Lokal:** Flutter Local Notifications
 - **Desain UI/UX:** Apple iOS 26 Liquid Glass Design System
 

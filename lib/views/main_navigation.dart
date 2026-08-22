@@ -1,17 +1,17 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/prefs_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/apple_toast.dart';
+import '../widgets/welcome_screen_route.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'discovery/discovery_welcome_screen.dart';
-import 'discovery/job_discovery_screen.dart';
+import 'hub/career_hub_screen.dart';
 import 'jobs/job_list_screen.dart';
 import 'jobs/job_list_welcome_screen.dart';
-import 'prep/career_prep_welcome_screen.dart';
-import 'prep/fresh_grad_prep_screen.dart';
+import 'notifications/notification_center_screen.dart';
+import 'notifications/notification_welcome_screen.dart';
 import 'settings/settings_screen.dart';
 
 class _NavItem {
@@ -54,19 +54,19 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       label: 'Beranda',
     ),
     _NavItem(
-      activeIcon: Icons.explore_rounded,
-      inactiveIcon: Icons.explore_outlined,
-      label: 'Cari Loker',
+      activeIcon: Icons.travel_explore_rounded,
+      inactiveIcon: Icons.travel_explore_outlined,
+      label: 'Cari Lokerku',
     ),
     _NavItem(
       activeIcon: Icons.mail_rounded,
       inactiveIcon: Icons.mail_outline_rounded,
-      label: 'Lamaran',
+      label: 'Lamaran Saya',
     ),
     _NavItem(
-      activeIcon: Icons.school_rounded,
-      inactiveIcon: Icons.school_outlined,
-      label: 'Persiapan',
+      activeIcon: Icons.notifications_rounded,
+      inactiveIcon: Icons.notifications_none_rounded,
+      label: 'Kabar',
     ),
     _NavItem(
       activeIcon: Icons.person_rounded,
@@ -86,9 +86,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         key: const ValueKey(0),
         onNavigateTab: (index) => _onTabTapped(index),
       ),
-      const JobDiscoveryScreen(key: ValueKey(1)),
+      const CareerHubScreen(key: ValueKey(1)),
       const JobListScreen(key: ValueKey(2)),
-      const FreshGradPrepScreen(key: ValueKey(3)),
+      const NotificationCenterScreen(key: ValueKey(3)),
       const SettingsScreen(key: ValueKey(4)),
     ];
 
@@ -125,10 +125,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       if (!seen && mounted) {
         Navigator.push(
           context,
-          CupertinoPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const DiscoveryWelcomeScreen(),
-          ),
+          WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
         );
       }
     } else if (index == 2) {
@@ -136,21 +133,15 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       if (!seen && mounted) {
         Navigator.push(
           context,
-          CupertinoPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const JobListWelcomeScreen(),
-          ),
+          WelcomeScreenRoute(child: const JobListWelcomeScreen()),
         );
       }
     } else if (index == 3) {
-      final seen = await PrefsService.isPrepIntroSeen();
+      final seen = await PrefsService.isNotificationIntroSeen();
       if (!seen && mounted) {
         Navigator.push(
           context,
-          CupertinoPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const CareerPrepWelcomeScreen(),
-          ),
+          WelcomeScreenRoute(child: const NotificationWelcomeScreen()),
         );
       }
     }
@@ -171,7 +162,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -181,7 +171,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
           return;
         }
         final now = DateTime.now();
-        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           HapticFeedback.lightImpact();
           AppleToast.info(context, 'Tekan sekali lagi untuk keluar');
@@ -201,14 +192,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (Widget child, Animation<double> animation) {
                 final isMovingForward = _currentIndex >= _previousIndex;
-                final beginOffset = isMovingForward ? const Offset(0.06, 0.0) : const Offset(-0.06, 0.0);
-                final slideAnimation = Tween<Offset>(
-                  begin: beginOffset,
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.fastOutSlowIn,
-                ));
+                final beginOffset = isMovingForward
+                    ? const Offset(0.06, 0.0)
+                    : const Offset(-0.06, 0.0);
+                final slideAnimation =
+                    Tween<Offset>(begin: beginOffset, end: Offset.zero).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.fastOutSlowIn,
+                      ),
+                    );
 
                 return SlideTransition(
                   position: slideAnimation,
@@ -238,7 +231,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                 ),
                 child: Container(
                   height: 64,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(36),
@@ -282,7 +278,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                               boxShadow: isSelected
                                   ? [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.22),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.22,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 3),
                                       ),
@@ -291,7 +289,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                             ),
                             child: Center(
                               child: Icon(
-                                isSelected ? item.activeIcon : item.inactiveIcon,
+                                isSelected
+                                    ? item.activeIcon
+                                    : item.inactiveIcon,
                                 color: isSelected
                                     ? Colors.white
                                     : const Color(0xFF8E8E93),

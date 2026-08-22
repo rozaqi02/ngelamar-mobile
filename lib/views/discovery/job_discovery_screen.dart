@@ -6,30 +6,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_search_field.dart';
+import '../../widgets/app_dialog.dart';
+import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/welcome_screen_route.dart';
 import 'discovery_welcome_screen.dart';
 
-/// Screen 2: Eksplor Loker.
+/// Screen 2: pintasan pencarian ke portal loker pihak ketiga.
 /// Header style konsisten 100% dengan menu DAFTAR LAMARAN dan PERSIAPAN KARIR:
 /// - Header: "EKSPLOR LOKER" besar tebal + Tombol (?) Info di kanan atas + Subtitle deskriptif
-/// - Single Search Box yang bersih & elegan tanpa duplikasi
+/// - Kata kunci diteruskan ke portal yang dipilih pengguna
 /// - Category Filter Chips (Semua, Desainer UI/UX, Flutter Dev, Backend, dll.)
-/// - 6 Kartu Portal bergaya neo-modern pastel dengan watermark huruf raksasa,
-///   avatar stack pelamar (Applied), dan tombol aksi bulat hitam ↗.
+/// - 6 Kartu portal bergaya neo-modern dengan tujuan yang jelas.
 class JobDiscoveryScreen extends ConsumerStatefulWidget {
-  const JobDiscoveryScreen({super.key});
+  final bool embedded;
+
+  const JobDiscoveryScreen({super.key, this.embedded = false});
 
   @override
   ConsumerState<JobDiscoveryScreen> createState() => _JobDiscoveryScreenState();
 }
 
 class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
-  Timer? _debounce;
   final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'Semua';
+  String _selectedCategory = 'Semua bidang';
 
   final List<String> _categories = [
-    'Semua',
+    'Semua bidang',
     'Desainer UI/UX',
     'Flutter Developer',
     'Backend Engineer',
@@ -52,7 +56,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'bgColor': Color(0xFFC7EAA7), // Pastel Soft Green
       'portalColor': Color(0xFF0A66C2),
       'icon': Icons.business_center_rounded,
-      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png',
+      'logoAsset': 'assets/portal_logos/linkedin.png',
+      'logoUrl':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/480px-LinkedIn_logo_initials.png',
       'partnerCount': '50+',
       'avatarColors': [
         Color(0xFF4A90E2),
@@ -75,7 +81,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'bgColor': Color(0xFFE2C8FF), // Pastel Soft Purple
       'portalColor': Color(0xFFEC272B),
       'icon': Icons.rocket_launch_rounded,
-      'logoUrl': 'https://images.glints.com/unsafe/glints-dashboard.s3.amazonaws.com/favicon.png',
+      'logoAsset': 'assets/portal_logos/glints.png',
+      'logoUrl':
+          'https://images.glints.com/unsafe/glints-dashboard.s3.amazonaws.com/favicon.png',
       'partnerCount': '40+',
       'avatarColors': [
         Color(0xFF9013FE),
@@ -98,7 +106,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'bgColor': Color(0xFFFEF08A), // Pastel Soft Yellow
       'portalColor': Color(0xFF184178),
       'icon': Icons.work_rounded,
-      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/JobStreet_Logo_2022.svg/512px-JobStreet_Logo_2022.svg.png',
+      'logoAsset': 'assets/portal_logos/jobstreet.png',
+      'logoUrl':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/JobStreet_Logo_2022.svg/512px-JobStreet_Logo_2022.svg.png',
       'partnerCount': '100+',
       'avatarColors': [
         Color(0xFF184178),
@@ -107,7 +117,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
         Color(0xFFFFB703),
       ],
       'getUrl': (String key) {
-        final q = Uri.encodeComponent((key.isEmpty ? 'Lowongan Kerja' : key).replaceAll(' ', '-'));
+        final q = Uri.encodeComponent(
+          (key.isEmpty ? 'Lowongan Kerja' : key).replaceAll(' ', '-'),
+        );
         return 'https://www.jobstreet.co.id/id/job-search/$q-jobs';
       },
     },
@@ -121,7 +133,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'bgColor': Color(0xFFBAE6FD), // Pastel Soft Sky Blue
       'portalColor': Color(0xFF0284C7),
       'icon': Icons.account_balance_rounded,
-      'logoUrl': 'https://res.cloudinary.com/kalibrr-development/image/upload/v1/kalibrr-logo-favicon.png',
+      'logoAsset': 'assets/portal_logos/kalibrr.png',
+      'logoUrl':
+          'https://res.cloudinary.com/kalibrr-development/image/upload/v1/kalibrr-logo-favicon.png',
       'partnerCount': '35+',
       'avatarColors': [
         Color(0xFF0284C7),
@@ -139,11 +153,12 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'watermark': 'K',
       'highlight': '12.000+',
       'highlightUnit': 'Lowongan',
-      'roleTitle': 'Loker Aman Bebas Biaya',
-      'tagline': '100% Terverifikasi & Anti Penipuan',
+      'roleTitle': 'Pencarian Loker',
+      'tagline': 'Periksa detail lowongan sebelum melamar',
       'bgColor': Color(0xFFFECDD3), // Pastel Soft Coral Pink
       'portalColor': Color(0xFF00A5B5),
       'icon': Icons.verified_user_rounded,
+      'logoAsset': 'assets/portal_logos/kitalulus.png',
       'logoUrl': 'https://kerja.kitalulus.com/favicon.ico',
       'partnerCount': '60+',
       'avatarColors': [
@@ -167,7 +182,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
       'bgColor': Color(0xFFCCFBF1), // Pastel Soft Mint Teal
       'portalColor': Color(0xFF2164F3),
       'icon': Icons.travel_explore_rounded,
-      'logoUrl': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Indeed_logo.png/480px-Indeed_logo.png',
+      'logoAsset': 'assets/portal_logos/indeed.png',
+      'logoUrl':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Indeed_logo.png/480px-Indeed_logo.png',
       'partnerCount': '120+',
       'avatarColors': [
         Color(0xFF2164F3),
@@ -203,20 +220,41 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     }
   }
 
-  void _launchPortal(Map<String, dynamic> portal) async {
-    HapticFeedback.heavyImpact();
+  Future<void> _launchPortal(Map<String, dynamic> portal) async {
     final keyword = _searchController.text.trim().isEmpty
-        ? (_selectedCategory == 'Semua' ? 'Lowongan Kerja' : _selectedCategory)
+        ? (_selectedCategory == 'Semua bidang'
+              ? 'Lowongan Kerja'
+              : _selectedCategory)
         : _searchController.text.trim();
+
+    final confirmed = await AppDialog.show<bool>(
+      context: context,
+      icon: CupertinoIcons.arrow_up_right,
+      iconColor: portal['portalColor'] as Color,
+      title: 'Buka ${portal['name']}?',
+      content:
+          'Anda akan diarahkan ke portal resmi ${portal['name']} untuk melihat lowongan dengan kata kunci “$keyword”.',
+      secondaryLabel: 'Batal',
+      primaryLabel: 'Buka Portal',
+    );
+    if (confirmed != true || !mounted) return;
+
+    HapticFeedback.mediumImpact();
 
     final url = portal['getUrl'](keyword) as String;
     try {
       final uri = Uri.parse(url);
-      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final success = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!success && mounted) {
         await Clipboard.setData(ClipboardData(text: url));
         if (mounted) {
-          AppleToast.info(context, 'Tautan ${portal['name']} disalin ke clipboard');
+          AppleToast.info(
+            context,
+            'Tautan ${portal['name']} disalin ke clipboard',
+          );
         }
       } else if (mounted) {
         AppleToast.success(context, 'Membuka ${portal['name']}');
@@ -224,7 +262,10 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: url));
       if (mounted) {
-        AppleToast.info(context, 'Tautan ${portal['name']} disalin ke clipboard');
+        AppleToast.info(
+          context,
+          'Tautan ${portal['name']} disalin ke clipboard',
+        );
       }
     }
   }
@@ -233,67 +274,14 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     HapticFeedback.selectionClick();
     Navigator.push(
       context,
-      CupertinoPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const DiscoveryWelcomeScreen(),
-      ),
-    );
-  }
-
-  Widget _buildAvatarStack(List<Color> avatarColors, String countText) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          height: 28,
-          child: Stack(
-            children: [
-              for (int i = 0; i < avatarColors.length; i++)
-                Positioned(
-                  left: i * 16.0,
-                  child: Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: avatarColors[i],
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.8),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.person,
-                        size: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white, width: 1.2),
-          ),
-          child: Text(
-            countText,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF121214),
-            ),
-          ),
-        ),
-      ],
+      WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final gradientColors = isDark
         ? const [Color(0xFF0F1E14), Color(0xFF14241B), Color(0xFF121214)]
         : const [Color(0xFFD8F3DC), Color(0xFFEEF8EE), Color(0xFFF5EFE6)];
@@ -309,211 +297,218 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
           ),
         ),
         child: SafeArea(
+          top: !widget.embedded,
           bottom: false,
           child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── TOP HEADER (STYLE IDENTIK DENGAN DAFTAR LAMARAN & PERSIAPAN KARIR) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── TOP HEADER (STYLE IDENTIK DENGAN DAFTAR LAMARAN & PERSIAPAN KARIR) ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    widget.embedded ? 76 : 16,
+                    20,
+                    12,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'CARI\nLOKERKU',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: txtPri,
+                              letterSpacing: -1.2,
+                              height: 1.0,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _openWelcomeModal,
+                            child: Container(
+                              padding: const EdgeInsets.all(9),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF242428)
+                                    : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFE5E0D5),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.04,
+                                    ),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.question_circle_fill,
+                                size: 18,
+                                color: Color(0xFF1E8E3E),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      AppSearchField(
+                        controller: _searchController,
+                        hintText: 'Contoh: Flutter, BUMN, remote, startup...',
+                        onChanged: (_) => setState(() {}),
+                        onClear: () => setState(() {}),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── QUICK KEYWORD CHIPS ──
+              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'EKSPLOR\nLOKER',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF121214),
-                            letterSpacing: -1.2,
-                            height: 1.0,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _openWelcomeModal,
-                          child: Container(
-                            padding: const EdgeInsets.all(9),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFE5E0D5)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                    SizedBox(
+                      height: 42,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _categories.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final cat = _categories[index];
+                          final isSelected = _selectedCategory == cat;
+                          return FluidBounceButton(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory = cat;
+                                _searchController.text = cat == 'Semua bidang'
+                                    ? ''
+                                    : cat;
+                                _searchController.selection =
+                                    TextSelection.collapsed(
+                                      offset: _searchController.text.length,
+                                    );
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF1E8E3E)
+                                    : (isDark
+                                          ? const Color(0xFF203027)
+                                          : Colors.white),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF1E8E3E)
+                                      : (isDark
+                                            ? const Color(0xFF31523A)
+                                            : const Color(0xFFBFDCC6)),
+                                  width: 1.1,
                                 ),
-                              ],
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF1E8E3E).withValues(
+                                      alpha: isSelected ? 0.22 : 0.04,
+                                    ),
+                                    blurRadius: 7,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    cat,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isDark
+                                                ? const Color(0xFFCFE9D5)
+                                                : const Color(0xFF20442A)),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            child: const Icon(
-                              CupertinoIcons.question_circle_fill,
-                              size: 18,
-                              color: Color(0xFF5C44E4),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Pencarian kata kunci lowongan kerja di 6 portal resmi terpercaya',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── SINGLE SEARCH BAR (BERSIH & KONSISTEN TANPA EFEK DOUBLE BOX) ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
-                child: CupertinoSearchTextField(
-                  controller: _searchController,
-                  placeholder: 'Ketik kata kunci posisi atau keahlian...',
-                  placeholderStyle: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFFA0A0A5) : const Color(0xFF8E8E93),
-                  ),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF121214),
-                  ),
-                  backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  onChanged: (_) {
-                    if (_debounce?.isActive ?? false) _debounce!.cancel();
-                    _debounce = Timer(const Duration(milliseconds: 400), () {
-                      if (mounted) setState(() {});
-                    });
-                  },
-                ),
-              ),
-            ),
-
-            // ── CATEGORY FILTER CHIPS ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
-                child: SizedBox(
-                  height: 38,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, idx) {
-                      final cat = _categories[idx];
-                      final isSelected = _selectedCategory == cat;
-
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _selectedCategory = cat;
-                            if (cat != 'Semua') {
-                              _searchController.text = cat;
-                            } else {
-                              _searchController.clear();
-                            }
-                          });
+                          );
                         },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF19191B) : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? const Color(0xFF19191B) : const Color(0xFFE5E0D5),
-                              width: 1.1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isSelected ? 0.10 : 0.02),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              cat,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                color: isSelected ? Colors.white : const Color(0xFF121214),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            // ── SECTION HEADER: "PILIHAN PORTAL LOKER" ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Pilihan Portal Loker',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF121214),
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Text(
-                      '6 Portal Terpercaya',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade600,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
 
-            // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, idx) {
+              // ── SECTION HEADER: "PILIHAN PORTAL LOKER" ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Pilihan Portal Loker',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        '6 Portal Pilihan',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, idx) {
                     final portal = _portals[idx];
-                    final Color cardBg = portal['bgColor'] as Color;
+                    final Color cardBg = isDark
+                        ? const Color(0xFF1E1E24)
+                        : (portal['bgColor'] as Color);
                     final Color portalColor = portal['portalColor'] as Color;
                     final String name = portal['name'] as String;
                     final String watermark = portal['watermark'] as String;
-                    final String highlight = portal['highlight'] as String;
-                    final String highlightUnit = portal['highlightUnit'] as String;
                     final String roleTitle = portal['roleTitle'] as String;
                     final String tagline = portal['tagline'] as String;
                     final IconData icon = portal['icon'] as IconData;
-                    final String partnerCount = portal['partnerCount'] as String;
-                    final List<Color> avatarColors = portal['avatarColors'] as List<Color>;
+                    final String logoAsset = portal['logoAsset'] as String;
+                    final String logoUrl = portal['logoUrl'] as String;
 
                     return GestureDetector(
                       onTap: () => _launchPortal(portal),
@@ -523,9 +518,16 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                         decoration: BoxDecoration(
                           color: cardBg,
                           borderRadius: BorderRadius.circular(32),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : Colors.transparent,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.25 : 0.05,
+                              ),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
@@ -542,7 +544,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                                 style: TextStyle(
                                   fontSize: 170,
                                   fontWeight: FontWeight.w900,
-                                  color: Colors.white.withValues(alpha: 0.28),
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.white.withValues(alpha: 0.28),
                                   letterSpacing: -10,
                                 ),
                               ),
@@ -554,9 +558,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Top Row: Logo Badge + Name + 3-Dots Action
+                                  // Top Row: identitas portal. Aksi eksternal hanya
+                                  // ditampilkan sekali pada CTA di bagian bawah.
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -565,87 +569,86 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                                             height: 44,
                                             padding: const EdgeInsets.all(7),
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color: isDark
+                                                  ? const Color(0xFF282830)
+                                                  : Colors.white,
                                               shape: BoxShape.circle,
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.black.withValues(alpha: 0.08),
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.08),
                                                   blurRadius: 8,
                                                   offset: const Offset(0, 2),
                                                 ),
                                               ],
                                             ),
                                             child: ClipOval(
-                                              child: Image.network(
-                                                (portal['logoUrl'] as String?) ?? '',
+                                              child: Image.asset(
+                                                logoAsset,
                                                 width: 30,
                                                 height: 30,
                                                 fit: BoxFit.contain,
-                                                errorBuilder: (context, error, stackTrace) => Center(
-                                                  child: Icon(icon, size: 20, color: portalColor),
-                                                ),
-                                                loadingBuilder: (context, child, loadingProgress) {
-                                                  if (loadingProgress == null) return child;
-                                                  return Center(
-                                                    child: Icon(icon, size: 20, color: portalColor),
-                                                  );
-                                                },
+                                                errorBuilder: (_, _, _) =>
+                                                    Image.network(
+                                                      logoUrl,
+                                                      width: 30,
+                                                      height: 30,
+                                                      fit: BoxFit.contain,
+                                                      errorBuilder: (_, _, _) =>
+                                                          Icon(
+                                                            icon,
+                                                            size: 22,
+                                                            color: portalColor,
+                                                          ),
+                                                    ),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           Text(
                                             name,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 17,
                                               fontWeight: FontWeight.w900,
-                                              color: Color(0xFF121214),
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF121214),
                                               letterSpacing: -0.3,
                                             ),
                                           ),
                                         ],
-                                      ),
-                                      Container(
-                                        width: 38,
-                                        height: 38,
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.06),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            CupertinoIcons.ellipsis_vertical,
-                                            size: 16,
-                                            color: Color(0xFF121214),
-                                          ),
-                                        ),
                                       ),
                                     ],
                                   ),
 
                                   const SizedBox(height: 18),
 
-                                  // Highlight Stat Row (e.g. 10.000+ Lowongan)
+                                  // Honest portal destination label (not a live job count).
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.baseline,
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
-                                        highlight,
-                                        style: const TextStyle(
+                                        'Cari cepat',
+                                        style: TextStyle(
                                           fontSize: 30,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF121214),
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF121214),
                                           letterSpacing: -1.0,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
-                                        highlightUnit,
-                                        style: const TextStyle(
+                                        'di portal resmi',
+                                        style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w700,
-                                          color: Color(0xFF4A5568),
+                                          color: isDark
+                                              ? const Color(0xFFA0A0A8)
+                                              : const Color(0xFF4A5568),
                                         ),
                                       ),
                                     ],
@@ -658,10 +661,12 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                                     _searchController.text.trim().isNotEmpty
                                         ? 'Mencari "${_searchController.text.trim()}" di $name'
                                         : '$roleTitle • $tagline',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1E293B),
+                                      color: isDark
+                                          ? const Color(0xFFE5E5E8)
+                                          : const Color(0xFF1E293B),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -669,25 +674,58 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
                                   const SizedBox(height: 22),
 
-                                  // Bottom Row: Applied Avatar Stack + Black Circle Action Button ↗
+                                  // Bottom Row: external destination + action button.
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      // Left: Applied Avatar Stack (Persis Mockup)
+                                      // Left: explicit external navigation label.
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            'Applied',
+                                          Text(
+                                            'Tujuan',
                                             style: TextStyle(
                                               fontSize: 11.5,
                                               fontWeight: FontWeight.w700,
-                                              color: Color(0xFF4A5568),
+                                              color: isDark
+                                                  ? const Color(0xFFA0A0A8)
+                                                  : const Color(0xFF4A5568),
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          _buildAvatarStack(avatarColors, partnerCount),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 9,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(
+                                                alpha: isDark ? 0.10 : 0.78,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isDark
+                                                    ? const Color(0xFF383842)
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.9,
+                                                      ),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Situs eksternal',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                color: isDark
+                                                    ? Colors.white70
+                                                    : const Color(0xFF1E293B),
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
 
@@ -696,11 +734,15 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                                         width: 48,
                                         height: 48,
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF121214),
+                                          color: isDark
+                                              ? const Color(0xFF5C44E4)
+                                              : const Color(0xFF121214),
                                           shape: BoxShape.circle,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.25),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.25,
+                                              ),
                                               blurRadius: 10,
                                               offset: const Offset(0, 4),
                                             ),
@@ -723,15 +765,13 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                         ),
                       ),
                     );
-                  },
-                  childCount: _portals.length,
+                  }, childCount: _portals.length),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

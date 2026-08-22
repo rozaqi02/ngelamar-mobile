@@ -27,6 +27,15 @@ class ParsedJobData {
 }
 
 class TextParserService {
+  static const _supportedJobHosts = <String>[
+    'linkedin.com',
+    'jobstreet.com',
+    'jobstreet.co',
+    'glints.com',
+    'indeed.com',
+    'kalibrr.com',
+  ];
+
   /// Ekstraksi otomatis dari URL (LinkedIn, JobStreet, Glints, Indeed, dll.) atau Teks Bebas.
   static Future<ParsedJobData> extractFromUrlOrText(String input) async {
     final trimmed = input.trim();
@@ -55,7 +64,27 @@ class TextParserService {
   }
 
   /// Ekstraksi cerdas dari URL lowongan
-  static Future<ParsedJobData?> _extractFromUrl(String url, String originalInput) async {
+  static Future<ParsedJobData?> _extractFromUrl(
+    String url,
+    String originalInput,
+  ) async {
+    final uri = Uri.tryParse(url);
+    if (!_isSupportedHttpsJobUrl(uri)) {
+      final parsed = parseJobText(originalInput);
+      return ParsedJobData(
+        companyName: parsed.companyName,
+        position: parsed.position,
+        workType: parsed.workType,
+        salary: parsed.salary,
+        location: parsed.location,
+        rawDescription: originalInput,
+        extractedSkills: parsed.extractedSkills,
+        jobUrl: url,
+        hrContact: parsed.hrContact,
+      );
+    }
+    final safeUri = uri!;
+
     final lowerUrl = url.toLowerCase();
     String platform = 'Lainnya';
     if (lowerUrl.contains('linkedin.com')) {
@@ -76,18 +105,25 @@ class TextParserService {
 
     // A. Analisis Path / Slug URL
     try {
-      final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      final pathSegments = safeUri.pathSegments
+          .where((s) => s.isNotEmpty)
+          .toList();
 
       for (var seg in pathSegments) {
-        final decoded = Uri.decodeComponent(seg).replaceAll(RegExp(r'[-_]'), ' ');
+        final decoded = Uri.decodeComponent(
+          seg,
+        ).replaceAll(RegExp(r'[-_]'), ' ');
         if (decoded.contains(' at ') || decoded.contains(' di ')) {
-          final parts = decoded.contains(' at ') ? decoded.split(' at ') : decoded.split(' di ');
+          final parts = decoded.contains(' at ')
+              ? decoded.split(' at ')
+              : decoded.split(' di ');
           if (parts.length >= 2) {
             position = _cleanTitle(parts[0]);
             company = _cleanCompany(parts[1]);
           }
-        } else if (seg.length > 5 && !RegExp(r'^\d+$').hasMatch(seg) && !['job', 'jobs', 'view', 'opportunities', 'id'].contains(seg)) {
+        } else if (seg.length > 5 &&
+            !RegExp(r'^\d+$').hasMatch(seg) &&
+            !['job', 'jobs', 'view', 'opportunities', 'id'].contains(seg)) {
           if (position.isEmpty) {
             position = _cleanTitle(decoded);
           }
@@ -97,12 +133,18 @@ class TextParserService {
 
     // B. Coba fetch metadata HTML jika memungkinkan (timeout 2.5s)
     try {
-      final res = await http.get(Uri.parse(url)).timeout(const Duration(milliseconds: 2500));
+      final res = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(milliseconds: 2500));
       if (res.statusCode == 200) {
         final html = res.body;
 
         // Cari <title>
-        final titleMatch = RegExp(r'<title[^>]*>(.*?)</title>', caseSensitive: false, dotAll: true).firstMatch(html);
+        final titleMatch = RegExp(
+          r'<title[^>]*>(.*?)</title>',
+          caseSensitive: false,
+          dotAll: true,
+        ).firstMatch(html);
         if (titleMatch != null) {
           final rawTitle = titleMatch.group(1)!.trim();
           final parts = rawTitle.split(RegExp(r'[|\-–•]'));
@@ -115,8 +157,15 @@ class TextParserService {
         }
 
         // Cari OpenGraph og:title & og:description
-        final ogTitleMatch = RegExp(r'<meta[^>]*property="og:title"[^>]*content="(.*?)"', caseSensitive: false).firstMatch(html) ??
-            RegExp(r"<meta[^>]*property='og:title'[^>]*content='(.*?)'", caseSensitive: false).firstMatch(html);
+        final ogTitleMatch =
+            RegExp(
+              r'<meta[^>]*property="og:title"[^>]*content="(.*?)"',
+              caseSensitive: false,
+            ).firstMatch(html) ??
+            RegExp(
+              r"<meta[^>]*property='og:title'[^>]*content='(.*?)'",
+              caseSensitive: false,
+            ).firstMatch(html);
         if (ogTitleMatch != null) {
           final ogTitle = ogTitleMatch.group(1)!.trim();
           final parts = ogTitle.split(RegExp(r'[|\-–•]'));
@@ -124,8 +173,15 @@ class TextParserService {
           if (parts.length > 1) company = _cleanCompany(parts[1]);
         }
 
-        final ogDescMatch = RegExp(r'<meta[^>]*property="og:description"[^>]*content="(.*?)"', caseSensitive: false).firstMatch(html) ??
-            RegExp(r"<meta[^>]*property='og:description'[^>]*content='(.*?)'", caseSensitive: false).firstMatch(html);
+        final ogDescMatch =
+            RegExp(
+              r'<meta[^>]*property="og:description"[^>]*content="(.*?)"',
+              caseSensitive: false,
+            ).firstMatch(html) ??
+            RegExp(
+              r"<meta[^>]*property='og:description'[^>]*content='(.*?)'",
+              caseSensitive: false,
+            ).firstMatch(html);
         if (ogDescMatch != null) {
           description = '$originalInput\n\n${ogDescMatch.group(1)!.trim()}';
         }
@@ -135,8 +191,16 @@ class TextParserService {
     final parsedFromText = parseJobText(description);
 
     return ParsedJobData(
-      companyName: company.isNotEmpty ? company : (parsedFromText.companyName.isNotEmpty ? parsedFromText.companyName : 'Perusahaan Lowongan'),
-      position: position.isNotEmpty ? position : (parsedFromText.position.isNotEmpty ? parsedFromText.position : 'Posisi Lowongan'),
+      companyName: company.isNotEmpty
+          ? company
+          : (parsedFromText.companyName.isNotEmpty
+                ? parsedFromText.companyName
+                : 'Perusahaan Lowongan'),
+      position: position.isNotEmpty
+          ? position
+          : (parsedFromText.position.isNotEmpty
+                ? parsedFromText.position
+                : 'Posisi Lowongan'),
       workType: parsedFromText.workType,
       salary: parsedFromText.salary,
       location: parsedFromText.location,
@@ -148,15 +212,45 @@ class TextParserService {
     );
   }
 
+  static bool _isSupportedHttpsJobUrl(Uri? uri) {
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return false;
+    }
+    final host = uri.host.toLowerCase();
+    return _supportedJobHosts.any(
+      (domain) => host == domain || host.endsWith('.$domain'),
+    );
+  }
+
   static String _cleanTitle(String text) {
-    var t = text.replaceAll(RegExp(r'(\d+|job|lowongan|kerja|hiring|recruitment|rekrutmen)', caseSensitive: false), ' ').trim();
+    var t = text
+        .replaceAll(
+          RegExp(
+            r'(\d+|job|lowongan|kerja|hiring|recruitment|rekrutmen)',
+            caseSensitive: false,
+          ),
+          ' ',
+        )
+        .trim();
     t = t.replaceAll(RegExp(r'\s+'), ' ');
     if (t.isEmpty) return 'Posisi Lowongan';
-    return t.split(' ').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : '').join(' ');
+    return t
+        .split(' ')
+        .map(
+          (w) => w.isNotEmpty
+              ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}'
+              : '',
+        )
+        .join(' ');
   }
 
   static String _cleanCompany(String text) {
-    var c = text.replaceAll(RegExp(r'(\d+|careers?|karir|official|loker)', caseSensitive: false), ' ').trim();
+    var c = text
+        .replaceAll(
+          RegExp(r'(\d+|careers?|karir|official|loker)', caseSensitive: false),
+          ' ',
+        )
+        .trim();
     c = c.replaceAll(RegExp(r'\s+'), ' ');
     if (c.isEmpty) return 'Perusahaan Baru';
     return c;
@@ -203,7 +297,10 @@ class TextParserService {
     }
 
     // 2. Kontak HR (Email / WA)
-    final emailReg = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', caseSensitive: false);
+    final emailReg = RegExp(
+      r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+      caseSensitive: false,
+    );
     final emailMatch = emailReg.firstMatch(text);
     if (emailMatch != null) {
       hrContact = emailMatch.group(0);
@@ -227,10 +324,15 @@ class TextParserService {
         companyName = companyName.split('\n').first.trim();
       }
     } else {
-      final diReg = RegExp(r'(di\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30})|at\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30}))');
+      final diReg = RegExp(
+        r'(di\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30})|at\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30}))',
+      );
       final diMatch = diReg.firstMatch(text);
       if (diMatch != null) {
-        final raw = diMatch.group(0)!.replaceAll(RegExp(r'^(di|at)\s+', caseSensitive: false), '').trim();
+        final raw = diMatch
+            .group(0)!
+            .replaceAll(RegExp(r'^(di|at)\s+', caseSensitive: false), '')
+            .trim();
         companyName = raw.split('\n').first.trim();
       }
     }
@@ -297,9 +399,26 @@ class TextParserService {
 
     // 7. Skill Keywords
     final skillKeywords = [
-      'Flutter', 'Dart', 'React', 'Node.js', 'Python', 'Golang', 'Java',
-      'Kotlin', 'Swift', 'PHP', 'Laravel', 'SQL', 'PostgreSQL', 'Figma',
-      'Excel', 'SEO', 'Copywriting', 'Canva', 'Git', 'UI/UX',
+      'Flutter',
+      'Dart',
+      'React',
+      'Node.js',
+      'Python',
+      'Golang',
+      'Java',
+      'Kotlin',
+      'Swift',
+      'PHP',
+      'Laravel',
+      'SQL',
+      'PostgreSQL',
+      'Figma',
+      'Excel',
+      'SEO',
+      'Copywriting',
+      'Canva',
+      'Git',
+      'UI/UX',
     ];
 
     List<String> extractedSkills = [];

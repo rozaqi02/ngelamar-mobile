@@ -15,17 +15,25 @@ class AppTheme {
   // ─────────────────────────────────────────────────
   // Exact Reference Colors
   // ─────────────────────────────────────────────────
-  static const Color warmBackground = Color(0xFFF5EFE6); // Exact warm cream tone
+  static const Color warmBackground = Color(
+    0xFFF5EFE6,
+  ); // Exact warm cream tone
   static const Color warmSurface = Color(0xFFFFFFFF);
   static const Color warmSurfaceAlt = Color(0xFFEDE7DC);
   static const Color warmBorder = Color(0xFFDCD8CE);
 
   // Saturated Vibrant Palette (Pixel-matched with Reference Image)
   static const Color cardPurple = Color(0xFF5C44E4); // Uber card & Stage 1
-  static const Color cardYellow = Color(0xFFF8BA38); // Amazon card, Hero Header & Stage 3
+  static const Color cardYellow = Color(
+    0xFFF8BA38,
+  ); // Amazon card, Hero Header & Stage 3
   static const Color cardCoral = Color(0xFFE55444); // Stage 2 card
-  static const Color cardGreen = Color(0xFFC1DE98); // Google expanded card & Stage 4
-  static const Color cardDark = Color(0xFF1C1C1E); // Microsoft card & Action Buttons
+  static const Color cardGreen = Color(
+    0xFFC1DE98,
+  ); // Google expanded card & Stage 4
+  static const Color cardDark = Color(
+    0xFF1C1C1E,
+  ); // Microsoft card & Action Buttons
   static const Color cardBlue = Color(0xFF3884F5);
   static const Color cardTeal = Color(0xFF32B0B8);
 
@@ -88,6 +96,8 @@ class AppTheme {
 
   static Color getJobCardColor(String status) {
     switch (status) {
+      case 'Contoh':
+        return cardPurple;
       case 'Dikirim':
         return cardBlue; // Biru: Tahap Baru Terkirim
       case 'HR Screening':
@@ -130,6 +140,8 @@ class AppTheme {
   // ─────────────────────────────────────────────────
   static Color getStatusColor(String status, {bool isDark = false}) {
     switch (status) {
+      case 'Contoh':
+        return isDark ? const Color(0xFFB8A7FF) : const Color(0xFF7257D9);
       case 'Dikirim':
         return systemBlue;
       case 'HR Screening':
@@ -192,10 +204,9 @@ class AppTheme {
         onError: Colors.white,
       ),
       textTheme: GoogleFonts.plusJakartaSansTextTheme(
-        ThemeData(brightness: brightness).textTheme.apply(
-          bodyColor: txtPri,
-          displayColor: txtPri,
-        ),
+        ThemeData(
+          brightness: brightness,
+        ).textTheme.apply(bodyColor: txtPri, displayColor: txtPri),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
@@ -235,9 +246,20 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: cardDark, width: 2),
         ),
-        hintStyle: TextStyle(color: txtSec, fontSize: 14, fontWeight: FontWeight.w400),
-        labelStyle: TextStyle(color: txtSec, fontSize: 14, fontWeight: FontWeight.w600),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: TextStyle(
+          color: txtSec,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        labelStyle: TextStyle(
+          color: txtSec,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

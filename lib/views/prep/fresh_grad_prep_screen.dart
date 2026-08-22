@@ -10,19 +10,25 @@ import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/rupiah_input_formatter.dart';
+import '../../widgets/welcome_screen_route.dart';
+import '../../widgets/career_prep_mascot.dart';
+import '../../widgets/delight_celebration.dart';
 import '../subscription/subscription_screen.dart';
 import 'career_prep_welcome_screen.dart';
 
 class FreshGradPrepScreen extends ConsumerStatefulWidget {
-  const FreshGradPrepScreen({super.key});
+  final bool embedded;
+
+  const FreshGradPrepScreen({super.key, this.embedded = false});
 
   @override
-  ConsumerState<FreshGradPrepScreen> createState() => _FreshGradPrepScreenState();
+  ConsumerState<FreshGradPrepScreen> createState() =>
+      _FreshGradPrepScreenState();
 }
 
 class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
-  int _selectedSegment = 0;
-  int _expandedQaIndex = 0;
+  int _selectedSegment = -1;
+  int _expandedQaIndex = -1;
   String? _copiedTemplateId;
 
   final List<Map<String, dynamic>> _docs = [
@@ -47,7 +53,8 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   late TextEditingController _kosController;
 
   int get _checkedCount => _docs.where((d) => d['checked'] == true).length;
-  double get _readinessPercent => _docs.isEmpty ? 0 : _checkedCount / _docs.length;
+  double get _readinessPercent =>
+      _docs.isEmpty ? 0 : _checkedCount / _docs.length;
 
   @override
   void initState() {
@@ -86,8 +93,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
 
   Future<void> _toggleDoc(int index) async {
     HapticFeedback.selectionClick();
+    final wasChecked = _docs[index]['checked'] as bool;
     setState(() {
-      _docs[index]['checked'] = !(_docs[index]['checked'] as bool);
+      _docs[index]['checked'] = !wasChecked;
     });
 
     final checkedTitles = _docs
@@ -95,19 +103,36 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
         .map((d) => d['title'] as String)
         .toList();
     await PrefsService.setChecklistDocs(checkedTitles);
+    if (!wasChecked && _checkedCount == _docs.length && mounted) {
+      DelightCelebration.show(
+        context,
+        message: 'Semua berkas sudah siap!',
+        accent: const Color(0xFFF8BA38),
+        icon: Icons.task_alt_rounded,
+        preset: DelightPreset.checklist,
+      );
+    }
   }
 
   void _shareChecklist() {
     HapticFeedback.selectionClick();
-    final items = _docs.map((d) => '${(d['checked'] as bool) ? '✅' : '⬜'} ${d['title']}').join('\n');
-    final text = '📋 *Kesiapan Berkas Lamaran Saya - Ngelamar App*\n'
+    final items = _docs
+        .map((d) => '${(d['checked'] as bool) ? '✅' : '⬜'} ${d['title']}')
+        .join('\n');
+    final text =
+        '📋 *Kesiapan Berkas Lamaran Saya - Ngelamar App*\n'
         'Progress: $_checkedCount/${_docs.length} (${(_readinessPercent * 100).toInt()}%)\n\n'
         '$items\n\n'
         'Dicatat via Ngelamar App';
     Share.share(text, subject: 'Kesiapan Berkas Lamaran Kerja');
   }
 
-  String _populateTemplate(String templateText, String userName, String? defaultCompany, String? defaultPosition) {
+  String _populateTemplate(
+    String templateText,
+    String userName,
+    String? defaultCompany,
+    String? defaultPosition,
+  ) {
     var result = templateText;
     final name = userName.isNotEmpty ? userName : 'Pencari Kerja';
     result = result.replaceAll('[Nama Anda]', name);
@@ -120,8 +145,14 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       result = result.replaceAll('[Posisi]', defaultPosition);
     }
     final now = DateTime.now();
-    result = result.replaceAll('[Tanggal]', '${now.day}/${now.month}/${now.year}');
-    result = result.replaceAll('[Hari/Tanggal]', '${now.day}/${now.month}/${now.year}');
+    result = result.replaceAll(
+      '[Tanggal]',
+      '${now.day}/${now.month}/${now.year}',
+    );
+    result = result.replaceAll(
+      '[Hari/Tanggal]',
+      '${now.day}/${now.month}/${now.year}',
+    );
     result = result.replaceAll('[Waktu]', '10:00 WIB');
     result = result.replaceAll('[Lokasi]', 'Google Meet / Kantor');
     return result;
@@ -183,7 +214,8 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           'Dengarkan sudut pandang rekan secara objektif, fokus pada data dan tujuan bersama tim, serta diskusikan solusi kompromi yang paling menguntungkan project.',
     },
     {
-      'q': 'Apa yang Anda lakukan jika mendapat tugas yang belum pernah Anda pelajari?',
+      'q':
+          'Apa yang Anda lakukan jika mendapat tugas yang belum pernah Anda pelajari?',
       'sub': 'Resourcefulness & Belajar Mandiri',
       'a':
           'Lakukan riset mandiri dari dokumentasi resmi/studi kasus, buat prototype sederhana, dan tanyakan feedback terarah kepada mentor/senior dengan pertanyaan spesifik.',
@@ -210,42 +242,48 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       'category': 'Teknik Jawaban',
       'icon': Icons.star_rounded,
       'color': Color(0xFF5C44E4),
-      'summary': 'Formula emas untuk menjawab pertanyaan situasional: Situation (Situasi), Task (Tugas), Action (Aksi), dan Result (Hasil terukur).',
+      'summary':
+          'Formula emas untuk menjawab pertanyaan situasional: Situation (Situasi), Task (Tugas), Action (Aksi), dan Result (Hasil terukur).',
     },
     {
       'title': 'Taktik Negosiasi Gaji Pertama',
       'category': 'Kompensasi',
       'icon': Icons.payments_rounded,
       'color': Color(0xFF1E8E3E),
-      'summary': 'Ketahui standar UMR, pisahkan gaji pokok dengan tunjangan, dan hitung benefit asuransi serta fasilitas kerja.',
+      'summary':
+          'Ketahui standar UMR, pisahkan gaji pokok dengan tunjangan, dan hitung benefit asuransi serta fasilitas kerja.',
     },
     {
       'title': 'Kelemahan Tanpa Menjatuhkan Diri',
       'category': 'Self-Awareness',
       'icon': Icons.psychology_rounded,
       'color': Color(0xFFD97706),
-      'summary': 'Sebutkan kelemahan yang bukan core requirements pekerjaan, dan tunjukkan langkah nyata yang sedang aktif Anda jalankan.',
+      'summary':
+          'Sebutkan kelemahan yang bukan core requirements pekerjaan, dan tunjukkan langkah nyata yang sedang aktif Anda jalankan.',
     },
     {
       'title': '5 Pertanyaan Balik Paling Cerdas',
       'category': 'Reverse Q&A',
       'icon': Icons.help_outline_rounded,
       'color': Color(0xFF0288D1),
-      'summary': 'Tanyakan tentang ekspektasi 90 hari pertama, kultur tim, dan kesempatan pengembangan skill untuk meninggalkan impresi positif.',
+      'summary':
+          'Tanyakan tentang ekspektasi 90 hari pertama, kultur tim, dan kesempatan pengembangan skill untuk meninggalkan impresi positif.',
     },
     {
       'title': 'Menghadapi Pertanyaan Sulit / Blank',
       'category': 'Ketenangan',
       'icon': Icons.lightbulb_outline_rounded,
       'color': Color(0xFFE53935),
-      'summary': 'Minta izin jeda 5 detik untuk berpikir, atau minta klarifikasi dengan sopan daripada mengarang jawaban yang tidak akurat.',
+      'summary':
+          'Minta izin jeda 5 detik untuk berpikir, atau minta klarifikasi dengan sopan daripada mengarang jawaban yang tidak akurat.',
     },
     {
       'title': 'Body Language & Artikulasi Percaya Diri',
       'category': 'Etika & Sikap',
       'icon': Icons.record_voice_over_rounded,
       'color': Color(0xFF7B1FA2),
-      'summary': 'Jaga kontak mata wajar, duduk tegak rileks, hindari kata filler berlebih, dan gunakan intonasi yang antusias.',
+      'summary':
+          'Jaga kontak mata wajar, duduk tegak rileks, hindari kata filler berlebih, dan gunakan intonasi yang antusias.',
     },
   ];
 
@@ -257,6 +295,13 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       _expandedQaIndex = 0;
     });
     AppleToast.success(context, '5 Pertanyaan interview baru telah diacak!');
+    DelightCelebration.show(
+      context,
+      message: 'Sesi latihan baru siap!',
+      accent: const Color(0xFF38BDF8),
+      icon: Icons.psychology_alt_rounded,
+      preset: DelightPreset.interviewShuffle,
+    );
   }
 
   final _templates = const [
@@ -326,183 +371,382 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     },
   ];
 
-  final _segments = ['Berkas', 'Gaji UMR', 'Interview', 'Templat'];
-
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
-    final txtPri = AppTheme.getTextPrimary(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final purpleGradient = isDark
-        ? const [Color(0xFF19142E), Color(0xFF151324), Color(0xFF121214)]
-        : const [Color(0xFFEFEAFF), Color(0xFFF7F4FF), Color(0xFFF5EFE6)];
+    final bgGradient = isDark
+        ? const [Color(0xFF2A2111), Color(0xFF181622), Color(0xFF121214)]
+        : const [Color(0xFFFDECC6), Color(0xFFFFF8E8), Color(0xFFFAF8F5)];
+
+    final cardConfigs = [
+      {
+        'index': 0,
+        'title': 'Checklist Berkas',
+        'subtitle': '$_checkedCount/${_docs.length} Berkas Siap Dikirim',
+        'color': isDark ? const Color(0xFF261F12) : const Color(0xFFFEEAA2),
+        'borderColor': isDark
+            ? const Color(0xFF523F1C)
+            : const Color(0xFFF7DE88),
+        'dotColor': const Color(0xFFF59E0B),
+        'textColor': isDark ? const Color(0xFFFEF3C7) : const Color(0xFF1E1805),
+        'builder': () => _buildChecklistTab(context, isDark),
+      },
+      {
+        'index': 1,
+        'title': 'Simulasi Gaji UMR',
+        'subtitle': 'Evaluator Take Home Pay & Living Cost',
+        'color': isDark ? const Color(0xFF281320) : const Color(0xFFFDC8E5),
+        'borderColor': isDark
+            ? const Color(0xFF561E42)
+            : const Color(0xFFF9A8D4),
+        'dotColor': const Color(0xFFEC4899),
+        'textColor': isDark ? const Color(0xFFFCE7F3) : const Color(0xFF260D1D),
+        'builder': () => _buildSalaryTab(context, isDark),
+      },
+      {
+        'index': 2,
+        'title': 'Latihan Interview',
+        'subtitle': 'Metode STAR & Pertanyaan HR Terpilih',
+        'color': isDark ? const Color(0xFF101F2E) : const Color(0xFFBEE7FC),
+        'borderColor': isDark
+            ? const Color(0xFF183C5C)
+            : const Color(0xFF7DD3FC),
+        'dotColor': const Color(0xFF0EA5E9),
+        'textColor': isDark ? const Color(0xFFE0F2FE) : const Color(0xFF0A1F30),
+        'builder': () => _buildInterviewTab(context, isDark),
+      },
+      {
+        'index': 3,
+        'title': 'Templat Pesan HRD',
+        'subtitle': 'Email Melamar & Follow-Up WhatsApp',
+        'color': isDark ? const Color(0xFF132417) : const Color(0xFFC6F89E),
+        'borderColor': isDark
+            ? const Color(0xFF1C4D25)
+            : const Color(0xFFA3E635),
+        'dotColor': const Color(0xFF22C55E),
+        'textColor': isDark ? const Color(0xFFDCFCE7) : const Color(0xFF0E2413),
+        'builder': () => _buildTemplatesTab(context, isDark),
+      },
+    ];
 
     return Scaffold(
+      backgroundColor: isDark
+          ? const Color(0xFF121214)
+          : const Color(0xFFFAF8F5),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: purpleGradient,
-            stops: const [0.0, 0.35, 1.0],
+            colors: bgGradient,
+            stops: const [0.0, 0.4, 1.0],
           ),
         ),
         child: SafeArea(
+          top: !widget.embedded,
           bottom: false,
           child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'PERSIAPAN\nKARIR',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: txtPri,
-                            letterSpacing: -1.2,
-                            height: 1.0,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                fullscreenDialog: true,
-                                builder: (_) => const CareerPrepWelcomeScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(9),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFFE5E0D5)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── TOP HEADER SECTION (IDENTIK FOTO: TITLE + SPARKLES + SUBTITLE + CIRCLE BUTTON) ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    24,
+                    widget.embedded ? 76 : 20,
+                    24,
+                    16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header mengikuti pola menu Portal dan Daftar Lamaran.
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'SIAPKAN\nKARIRMU',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: txtPri,
+                              letterSpacing: -1.2,
+                              height: 1.0,
                             ),
-                            child: const Icon(CupertinoIcons.question_circle_fill, size: 18, color: Color(0xFF5C44E4)),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Checklist berkas, simulasi gaji UMR, cheat-sheet interview & templat',
-                      style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                WelcomeScreenRoute(
+                                  child: const CareerPrepWelcomeScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF222226)
+                                    : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF333338)
+                                      : const Color(0xFFE5E0D5),
+                                ),
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.question_circle_fill,
+                                size: 18,
+                                color: Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
 
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: Row(
-                  children: List.generate(_segments.length, (i) {
-                    final isSel = _selectedSegment == i;
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(right: i < _segments.length - 1 ? 6 : 0),
-                        child: FluidBounceButton(
-                          onTap: () {
-                            setState(() => _selectedSegment = i);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 240),
-                            curve: Curves.fastOutSlowIn,
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            decoration: BoxDecoration(
-                              color: isSel
-                                  ? const Color(0xFF19191B)
-                                  : (isDark ? const Color(0xFF242428) : Colors.white),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSel
-                                    ? const Color(0xFF19191B)
-                                    : const Color(0xFFE6E3D8),
-                              ),
-                              boxShadow: isSel
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.12),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                _segments[i],
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: isSel ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF333333)),
-                                ),
-                              ),
-                            ),
+                      const SizedBox(height: 12),
+
+                      // Subtitle
+                      Padding(
+                        padding: EdgeInsets.zero,
+                        child: Text(
+                          'Berkas, interview, gaji, dan pesan HRD dalam satu tempat.',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: txtSec,
+                            height: 1.45,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                    );
-                  }),
-                ),
-              ),
-            ),
 
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                120 + (bottomInset > 0 ? bottomInset : 0),
-              ),
-              sliver: SliverToBoxAdapter(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: _buildSelectedTabContent(context, isDark),
+                      const SizedBox(height: 14),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+
+              // ── STACKED CARDS DECK WITH DOODLE LOOP BACKGROUND ──
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(0, 6, 0, 18),
+                sliver: SliverToBoxAdapter(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // 4 Overlapping Cascading Stacked Cards
+                      Column(
+                        children: List.generate(cardConfigs.length, (i) {
+                          final config = cardConfigs[i];
+                          final isExpanded = _selectedSegment == i;
+                          final cardBg = config['color'] as Color;
+                          final dotColor = config['dotColor'] as Color;
+                          final cardTextColor = config['textColor'] as Color;
+                          final title = config['title'] as String;
+                          final subtitle = config['subtitle'] as String;
+                          final builder =
+                              config['builder'] as Widget Function();
+
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                _selectedSegment = isExpanded ? -1 : i;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 420),
+                              curve: Curves.easeInOutCubicEmphasized,
+                              margin: EdgeInsets.only(top: i == 0 ? 0 : -22),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.vertical(
+                                  top: const Radius.circular(32),
+                                  bottom:
+                                      i == cardConfigs.length - 1 || isExpanded
+                                      ? const Radius.circular(32)
+                                      : Radius.zero,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.22 : 0.10,
+                                    ),
+                                    blurRadius: 14,
+                                    offset: Offset(0, i == 0 ? 4 : -2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Card Header Slice: Title + Colored Dot
+                                  AnimatedPadding(
+                                    duration: const Duration(milliseconds: 380),
+                                    curve: Curves.easeInOutCubic,
+                                    padding: EdgeInsets.fromLTRB(
+                                      22,
+                                      18,
+                                      22,
+                                      isExpanded ? 16 : 34,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                title,
+                                                style: TextStyle(
+                                                  fontSize: 19,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: cardTextColor,
+                                                  letterSpacing: -0.35,
+                                                ),
+                                              ),
+                                              AnimatedSize(
+                                                duration: const Duration(
+                                                  milliseconds: 320,
+                                                ),
+                                                curve: Curves.easeInOutCubic,
+                                                child: isExpanded
+                                                    ? Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              top: 3,
+                                                            ),
+                                                        child: Text(
+                                                          subtitle,
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: cardTextColor
+                                                                .withValues(
+                                                                  alpha: 0.68,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : const SizedBox.shrink(),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 260,
+                                          ),
+                                          width: 38,
+                                          height: 38,
+                                          decoration: BoxDecoration(
+                                            color: cardTextColor.withValues(
+                                              alpha: isExpanded ? 0.14 : 0.09,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: AnimatedRotation(
+                                            turns: isExpanded ? 0.5 : 0,
+                                            duration: const Duration(
+                                              milliseconds: 360,
+                                            ),
+                                            curve: Curves.easeInOutCubic,
+                                            child: Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: dotColor,
+                                              size: 24,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // Keep content mounted and reveal it only
+                                  // vertically to avoid rebuild flicker.
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(
+                                      end: isExpanded ? 1 : 0,
+                                    ),
+                                    duration: const Duration(milliseconds: 440),
+                                    curve: Curves.easeInOutCubicEmphasized,
+                                    child: RepaintBoundary(
+                                      child: Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          0,
+                                          22,
+                                          32,
+                                        ),
+                                        child: builder(),
+                                      ),
+                                    ),
+                                    builder: (context, reveal, child) =>
+                                        IgnorePointer(
+                                          ignoring: !isExpanded,
+                                          child: ClipRect(
+                                            child: Align(
+                                              alignment: Alignment.topCenter,
+                                              heightFactor: reveal,
+                                              child: child,
+                                            ),
+                                          ),
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    4,
+                    20,
+                    120 + (bottomInset > 0 ? bottomInset : 0),
+                  ),
+                  child: Column(
+                    children: [
+                      const ReadingBookMascot(width: 240, height: 178),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Belajar pelan-pelan, tumbuh setiap hari.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: txtSec,
+                          letterSpacing: -0.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-  }
-
-  Widget _buildSelectedTabContent(BuildContext context, bool isDark) {
-    switch (_selectedSegment) {
-      case 0:
-        return _buildChecklistTab(context, isDark);
-      case 1:
-        return _buildSalaryTab(context, isDark);
-      case 2:
-        return _buildInterviewTab(context, isDark);
-      case 3:
-        return _buildTemplatesTab(context, isDark);
-      default:
-        return const SizedBox.shrink();
-    }
+    );
   }
 
   Widget _buildChecklistTab(BuildContext context, bool isDark) {
@@ -541,7 +785,10 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
@@ -567,7 +814,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     value: val,
                     minHeight: 10,
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -575,8 +824,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               Text(
                 percent < 1.0
                     ? 'Centang berkas yang sudah Anda siapkan untuk memantau kesiapan.'
-                    : 'Seluruh berkas persiapan karir Anda sudah lengkap!',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
+                    : 'Semua berkas karirmu sudah lengkap!',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -588,7 +840,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-            border: Border.all(color: const Color(0xFFE6E3D8)),
+            border: Border.all(
+              color: isDark ? const Color(0xFF383842) : const Color(0xFFE6E3D8),
+            ),
           ),
           child: Column(
             children: List.generate(_docs.length, (i) {
@@ -599,7 +853,10 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               return Column(
                 children: [
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     leading: GestureDetector(
                       onTap: () => _toggleDoc(i),
                       child: AnimatedContainer(
@@ -607,15 +864,25 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         width: 26,
                         height: 26,
                         decoration: BoxDecoration(
-                          color: isChecked ? AppTheme.cardPurple : Colors.transparent,
+                          color: isChecked
+                              ? AppTheme.cardPurple
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: isChecked ? AppTheme.cardPurple : Colors.grey.shade400,
+                            color: isChecked
+                                ? AppTheme.cardPurple
+                                : (isDark
+                                      ? Colors.grey.shade600
+                                      : Colors.grey.shade400),
                             width: 2,
                           ),
                         ),
                         child: isChecked
-                            ? const Icon(CupertinoIcons.checkmark_alt, size: 17, color: Colors.white)
+                            ? const Icon(
+                                CupertinoIcons.checkmark_alt,
+                                size: 17,
+                                color: Colors.white,
+                              )
                             : null,
                       ),
                     ),
@@ -623,14 +890,26 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       doc['title'] as String,
                       style: TextStyle(
                         fontSize: 13.5,
-                        fontWeight: isChecked ? FontWeight.w600 : FontWeight.w500,
-                        decoration: isChecked ? TextDecoration.lineThrough : null,
-                        color: isChecked ? Colors.grey : const Color(0xFF121214),
+                        fontWeight: isChecked
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        decoration: isChecked
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: isChecked
+                            ? Colors.grey
+                            : (isDark ? Colors.white : const Color(0xFF121214)),
                       ),
                     ),
                     onTap: () => _toggleDoc(i),
                   ),
-                  if (!isLast) const Divider(height: 1, indent: 16, endIndent: 16),
+                  if (!isLast)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: isDark ? const Color(0xFF2E2E36) : null,
+                    ),
                 ],
               );
             }),
@@ -645,15 +924,30 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           height: 48,
           child: OutlinedButton.icon(
             onPressed: _shareChecklist,
-            icon: const Icon(Icons.share_outlined, size: 17, color: Color(0xFF19191B)),
-            label: const Text(
+            icon: Icon(
+              Icons.share_outlined,
+              size: 17,
+              color: isDark ? Colors.white : const Color(0xFF19191B),
+            ),
+            label: Text(
               'Bagikan Ringkasan Kesiapan Berkas',
-              style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF19191B), fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF19191B),
+                fontSize: 13,
+              ),
             ),
             style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: Color(0xFFDCD8CE), width: 1.2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              backgroundColor: isDark ? const Color(0xFF242428) : Colors.white,
+              side: BorderSide(
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFDCD8CE),
+                width: 1.2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
         ),
@@ -675,9 +969,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final targetUmr = _useCustomUmr
         ? _customUmrInput
         : (SalaryEvaluatorService.umrList
-            .firstWhere((u) => u.city.toLowerCase() == _selectedCity.toLowerCase(),
-                orElse: () => const UmrData('Nasional', 3500000))
-            .umrAmount);
+              .firstWhere(
+                (u) => u.city.toLowerCase() == _selectedCity.toLowerCase(),
+                orElse: () => const UmrData('Nasional', 3500000),
+              )
+              .umrAmount);
 
     return Column(
       key: const ValueKey('tab_salary'),
@@ -687,14 +983,20 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           decoration: BoxDecoration(
             color: cardBg,
             borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-            border: Border.all(color: const Color(0xFFE6E3D8)),
+            border: Border.all(
+              color: isDark ? const Color(0xFF383842) : const Color(0xFFE6E3D8),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Tawaran Gaji Pokok (Input Manual)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                  color: isDark ? Colors.white : const Color(0xFF121214),
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -704,42 +1006,101 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   FilteringTextInputFormatter.digitsOnly,
                   RupiahInputFormatter(includeSymbol: false),
                 ],
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF19191B)),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: isDark ? Colors.white : const Color(0xFF19191B),
+                ),
                 decoration: InputDecoration(
                   prefixText: 'Rp ',
-                  prefixStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF19191B)),
-                  fillColor: isDark ? const Color(0xFF2C2C30) : const Color(0xFFF7F5EE),
+                  prefixStyle: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    color: isDark ? Colors.white70 : const Color(0xFF19191B),
+                  ),
+                  fillColor: isDark
+                      ? const Color(0xFF2C2C34)
+                      : const Color(0xFFF7F5EE),
                   filled: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF3E3E48)
+                          : const Color(0xFFE5E0D5),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF3E3E48)
+                          : const Color(0xFFE5E0D5),
+                    ),
+                  ),
                 ),
                 onChanged: (val) {
                   setState(() {
-                    _grossSalary = SalaryEvaluatorService.parseSalaryAmount(val);
+                    _grossSalary = SalaryEvaluatorService.parseSalaryAmount(
+                      val,
+                    );
                   });
                 },
               ),
 
-              const Divider(height: 24),
+              Divider(
+                height: 24,
+                color: isDark ? const Color(0xFF2E2E36) : null,
+              ),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Kota Tujuan Kerja', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(
+                    'Kota Tujuan Kerja',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: isDark ? Colors.white : const Color(0xFF121214),
+                    ),
+                  ),
                   DropdownButton<String>(
                     value: _selectedCity,
+                    dropdownColor: isDark
+                        ? const Color(0xFF242428)
+                        : Colors.white,
                     underline: const SizedBox.shrink(),
                     items: SalaryEvaluatorService.umrList
-                        .map((u) => DropdownMenuItem(value: u.city, child: Text(u.city, style: const TextStyle(fontSize: 13))))
+                        .map(
+                          (u) => DropdownMenuItem(
+                            value: u.city,
+                            child: Text(
+                              u.city,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF121214),
+                              ),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) {
                       if (val != null) {
                         setState(() {
                           _selectedCity = val;
-                          final found = SalaryEvaluatorService.umrList.firstWhere((u) => u.city == val);
+                          final found = SalaryEvaluatorService.umrList
+                              .firstWhere((u) => u.city == val);
                           _customUmrInput = found.umrAmount;
-                          _umrController.text = RupiahInputFormatter.format(found.umrAmount, includeSymbol: false);
+                          _umrController.text = RupiahInputFormatter.format(
+                            found.umrAmount,
+                            includeSymbol: false,
+                          );
                         });
                       }
                     },
@@ -755,16 +1116,34 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Total UMR Daerah Dituju', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       Text(
-                        _useCustomUmr ? 'Input Manual Aktif' : 'Standar Resmi 2024',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        'Total UMR Daerah Dituju',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF121214),
+                        ),
+                      ),
+                      Text(
+                        _useCustomUmr
+                            ? 'Input Manual Aktif'
+                            : 'Standar Resmi 2024',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? const Color(0xFFA0A0A8) : Colors.grey,
+                        ),
                       ),
                     ],
                   ),
                   Text(
                     SalaryEvaluatorService.formatRupiah(targetUmr),
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF5C44E4)),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF5C44E4),
+                    ),
                   ),
                 ],
               ),
@@ -774,10 +1153,19 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Sesuaikan Nilai UMR Manual', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(
+                    'Sesuaikan Nilai UMR Manual',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: isDark ? Colors.white : const Color(0xFF121214),
+                    ),
+                  ),
                   CupertinoSwitch(
                     value: _useCustomUmr,
-                    activeTrackColor: const Color(0xFF19191B),
+                    activeTrackColor: isDark
+                        ? const Color(0xFF5C44E4)
+                        : const Color(0xFF19191B),
                     onChanged: (v) => setState(() => _useCustomUmr = v),
                   ),
                 ],
@@ -792,34 +1180,77 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     FilteringTextInputFormatter.digitsOnly,
                     RupiahInputFormatter(includeSymbol: false),
                   ],
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF5C44E4)),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Color(0xFF5C44E4),
+                  ),
                   decoration: InputDecoration(
                     prefixText: 'Rp ',
-                    prefixStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF5C44E4)),
+                    prefixStyle: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF5C44E4),
+                    ),
                     hintText: 'Masukkan UMR manual...',
-                    fillColor: isDark ? const Color(0xFF2C2C30) : const Color(0xFFF7F5EE),
+                    hintStyle: TextStyle(
+                      color: isDark ? const Color(0xFF888892) : Colors.grey,
+                    ),
+                    fillColor: isDark
+                        ? const Color(0xFF2C2C34)
+                        : const Color(0xFFF7F5EE),
                     filled: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF3E3E48)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF3E3E48)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                    ),
                   ),
                   onChanged: (val) {
                     setState(() {
-                      _customUmrInput = SalaryEvaluatorService.parseSalaryAmount(val);
+                      _customUmrInput =
+                          SalaryEvaluatorService.parseSalaryAmount(val);
                     });
                   },
                 ),
               ],
 
-              const Divider(height: 24),
+              Divider(
+                height: 24,
+                color: isDark ? const Color(0xFF2E2E36) : null,
+              ),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Perlu Sewa Kos', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text(
+                    'Perlu Sewa Kos',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: isDark ? Colors.white : const Color(0xFF121214),
+                    ),
+                  ),
                   CupertinoSwitch(
                     value: _needsKos,
-                    activeTrackColor: const Color(0xFF19191B),
+                    activeTrackColor: isDark
+                        ? const Color(0xFF5C44E4)
+                        : const Color(0xFF19191B),
                     onChanged: (v) => setState(() => _needsKos = v),
                   ),
                 ],
@@ -827,7 +1258,14 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
 
               if (_needsKos) ...[
                 const SizedBox(height: 10),
-                const Text('Biaya Sewa Kos / bln (Input Manual)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                Text(
+                  'Biaya Sewa Kos / bln (Input Manual)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : const Color(0xFF121214),
+                  ),
+                ),
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _kosController,
@@ -836,19 +1274,47 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     FilteringTextInputFormatter.digitsOnly,
                     RupiahInputFormatter(includeSymbol: false),
                   ],
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF19191B)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF19191B),
+                  ),
                   decoration: InputDecoration(
                     prefixText: 'Rp ',
-                    prefixStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF19191B)),
-                    fillColor: isDark ? const Color(0xFF2C2C30) : const Color(0xFFF7F5EE),
+                    prefixStyle: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : const Color(0xFF19191B),
+                    ),
+                    fillColor: isDark
+                        ? const Color(0xFF2C2C34)
+                        : const Color(0xFFF7F5EE),
                     filled: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF3E3E48)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF3E3E48)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                    ),
                   ),
                   onChanged: (val) {
                     setState(() {
-                      _customRentCost = SalaryEvaluatorService.parseSalaryAmount(val);
+                      _customRentCost =
+                          SalaryEvaluatorService.parseSalaryAmount(val);
                     });
                   },
                 ),
@@ -862,7 +1328,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: eval.estimatedNetSavings >= 0 ? AppTheme.cardGreen : AppTheme.cardCoral,
+            color: eval.estimatedNetSavings >= 0
+                ? AppTheme.cardGreen
+                : AppTheme.cardCoral,
             borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
           ),
           child: Column(
@@ -872,14 +1340,30 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 eval.estimatedNetSavings >= 0
                     ? 'Gaji Cukup untuk Hidup Mandiri'
                     : 'Gaji Berpotensi Defisit',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF19191B)),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF19191B),
+                ),
               ),
               const SizedBox(height: 12),
-              _buildEvalRow('Gaji Kotor', SalaryEvaluatorService.formatRupiah(eval.grossSalary)),
-              _buildEvalRow('Standar UMR Daerah', SalaryEvaluatorService.formatRupiah(targetUmr)),
-              _buildEvalRow('BPJS Ketenagakerjaan (4%)', '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}'),
+              _buildEvalRow(
+                'Gaji Kotor',
+                SalaryEvaluatorService.formatRupiah(eval.grossSalary),
+              ),
+              _buildEvalRow(
+                'Standar UMR Daerah',
+                SalaryEvaluatorService.formatRupiah(targetUmr),
+              ),
+              _buildEvalRow(
+                'BPJS Ketenagakerjaan (4%)',
+                '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}',
+              ),
               if (_needsKos)
-                _buildEvalRow('Biaya Sewa Kos (Input User)', '- ${SalaryEvaluatorService.formatRupiah(_customRentCost)}'),
+                _buildEvalRow(
+                  'Biaya Sewa Kos (Input User)',
+                  '- ${SalaryEvaluatorService.formatRupiah(_customRentCost)}',
+                ),
               const Divider(height: 16, color: Colors.black26),
               _buildEvalRow(
                 'Estimasi Tabungan Bersih',
@@ -899,8 +1383,20 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.w500)),
-          Text(value, style: TextStyle(fontSize: 13, fontWeight: isBold ? FontWeight.w900 : FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -909,14 +1405,15 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   void _showTopicDetailModal(BuildContext context, Map<String, dynamic> topic) {
     HapticFeedback.selectionClick();
     final color = topic['color'] as Color;
+    final isDark = AppTheme.isDark(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -927,7 +1424,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -941,7 +1440,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     color: color.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(topic['icon'] as IconData, color: color, size: 22),
+                  child: Icon(
+                    topic['icon'] as IconData,
+                    color: color,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -949,20 +1452,33 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           topic['category'] as String,
-                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         topic['title'] as String,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF121214),
+                        ),
                       ),
                     ],
                   ),
@@ -972,7 +1488,13 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             const SizedBox(height: 16),
             Text(
               topic['summary'] as String,
-              style: const TextStyle(fontSize: 13.5, height: 1.45, color: Color(0xFF555558)),
+              style: TextStyle(
+                fontSize: 13.5,
+                height: 1.45,
+                color: isDark
+                    ? const Color(0xFFA0A0A8)
+                    : const Color(0xFF555558),
+              ),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -981,11 +1503,18 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF19191B),
+                  backgroundColor: isDark
+                      ? const Color(0xFF5C44E4)
+                      : const Color(0xFF19191B),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Mengerti',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
@@ -1029,7 +1558,10 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               FluidBounceButton(
                 onTap: _randomizeQaItems,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF19191B),
                     borderRadius: BorderRadius.circular(12),
@@ -1037,7 +1569,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.shuffle_rounded, size: 13, color: Colors.white),
+                      Icon(
+                        Icons.shuffle_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'Acak Soal',
@@ -1060,9 +1596,15 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           final qa = _activeQaItems[idx];
           final isExpanded = _expandedQaIndex == idx;
           final cardColor = cardColors[idx % cardColors.length];
-          final isDarkText = cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
-          final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
-          final descColor = isDarkText ? const Color(0xFF333336) : Colors.white.withValues(alpha: 0.90);
+          final isDarkText =
+              cardColor == AppTheme.cardYellow ||
+              cardColor == AppTheme.cardGreen;
+          final titleColor = isDarkText
+              ? const Color(0xFF121214)
+              : Colors.white;
+          final descColor = isDarkText
+              ? const Color(0xFF333336)
+              : Colors.white.withValues(alpha: 0.90);
 
           return GestureDetector(
             onTap: () {
@@ -1101,10 +1643,15 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: isDarkText
-                                  ? const Color(0xFF19191B).withValues(alpha: 0.12)
+                                  ? const Color(
+                                      0xFF19191B,
+                                    ).withValues(alpha: 0.12)
                                   : Colors.white.withValues(alpha: 0.22),
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -1128,7 +1675,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              isExpanded ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+                              isExpanded
+                                  ? CupertinoIcons.chevron_up
+                                  : CupertinoIcons.chevron_down,
                               size: 14,
                               color: isDarkText ? Colors.white : cardColor,
                             ),
@@ -1182,7 +1731,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w900,
-                                  color: isDarkText ? const Color(0xFF121214) : Colors.white,
+                                  color: isDarkText
+                                      ? const Color(0xFF121214)
+                                      : Colors.white,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -1192,7 +1743,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                                   fontSize: 12.5,
                                   height: 1.45,
                                   fontWeight: FontWeight.w500,
-                                  color: isDarkText ? const Color(0xFF222224) : Colors.white.withValues(alpha: 0.95),
+                                  color: isDarkText
+                                      ? const Color(0xFF222224)
+                                      : Colors.white.withValues(alpha: 0.95),
                                 ),
                               ),
                             ],
@@ -1215,80 +1768,104 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+              color: isDark ? const Color(0xFF1E1E24) : Colors.white,
               borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-              border: Border.all(color: const Color(0xFFE5E0D5)),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFE5E0D5),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
               ],
             ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.tips_and_updates_outlined, size: 18, color: Color(0xFF5C44E4)),
-                  SizedBox(width: 8),
-                  Text(
-                    'Bank Topik & Strategi Wawancara',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF121214),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.tips_and_updates_outlined,
+                      size: 18,
+                      color: Color(0xFF5C44E4),
                     ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Bank Topik & Strategi Wawancara',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF121214),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ketuk topik di bawah ini untuk melihat strategi jawaban:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? const Color(0xFFA0A0A8)
+                        : Colors.grey.shade600,
                   ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Ketuk topik di bawah ini untuk melihat strategi jawaban:',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _interviewTopics.map((t) {
-                  final color = t['color'] as Color;
-                  return GestureDetector(
-                    onTap: () => _showTopicDetailModal(context, t),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9F7F2),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE5E0D5)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(t['icon'] as IconData, size: 14, color: color),
-                          const SizedBox(width: 6),
-                          Text(
-                            t['title'] as String,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF121214),
-                            ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _interviewTopics.map((t) {
+                    final color = t['color'] as Color;
+                    return GestureDetector(
+                      onTap: () => _showTopicDetailModal(context, t),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF282830)
+                              : const Color(0xFFF9F7F2),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF3E3E48)
+                                : const Color(0xFFE5E0D5),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(t['icon'] as IconData, size: 14, color: color),
+                            const SizedBox(width: 6),
+                            Text(
+                              t['title'] as String,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF121214),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _buildTemplatesTab(BuildContext context, bool isDark) {
     final state = ref.watch(jobProvider);
@@ -1301,9 +1878,12 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
         final isItemPro = tpl['isPro'] == true;
         final isLocked = isItemPro && !isPro;
 
-        final isDarkText = color == AppTheme.cardYellow || color == AppTheme.cardGreen;
+        final isDarkText =
+            color == AppTheme.cardYellow || color == AppTheme.cardGreen;
         final titleColor = isDarkText ? const Color(0xFF111113) : Colors.white;
-        final subColor = isDarkText ? const Color(0xCC111113) : const Color(0xCCFFFFFF);
+        final subColor = isDarkText
+            ? const Color(0xCC111113)
+            : const Color(0xCCFFFFFF);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
@@ -1342,19 +1922,34 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         if (isItemPro) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: isDarkText ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.25),
+                              color: isDarkText
+                                  ? Colors.black.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(isLocked ? Icons.lock_rounded : Icons.workspace_premium_rounded, size: 11, color: titleColor),
+                                Icon(
+                                  isLocked
+                                      ? Icons.lock_rounded
+                                      : Icons.workspace_premium_rounded,
+                                  size: 11,
+                                  color: titleColor,
+                                ),
                                 const SizedBox(width: 3),
                                 Text(
                                   isLocked ? 'PRO' : 'UNLOCKED',
-                                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: titleColor),
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: titleColor,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1369,14 +1964,24 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       if (isLocked) {
                         Navigator.push(
                           context,
-                          CupertinoPageRoute(builder: (_) => const SubscriptionScreen()),
+                          CupertinoPageRoute(
+                            builder: (_) => const SubscriptionScreen(),
+                          ),
                         );
-                        AppleToast.info(context, 'Buka Ngelamar PRO untuk menyalin templat ini!');
+                        AppleToast.info(
+                          context,
+                          'Buka Ngelamar PRO untuk menyalin templat ini!',
+                        );
                       } else {
                         final title = tpl['title'] as String;
                         setState(() => _copiedTemplateId = title);
-                        Clipboard.setData(ClipboardData(text: tpl['text'] as String));
-                        AppleToast.success(context, 'Templat disalin ke clipboard');
+                        Clipboard.setData(
+                          ClipboardData(text: tpl['text'] as String),
+                        );
+                        AppleToast.success(
+                          context,
+                          'Templat disalin ke clipboard',
+                        );
                         Future.delayed(const Duration(milliseconds: 1500), () {
                           if (mounted && _copiedTemplateId == title) {
                             setState(() => _copiedTemplateId = null);
@@ -1386,7 +1991,10 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: _copiedTemplateId == tpl['title']
                             ? const Color(0xFF10B981)
@@ -1400,9 +2008,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                             isLocked
                                 ? Icons.lock_outline_rounded
                                 : (_copiedTemplateId == tpl['title']
-                                    ? Icons.check_rounded
-                                    : CupertinoIcons.doc_on_doc),
-                            color: _copiedTemplateId == tpl['title'] ? Colors.white : titleColor,
+                                      ? Icons.check_rounded
+                                      : CupertinoIcons.doc_on_doc),
+                            color: _copiedTemplateId == tpl['title']
+                                ? Colors.white
+                                : titleColor,
                             size: 14,
                           ),
                           if (_copiedTemplateId == tpl['title']) ...[
@@ -1437,11 +2047,18 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         if (isLocked) {
                           Navigator.push(
                             context,
-                            CupertinoPageRoute(builder: (_) => const SubscriptionScreen()),
+                            CupertinoPageRoute(
+                              builder: (_) => const SubscriptionScreen(),
+                            ),
                           );
-                          AppleToast.info(context, 'Buka Ngelamar PRO untuk membuka templat ini!');
+                          AppleToast.info(
+                            context,
+                            'Buka Ngelamar PRO untuk membuka templat ini!',
+                          );
                         } else {
-                          final firstJob = state.jobs.isNotEmpty ? state.jobs.first : null;
+                          final firstJob = state.jobs.isNotEmpty
+                              ? state.jobs.first
+                              : null;
                           final filled = _populateTemplate(
                             tpl['text'] as String,
                             state.userName,
@@ -1452,27 +2069,47 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                           AppleToast.success(
                             context,
                             'Templat Terisi Otomatis!',
-                            subtitle: 'Disalin dengan nama ${state.userName.isNotEmpty ? state.userName : "Anda"}',
+                            subtitle:
+                                'Disalin dengan nama ${state.userName.isNotEmpty ? state.userName : "Anda"}',
+                          );
+                          DelightCelebration.show(
+                            context,
+                            message: 'Pesan siap dikirim!',
+                            accent: const Color(0xFF4ADE80),
+                            icon: Icons.content_paste_go_rounded,
+                            preset: DelightPreset.template,
                           );
                         }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: isDarkText ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.22),
+                          color: isDarkText
+                              ? Colors.black.withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.22),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isDarkText ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.35),
+                            color: isDarkText
+                                ? Colors.black.withValues(alpha: 0.15)
+                                : Colors.white.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.auto_fix_high_rounded, size: 13, color: titleColor),
+                            Icon(
+                              Icons.auto_fix_high_rounded,
+                              size: 13,
+                              color: titleColor,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Isi Data Saya',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: titleColor),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
                             ),
                           ],
                         ),
@@ -1486,11 +2123,18 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       if (isLocked) {
                         Navigator.push(
                           context,
-                          CupertinoPageRoute(builder: (_) => const SubscriptionScreen()),
+                          CupertinoPageRoute(
+                            builder: (_) => const SubscriptionScreen(),
+                          ),
                         );
-                        AppleToast.info(context, 'Buka Ngelamar PRO untuk membagikan templat ini!');
+                        AppleToast.info(
+                          context,
+                          'Buka Ngelamar PRO untuk membagikan templat ini!',
+                        );
                       } else {
-                        final firstJob = state.jobs.isNotEmpty ? state.jobs.first : null;
+                        final firstJob = state.jobs.isNotEmpty
+                            ? state.jobs.first
+                            : null;
                         final filled = _populateTemplate(
                           tpl['text'] as String,
                           state.userName,
@@ -1501,15 +2145,26 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       }
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDarkText ? Colors.black.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.22),
+                        color: isDarkText
+                            ? Colors.black.withValues(alpha: 0.12)
+                            : Colors.white.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDarkText ? Colors.black.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.35),
+                          color: isDarkText
+                              ? Colors.black.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.35),
                         ),
                       ),
-                      child: Icon(Icons.share_outlined, size: 15, color: titleColor),
+                      child: Icon(
+                        Icons.share_outlined,
+                        size: 15,
+                        color: titleColor,
+                      ),
                     ),
                   ),
                 ],

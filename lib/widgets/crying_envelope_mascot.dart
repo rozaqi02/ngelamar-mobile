@@ -7,11 +7,7 @@ class CryingEnvelopeMascot extends StatefulWidget {
   final double width;
   final double height;
 
-  const CryingEnvelopeMascot({
-    super.key,
-    this.width = 220,
-    this.height = 170,
-  });
+  const CryingEnvelopeMascot({super.key, this.width = 220, this.height = 170});
 
   @override
   State<CryingEnvelopeMascot> createState() => _CryingEnvelopeMascotState();
@@ -155,10 +151,17 @@ class _CryingMascotPainter extends CustomPainter {
     canvas.drawPath(mouth, strokePaint);
 
     // Blushing Red Nose / Cheeks
-    final blush = Paint()..color = const Color(0xFFFF8A80).withValues(alpha: 0.65);
+    final blush = Paint()
+      ..color = const Color(0xFFFF8A80).withValues(alpha: 0.65);
     canvas.drawCircle(Offset(110 * scale, 80 * scale), 4 * scale, blush);
-    canvas.drawOval(Rect.fromLTWH(80 * scale, 78 * scale, 10 * scale, 5 * scale), blush);
-    canvas.drawOval(Rect.fromLTWH(130 * scale, 78 * scale, 10 * scale, 5 * scale), blush);
+    canvas.drawOval(
+      Rect.fromLTWH(80 * scale, 78 * scale, 10 * scale, 5 * scale),
+      blush,
+    );
+    canvas.drawOval(
+      Rect.fromLTWH(130 * scale, 78 * scale, 10 * scale, 5 * scale),
+      blush,
+    );
 
     // ── TEAR STREAMS & FALLING TEAR DROPS ──
     final tearPaint = Paint()
@@ -168,25 +171,47 @@ class _CryingMascotPainter extends CustomPainter {
     void drawTearDrop(Offset pos, double tearSize) {
       final p = Path()
         ..moveTo(pos.dx, pos.dy - tearSize)
-        ..quadraticBezierTo(pos.dx + tearSize, pos.dy, pos.dx, pos.dy + tearSize)
-        ..quadraticBezierTo(pos.dx - tearSize, pos.dy, pos.dx, pos.dy - tearSize)
+        ..quadraticBezierTo(
+          pos.dx + tearSize,
+          pos.dy,
+          pos.dx,
+          pos.dy + tearSize,
+        )
+        ..quadraticBezierTo(
+          pos.dx - tearSize,
+          pos.dy,
+          pos.dx,
+          pos.dy - tearSize,
+        )
         ..close();
       canvas.drawPath(p, tearPaint);
     }
 
     // Left Tears
     final leftTearY1 = (75 + progress * 55) * scale;
-    drawTearDrop(Offset(88 * scale, leftTearY1), 4.5 * scale * (1 - progress * 0.3));
+    drawTearDrop(
+      Offset(88 * scale, leftTearY1),
+      4.5 * scale * (1 - progress * 0.3),
+    );
 
     final leftTearY2 = (75 + ((progress + 0.5) % 1.0) * 55) * scale;
-    drawTearDrop(Offset(84 * scale, leftTearY2), 3.8 * scale * (1 - ((progress + 0.5) % 1.0) * 0.3));
+    drawTearDrop(
+      Offset(84 * scale, leftTearY2),
+      3.8 * scale * (1 - ((progress + 0.5) % 1.0) * 0.3),
+    );
 
     // Right Tears
     final rightTearY1 = (75 + progress * 55) * scale;
-    drawTearDrop(Offset(132 * scale, rightTearY1), 4.5 * scale * (1 - progress * 0.3));
+    drawTearDrop(
+      Offset(132 * scale, rightTearY1),
+      4.5 * scale * (1 - progress * 0.3),
+    );
 
     final rightTearY2 = (75 + ((progress + 0.5) % 1.0) * 55) * scale;
-    drawTearDrop(Offset(136 * scale, rightTearY2), 3.8 * scale * (1 - ((progress + 0.5) % 1.0) * 0.3));
+    drawTearDrop(
+      Offset(136 * scale, rightTearY2),
+      3.8 * scale * (1 - ((progress + 0.5) % 1.0) * 0.3),
+    );
 
     canvas.restore();
   }

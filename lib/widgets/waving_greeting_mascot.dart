@@ -29,7 +29,9 @@ class _WavingGreetingMascotState extends State<WavingGreetingMascot>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600), // Smooth greeting wave cycle
+      duration: const Duration(
+        milliseconds: 1600,
+      ), // Smooth greeting wave cycle
     );
     if (widget.animate) {
       _controller.repeat();
@@ -110,11 +112,7 @@ class _WavingMascotPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     // Left leg
-    canvas.drawLine(
-      Offset(95, 142 + floatY),
-      Offset(90, 178),
-      legPaint,
-    );
+    canvas.drawLine(Offset(95, 142 + floatY), Offset(90, 178), legPaint);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: const Offset(86, 180), width: 22, height: 10),
@@ -124,11 +122,7 @@ class _WavingMascotPainter extends CustomPainter {
     );
 
     // Right leg
-    canvas.drawLine(
-      Offset(145, 142 + floatY),
-      Offset(150, 178),
-      legPaint,
-    );
+    canvas.drawLine(Offset(145, 142 + floatY), Offset(150, 178), legPaint);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(center: const Offset(154, 180), width: 22, height: 10),
@@ -176,13 +170,6 @@ class _WavingMascotPainter extends CustomPainter {
       ..lineTo(bodyCenter.dx + 60, bodyCenter.dy - 43);
     canvas.drawPath(foldPath, foldPaint);
 
-    // Golden wax seal / star pin on flap
-    final badgePaint = Paint()
-      ..color = const Color(0xFFF8BA38)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(bodyCenter.dx, bodyCenter.dy + 8), 7, badgePaint);
-    canvas.drawCircle(Offset(bodyCenter.dx, bodyCenter.dy + 8), 7, borderPaint..strokeWidth = 1.8);
-
     // ── 3. CUTE HAPPY FACE ──
     final eyePaint = Paint()
       ..color = const Color(0xFF19191B)
@@ -191,13 +178,22 @@ class _WavingMascotPainter extends CustomPainter {
     // Left Eye (Big Friendly Sparkle Eye)
     final leftEye = Offset(bodyCenter.dx - 22, bodyCenter.dy - 8);
     canvas.drawCircle(leftEye, 5.5, eyePaint);
-    canvas.drawCircle(Offset(leftEye.dx - 1.8, leftEye.dy - 1.8), 2.0, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      Offset(leftEye.dx - 1.8, leftEye.dy - 1.8),
+      2.0,
+      Paint()..color = Colors.white,
+    );
 
     // Right Eye (Joyful Winking Eye Curve)
     final rightEyeCenter = Offset(bodyCenter.dx + 22, bodyCenter.dy - 8);
     final winkPath = Path()
       ..moveTo(rightEyeCenter.dx - 6, rightEyeCenter.dy + 1)
-      ..quadraticBezierTo(rightEyeCenter.dx, rightEyeCenter.dy - 7, rightEyeCenter.dx + 6, rightEyeCenter.dy + 1);
+      ..quadraticBezierTo(
+        rightEyeCenter.dx,
+        rightEyeCenter.dy - 7,
+        rightEyeCenter.dx + 6,
+        rightEyeCenter.dy + 1,
+      );
     canvas.drawPath(
       winkPath,
       Paint()
@@ -211,18 +207,34 @@ class _WavingMascotPainter extends CustomPainter {
     final blushPaint = Paint()
       ..color = const Color(0xFFFF8A80).withValues(alpha: 0.55)
       ..style = PaintingStyle.fill;
-    canvas.drawOval(Rect.fromCenter(center: Offset(bodyCenter.dx - 28, bodyCenter.dy + 3), width: 11, height: 6), blushPaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(bodyCenter.dx + 28, bodyCenter.dy + 3), width: 11, height: 6), blushPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(bodyCenter.dx - 28, bodyCenter.dy + 3),
+        width: 11,
+        height: 6,
+      ),
+      blushPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(bodyCenter.dx + 28, bodyCenter.dy + 3),
+        width: 11,
+        height: 6,
+      ),
+      blushPaint,
+    );
 
     // Happy Big Smile Mouth
     final mouthPath = Path()
       ..moveTo(bodyCenter.dx - 12, bodyCenter.dy + 2)
-      ..quadraticBezierTo(bodyCenter.dx, bodyCenter.dy + 14, bodyCenter.dx + 12, bodyCenter.dy + 2)
+      ..quadraticBezierTo(
+        bodyCenter.dx,
+        bodyCenter.dy + 14,
+        bodyCenter.dx + 12,
+        bodyCenter.dy + 2,
+      )
       ..close();
-    canvas.drawPath(
-      mouthPath,
-      Paint()..color = const Color(0xFFE53935),
-    );
+    canvas.drawPath(mouthPath, Paint()..color = const Color(0xFFE53935));
     canvas.drawPath(
       mouthPath,
       Paint()
@@ -240,7 +252,12 @@ class _WavingMascotPainter extends CustomPainter {
 
     final leftArmPath = Path()
       ..moveTo(bodyCenter.dx - 58, bodyCenter.dy + 5)
-      ..quadraticBezierTo(bodyCenter.dx - 76, bodyCenter.dy + 18, bodyCenter.dx - 56, bodyCenter.dy + 28);
+      ..quadraticBezierTo(
+        bodyCenter.dx - 76,
+        bodyCenter.dy + 18,
+        bodyCenter.dx - 56,
+        bodyCenter.dy + 28,
+      );
     canvas.drawPath(leftArmPath, armPaint);
 
     // ── 5. RIGHT ARM (WAVING HIGH & PROUD) ──
@@ -264,9 +281,24 @@ class _WavingMascotPainter extends CustomPainter {
     canvas.restore();
 
     // ── 6. SPARKLES & GREETING STARS AROUND MASCOT ──
-    _drawSparkle(canvas, Offset(bodyCenter.dx + 65, bodyCenter.dy - 55 + floatY * 0.4), 8, const Color(0xFFF8BA38));
-    _drawSparkle(canvas, Offset(bodyCenter.dx - 55, bodyCenter.dy - 40 - floatY * 0.3), 6, const Color(0xFFA78BFA));
-    _drawSparkle(canvas, Offset(bodyCenter.dx + 50, bodyCenter.dy + 35 + floatY * 0.2), 5, const Color(0xFF4ADE80));
+    _drawSparkle(
+      canvas,
+      Offset(bodyCenter.dx + 65, bodyCenter.dy - 55 + floatY * 0.4),
+      8,
+      const Color(0xFFF8BA38),
+    );
+    _drawSparkle(
+      canvas,
+      Offset(bodyCenter.dx - 55, bodyCenter.dy - 40 - floatY * 0.3),
+      6,
+      const Color(0xFFA78BFA),
+    );
+    _drawSparkle(
+      canvas,
+      Offset(bodyCenter.dx + 50, bodyCenter.dy + 35 + floatY * 0.2),
+      5,
+      const Color(0xFF4ADE80),
+    );
 
     canvas.restore();
   }

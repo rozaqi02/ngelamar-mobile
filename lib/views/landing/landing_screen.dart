@@ -7,7 +7,6 @@ import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
-import '../../widgets/app_dialog.dart';
 import '../../widgets/running_envelope_mascot.dart';
 import '../main_navigation.dart';
 
@@ -51,23 +50,37 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) => OnboardingTutorialSheet(
         onComplete: (withSampleData, userName) async {
-          Navigator.pop(ctx);
-          final cleanName = userName.trim().isNotEmpty ? userName.trim() : 'Rozaqi';
-          await ref.read(jobProvider.notifier).setUserName(cleanName);
-          await PrefsService.setUserName(cleanName);
+          try {
+            final cleanName = userName.trim();
+            await ref.read(jobProvider.notifier).setUserName(cleanName);
+            await PrefsService.setUserName(cleanName);
 
-          if (withSampleData) {
-            await ref.read(jobProvider.notifier).loadSampleJobs();
-          } else {
-            await ref.read(jobProvider.notifier).clearAllJobs();
+            final dataPrepared = withSampleData
+                ? await ref.read(jobProvider.notifier).loadSampleJobs()
+                : await ref.read(jobProvider.notifier).clearAllJobs();
+            if (!dataPrepared) {
+              throw StateError('Data awal belum dapat disiapkan.');
+            }
+            await PrefsService.setInitialDataSeeded(true);
+            await PrefsService.setOnboardingDone(true);
+          } catch (e) {
+            debugPrint('Error preparing initial data: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Data awal belum dapat disiapkan. Silakan coba lagi.',
+                  ),
+                ),
+              );
+            }
+            return;
           }
-          await PrefsService.setInitialDataSeeded(true);
-          await PrefsService.setOnboardingDone();
 
           if (!mounted) return;
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 500),
+              transitionDuration: const Duration(milliseconds: 400),
               pageBuilder: (context, animation, secondaryAnimation) =>
                   const MainNavigation(),
               transitionsBuilder: (context, anim, secondaryAnimation, child) {
@@ -77,6 +90,7 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                 );
               },
             ),
+            (route) => false,
           );
         },
       ),
@@ -302,7 +316,9 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                         borderRadius: BorderRadius.circular(34),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFDED2F9).withValues(alpha: 0.35),
+                            color: const Color(
+                              0xFFDED2F9,
+                            ).withValues(alpha: 0.35),
                             blurRadius: 20,
                             offset: const Offset(0, 8),
                           ),
@@ -465,12 +481,13 @@ class OnboardingTutorialSheet extends StatefulWidget {
   const OnboardingTutorialSheet({super.key, required this.onComplete});
 
   @override
-  State<OnboardingTutorialSheet> createState() => _OnboardingTutorialSheetState();
+  State<OnboardingTutorialSheet> createState() =>
+      _OnboardingTutorialSheetState();
 }
 
 class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
   final PageController _pageController = PageController();
-  final TextEditingController _nameController = TextEditingController(text: 'Rozaqi');
+  final TextEditingController _nameController = TextEditingController();
   int _currentPage = 0;
 
   final Set<String> _selectedInterests = {
@@ -479,10 +496,11 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     'QA Automation / Tester',
   };
 
-  final TextEditingController _customInterestController = TextEditingController();
+  final TextEditingController _customInterestController =
+      TextEditingController();
 
   final Map<String, List<String>> _categorizedInterests = {
-    '💻 Teknologi, IT & Software': [
+    'Teknologi & Software': [
       'Flutter / Mobile Dev',
       'Web & Frontend Dev',
       'Backend (Go/Node/Java)',
@@ -491,26 +509,26 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
       'QA Automation / Tester',
       'Cyber Security & DevOps',
     ],
-    '📊 Bisnis, Produk & Manajemen': [
+    'Bisnis & Manajemen': [
       'Product Manager',
       'Business Analyst',
       'Project Management',
       'Sales & Business Dev',
       'Operasional & Konsultan',
     ],
-    '💰 Keuangan, Bank & Akuntansi': [
+    'Keuangan & Akuntansi': [
       'Finance & Accounting',
       'Tax Specialist',
       'Internal Auditor',
       'Banking Specialist',
     ],
-    '📣 Pemasaran, Konten & Desain': [
+    'Pemasaran & Kreatif': [
       'Digital Marketing / SEO',
       'Content Creator / Copywriter',
       'Graphic Designer',
       'Social Media Specialist',
     ],
-    '👥 SDM, Admin & Operasional': [
+    'SDM & Operasional': [
       'HR & Recruitment',
       'Admin & Operasional Kantor',
       'Customer Support',
@@ -541,6 +559,45 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     }
   }
 
+  Color _interestColor(String interest) {
+    const colors = [
+      Color(0xFF5C44E4),
+      Color(0xFF1E8E3E),
+      Color(0xFF2878D0),
+      Color(0xFFD3543C),
+      Color(0xFFC56A08),
+      Color(0xFF007F86),
+      Color(0xFF9B3FAE),
+    ];
+    final hash = interest.codeUnits.fold<int>(0, (sum, unit) => sum + unit);
+    return colors[hash % colors.length];
+  }
+
+  Widget _pageMotion(int index, Widget child) {
+    return AnimatedBuilder(
+      animation: _pageController,
+      child: child,
+      builder: (context, child) {
+        final page = _pageController.hasClients
+            ? (_pageController.page ?? _currentPage.toDouble())
+            : _currentPage.toDouble();
+        final delta = (page - index).clamp(-1.0, 1.0);
+        final distance = delta.abs();
+        return Opacity(
+          opacity: 1 - (distance * 0.22),
+          child: Transform.translate(
+            offset: Offset(-delta * 18, distance * 5),
+            child: Transform.scale(
+              scale: 1 - (distance * 0.025),
+              alignment: Alignment.center,
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const totalPages = 5;
@@ -548,6 +605,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.90,
+      clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
         color: AppTheme.warmBackground,
         borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
@@ -582,7 +640,9 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                       width: isCurrent ? 24 : 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isCurrent ? const Color(0xFF121214) : Colors.grey.shade300,
+                        color: isCurrent
+                            ? const Color(0xFF121214)
+                            : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     );
@@ -595,13 +655,17 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                       HapticFeedback.selectionClick();
                       _pageController.animateToPage(
                         totalPages - 1,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                        duration: const Duration(milliseconds: 520),
+                        curve: Curves.easeInOutCubicEmphasized,
                       );
                     },
                     child: const Text(
                       'Lewati',
-                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
               ],
@@ -612,419 +676,517 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           Expanded(
             child: PageView(
               controller: _pageController,
-              onPageChanged: (idx) => setState(() => _currentPage = idx),
+              physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+              onPageChanged: (idx) {
+                HapticFeedback.selectionClick();
+                setState(() => _currentPage = idx);
+              },
               children: [
                 // SLIDE 1: PERSONALISASI NAMA
-                SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(24, 16, 24, 30 + bottomInset),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDED2F9),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black12, width: 2),
-                        ),
-                        child: const Icon(CupertinoIcons.person_fill, size: 36, color: Color(0xFF121214)),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Halo, Siapa Namamu?',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF121214),
-                          letterSpacing: -0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Masukkan namamu agar Ngelamar dapat mempersonalisasi eksplorasi karir dan portofoliomu:',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF555558), height: 1.4),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _nameController,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                        decoration: InputDecoration(
-                          hintText: 'Nama lengkap kamu...',
-                          prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF121214)),
-                          fillColor: Colors.white,
-                          filled: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: const BorderSide(color: Color(0xFFDCD8CE), width: 1.2),
+                _pageMotion(
+                  0,
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(24, 16, 24, 30 + bottomInset),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDED2F9),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black12, width: 2),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: const BorderSide(color: Color(0xFFDCD8CE), width: 1.2),
+                          child: const Icon(
+                            CupertinoIcons.person_fill,
+                            size: 36,
+                            color: Color(0xFF121214),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Halo, Siapa Namamu?',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF121214),
+                            letterSpacing: -0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Nama ini dipakai untuk mempersonalisasi pengalamanmu.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF555558),
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _nameController,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Nama lengkap kamu...',
+                            prefixIcon: const Icon(
+                              Icons.badge_outlined,
+                              color: Color(0xFF121214),
+                            ),
+                            fillColor: Colors.white,
+                            filled: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFDCD8CE),
+                                width: 1.2,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFDCD8CE),
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
                 // SLIDE 2: TRACKER
-                _buildSlideContent(
-                  bottomInset: bottomInset,
-                  icon: Icons.view_carousel_rounded,
-                  color: const Color(0xFFDED2F9),
-                  title: 'Lacak Lamaran Tanpa Stres',
-                  desc: 'Pantau setiap proses dari tahap Dikirim, Tes, Interview HR, hingga Offering dalam satu dashboard kartu visual interaktif.',
-                  tags: ['Progres 1-Klik', 'Pengingat Interview', 'Statistik Respon'],
+                _pageMotion(
+                  1,
+                  _buildSlideContent(
+                    bottomInset: bottomInset,
+                    icon: Icons.view_carousel_rounded,
+                    color: const Color(0xFFDED2F9),
+                    title: 'Lacak Lamaran Tanpa Stres',
+                    desc:
+                        'Pantau Dikirim, Tes, Interview, hingga Offering dalam satu tracker.',
+                    tags: ['Progres 1-Klik', 'Pengingat Interview'],
+                  ),
                 ),
 
                 // SLIDE 3: AUTO-FILL & SCREENSHOT
-                _buildSlideContent(
-                  bottomInset: bottomInset,
-                  icon: Icons.bolt_rounded,
-                  color: const Color(0xFFFFEAA7),
-                  title: 'Auto-Isi Pintar & Bukti Loker',
-                  desc: 'Cukup salin link lowongan dari LinkedIn, JobStreet, atau Glints untuk pengisian otomatis, dan lampirkan bukti foto screenshot loker.',
-                  tags: ['Ekstrak Link Instan', 'Simpan Screenshot', 'Kontak HR'],
+                _pageMotion(
+                  2,
+                  _buildSlideContent(
+                    bottomInset: bottomInset,
+                    icon: Icons.bolt_rounded,
+                    color: const Color(0xFFFFEAA7),
+                    title: 'Auto-Isi Pintar & Bukti Loker',
+                    desc:
+                        'Tempel link lowongan, isi form otomatis, lalu simpan screenshot sebagai bukti.',
+                    tags: ['Ekstrak Link Instan', 'Simpan Screenshot'],
+                  ),
                 ),
 
                 // SLIDE 4: PILIH MINAT KARIR (MIN. 3)
-                SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(20, 12, 20, 40 + bottomInset),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 68,
-                        height: 68,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFDE4C8),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black12, width: 2),
-                        ),
-                        child: const Icon(Icons.stars_rounded, size: 34, color: Color(0xFF121214)),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Pilih Minat Karirmu',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF121214),
-                          letterSpacing: -0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Pilih minimal 3 bidang pekerjaan yang Anda minati agar aplikasi dapat mengkurasi lowongan terbaik untuk Anda:',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF555558), height: 1.4),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Counter Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: _selectedInterests.length >= 3
-                              ? const Color(0xFFD8F2CA)
-                              : const Color(0xFFFFEAA7),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _selectedInterests.length >= 3
-                                ? const Color(0xFF81C784)
-                                : const Color(0xFFFFD54F),
+                _pageMotion(
+                  3,
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(20, 12, 20, 40 + bottomInset),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDE4C8),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black12, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.stars_rounded,
+                            size: 34,
+                            color: Color(0xFF121214),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _selectedInterests.length >= 3
-                                  ? Icons.check_circle_rounded
-                                  : Icons.info_outline_rounded,
-                              size: 16,
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Pilih Minat Karirmu',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF121214),
+                            letterSpacing: -0.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Pilih minimal 3 bidang yang ingin kamu kejar.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF555558),
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Counter Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _selectedInterests.length >= 3
+                                ? const Color(0xFFD8F2CA)
+                                : const Color(0xFFFFEAA7),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
                               color: _selectedInterests.length >= 3
-                                  ? const Color(0xFF2E7D32)
-                                  : const Color(0xFFE65100),
+                                  ? const Color(0xFF81C784)
+                                  : const Color(0xFFFFD54F),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _selectedInterests.length >= 3
-                                  ? 'Dipilih: ${_selectedInterests.length} Minat (Siap Lanjut!)'
-                                  : 'Dipilih: ${_selectedInterests.length} / min. 3 Minat',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _selectedInterests.length >= 3
+                                    ? Icons.check_circle_rounded
+                                    : Icons.info_outline_rounded,
+                                size: 16,
                                 color: _selectedInterests.length >= 3
-                                    ? const Color(0xFF1B5E20)
-                                    : const Color(0xFF121214),
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFFE65100),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _selectedInterests.length >= 3
+                                    ? 'Dipilih: ${_selectedInterests.length} Minat (Siap Lanjut!)'
+                                    : 'Dipilih: ${_selectedInterests.length} / min. 3 Minat',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: _selectedInterests.length >= 3
+                                      ? const Color(0xFF1B5E20)
+                                      : const Color(0xFF121214),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Categorized Interest Groups with Modern Structured Layout
+                        ..._categorizedInterests.entries.map((category) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFE5E0D5),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  category.key,
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF121214),
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: category.value.map((interest) {
+                                    final isSelected = _selectedInterests
+                                        .contains(interest);
+                                    return FluidBounceButton(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            _selectedInterests.remove(interest);
+                                          } else {
+                                            _selectedInterests.add(interest);
+                                          }
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _interestColor(interest)
+                                              : const Color(0xFFF6F4EE),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _interestColor(interest)
+                                                : const Color(0xFFE2DDD2),
+                                          ),
+                                          boxShadow: isSelected
+                                              ? [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                          alpha: 0.12,
+                                                        ),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                        child: Text(
+                                          interest,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : const Color(0xFF222224),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+
+                        if (_customInterests.isNotEmpty) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFE5E0D5),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Minat tambahan',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF121214),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _customInterests.map((interest) {
+                                    final isSelected = _selectedInterests
+                                        .contains(interest);
+                                    return FluidBounceButton(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            _selectedInterests.remove(interest);
+                                          } else {
+                                            _selectedInterests.add(interest);
+                                          }
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 7,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _interestColor(interest)
+                                              : const Color(0xFFF6F4EE),
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _interestColor(interest)
+                                                : const Color(0xFFE2DDD2),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          interest,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w800
+                                                : FontWeight.w600,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : const Color(0xFF222224),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+
+                        // Custom Interest Input Field
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _customInterestController,
+                                style: const TextStyle(fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Tambah minat lain (misal: AI Engineer)...',
+                                  fillColor: Colors.white,
+                                  filled: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFDCD8CE),
+                                    ),
+                                  ),
+                                ),
+                                onSubmitted: (_) => _addCustomInterest(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: _addCustomInterest,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5C44E4),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: const Text(
+                                'Tambah',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.5,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Categorized Interest Groups with Modern Structured Layout
-                      ..._categorizedInterests.entries.map((category) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFE5E0D5)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                category.key,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF121214),
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: category.value.map((interest) {
-                                  final isSelected = _selectedInterests.contains(interest);
-                                  return FluidBounceButton(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedInterests.remove(interest);
-                                        } else {
-                                          _selectedInterests.add(interest);
-                                        }
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xFF1C1C1E) : const Color(0xFFF6F4EE),
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color: isSelected ? const Color(0xFF1C1C1E) : const Color(0xFFE2DDD2),
-                                        ),
-                                        boxShadow: isSelected
-                                            ? [
-                                                BoxShadow(
-                                                  color: Colors.black.withValues(alpha: 0.12),
-                                                  blurRadius: 6,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isSelected) ...[
-                                            const Icon(Icons.check_rounded, size: 14, color: Colors.white),
-                                            const SizedBox(width: 4),
-                                          ],
-                                          Text(
-                                            interest,
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                              color: isSelected ? Colors.white : const Color(0xFF222224),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-
-                      if (_customInterests.isNotEmpty) ...[
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFE5E0D5)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '✨ Minat Kustom Tambahan',
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF121214),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _customInterests.map((interest) {
-                                  final isSelected = _selectedInterests.contains(interest);
-                                  return FluidBounceButton(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedInterests.remove(interest);
-                                        } else {
-                                          _selectedInterests.add(interest);
-                                        }
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xFF1C1C1E) : const Color(0xFFF6F4EE),
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color: isSelected ? const Color(0xFF1C1C1E) : const Color(0xFFE2DDD2),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isSelected) ...[
-                                            const Icon(Icons.check_rounded, size: 14, color: Colors.white),
-                                            const SizedBox(width: 4),
-                                          ],
-                                          Text(
-                                            interest,
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                                              color: isSelected ? Colors.white : const Color(0xFF222224),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
-                      const SizedBox(height: 4),
-
-                      // Custom Interest Input Field
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _customInterestController,
-                              style: const TextStyle(fontSize: 13),
-                              decoration: InputDecoration(
-                                hintText: 'Tambah minat lain (misal: AI Engineer)...',
-                                fillColor: Colors.white,
-                                filled: true,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(color: Color(0xFFDCD8CE)),
-                                ),
-                              ),
-                              onSubmitted: (_) => _addCustomInterest(),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: _addCustomInterest,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF5C44E4),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                            child: const Text('Tambah', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 
                 // SLIDE 5: PILIHAN MULAI
-                SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(24, 16, 24, 40 + bottomInset),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD8F2CA),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black12, width: 2),
+                _pageMotion(
+                  4,
+                  SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(24, 16, 24, 40 + bottomInset),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD8F2CA),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black12, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.rocket_launch_rounded,
+                            size: 40,
+                            color: Color(0xFF121214),
+                          ),
                         ),
-                        child: const Icon(Icons.rocket_launch_rounded, size: 40, color: Color(0xFF121214)),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Siap Raih Karir Impianmu?',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF121214),
-                          letterSpacing: -0.5,
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Siap Raih Karir Impianmu?',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF121214),
+                            letterSpacing: -0.5,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Pilih bagaimana Anda ingin memulai aplikasi ini:',
-                        style: TextStyle(fontSize: 13.5, color: Color(0xFF555558)),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Pilih cara paling nyaman untuk mulai.',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: Color(0xFF555558),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
 
-                      _buildChoiceCard(
-                        title: 'Mulai dengan Data Contoh',
-                        subtitle: 'Muat 6 contoh lamaran lengkap (GoTo, Shopee, BCA, dll) agar bisa langsung mencoba seluruh fitur.',
-                        isPrimary: true,
-                        badgeText: 'REKOMENDASI',
-                        onTap: () => _handleSampleDataSelection(),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildChoiceCard(
-                        title: 'Mulai dari Nol (Kosong)',
-                        subtitle: 'Mulai dengan daftar lamaran bersih untuk mencatat lamaran Anda sendiri dari awal.',
-                        isPrimary: false,
-                        badgeText: null,
-                        onTap: () async {
-                          HapticFeedback.mediumImpact();
-                          await PrefsService.setUserInterests(_selectedInterests.toList());
-                          widget.onComplete(false, _nameController.text.trim());
-                        },
-                      ),
-                    ],
+                        _buildChoiceCard(
+                          title: 'Mulai dengan Data Contoh',
+                          subtitle:
+                              'Muat 6 lamaran dummy terkunci untuk mengenal fitur tracker.',
+                          isPrimary: true,
+                          badgeText: 'REKOMENDASI',
+                          onTap: () => _handleSampleDataSelection(),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildChoiceCard(
+                          title: 'Mulai dari Nol (Kosong)',
+                          subtitle:
+                              'Mulai dengan daftar lamaran bersih untuk mencatat lamaran Anda sendiri dari awal.',
+                          isPrimary: false,
+                          badgeText: null,
+                          onTap: () => _finish(false),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1034,14 +1196,19 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           // Bottom Action Bar (Safe for Android Navbar & Gesture Bar)
           if (_currentPage < totalPages - 1) ...[
             Padding(
-              padding: EdgeInsets.fromLTRB(24, 6, 24, bottomInset > 0 ? bottomInset + 14 : 24),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                6,
+                24,
+                bottomInset > 0 ? bottomInset + 14 : 24,
+              ),
               child: FluidBounceButton(
                 onTap: (_currentPage == 3 && _selectedInterests.length < 3)
                     ? null
                     : () {
                         _pageController.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
+                          duration: const Duration(milliseconds: 520),
+                          curve: Curves.easeInOutCubicEmphasized,
                         );
                       },
                 child: Container(
@@ -1052,7 +1219,8 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                         ? Colors.grey.shade400
                         : const Color(0xFF121214),
                     borderRadius: BorderRadius.circular(28),
-                    boxShadow: (_currentPage == 3 && _selectedInterests.length < 3)
+                    boxShadow:
+                        (_currentPage == 3 && _selectedInterests.length < 3)
                         ? null
                         : [
                             BoxShadow(
@@ -1066,11 +1234,21 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _currentPage == 3 ? 'Lanjut (${_selectedInterests.length} Minat Terpilih)' : 'Lanjut',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                        _currentPage == 3
+                            ? 'Lanjut (${_selectedInterests.length} Minat Terpilih)'
+                            : 'Lanjut',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ],
                   ),
                 ),
@@ -1080,6 +1258,12 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
         ],
       ),
     );
+  }
+
+  void _finish(bool withSampleData) async {
+    HapticFeedback.heavyImpact();
+    await PrefsService.setUserInterests(_selectedInterests.toList());
+    widget.onComplete(withSampleData, _nameController.text.trim());
   }
 
   Widget _buildSlideContent({
@@ -1096,21 +1280,17 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black12, width: 2),
-            ),
-            child: Icon(icon, size: 40, color: const Color(0xFF121214)),
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(icon, size: 34, color: const Color(0xFF121214)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Text(
             title,
             style: const TextStyle(
               fontSize: 22,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700,
               color: Color(0xFF121214),
               letterSpacing: -0.5,
             ),
@@ -1119,7 +1299,11 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           const SizedBox(height: 10),
           Text(
             desc,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF555558), height: 1.45),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF555558),
+              height: 1.45,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -1129,7 +1313,10 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             alignment: WrapAlignment.center,
             children: tags.map((tag) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -1137,7 +1324,11 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                 ),
                 child: Text(
                   tag,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF121214)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF121214),
+                  ),
                 ),
               );
             }).toList(),
@@ -1154,8 +1345,9 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     required String? badgeText,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return FluidBounceButton(
       onTap: onTap,
+      scaleFactor: 0.985,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
@@ -1163,7 +1355,9 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           color: isPrimary ? const Color(0xFF1C1C1E) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isPrimary ? const Color(0xFF1C1C1E) : const Color(0xFFDCD8CE),
+            color: isPrimary
+                ? const Color(0xFF1C1C1E)
+                : const Color(0xFFDCD8CE),
             width: 1.5,
           ),
           boxShadow: [
@@ -1185,21 +1379,28 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                     title,
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       color: isPrimary ? Colors.white : const Color(0xFF121214),
                     ),
                   ),
                 ),
                 if (badgeText != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFD54F),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       badgeText,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF121214)),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF121214),
+                      ),
                     ),
                   ),
               ],
@@ -1223,14 +1424,19 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     HapticFeedback.mediumImpact();
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    // KONFIRMASI TAHAP 1: Modal Rincian 6 Data Contoh
+    // Modal Rincian 6 Data Contoh
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx1) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
-        padding: EdgeInsets.fromLTRB(22, 16, 22, bottomInset > 0 ? bottomInset + 14 : 22),
+        padding: EdgeInsets.fromLTRB(
+          22,
+          16,
+          22,
+          bottomInset > 0 ? bottomInset + 14 : 22,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -1247,7 +1453,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
             const SizedBox(height: 16),
             const Text(
-              '📋 Rincian 6 Data Contoh',
+              'Rincian 6 Data Contoh',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
@@ -1257,7 +1463,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Berikut data lamaran yang akan masuk ke Beranda & Daftar Lamaran Anda:',
+              'Masuk ke kategori Contoh. Status dikunci agar datanya tetap menjadi panduan.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12.5, color: Color(0xFF555558)),
             ),
@@ -1269,46 +1475,46 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                 physics: const BouncingScrollPhysics(),
                 children: [
                   _buildSamplePreviewItem(
-                    company: 'PT GoTo Gojek Tokopedia Tbk',
-                    role: 'Senior Flutter Developer',
-                    status: 'Tes / Psikotes',
-                    salary: 'Rp 22.000.000 / bln',
-                    statusColor: const Color(0xFFE55444),
+                    company: 'Nusa Tech',
+                    role: 'Flutter Dev',
+                    status: 'Contoh',
+                    salary: 'Rp 8–11 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
-                    company: 'PT Shopee International Indonesia',
-                    role: 'Software Development Engineer',
-                    status: 'Offering',
-                    salary: 'Rp 25.000.000 / bln',
-                    statusColor: const Color(0xFF9C27B0),
+                    company: 'Karsa Labs',
+                    role: 'UI Designer',
+                    status: 'Contoh',
+                    salary: 'Rp 7–10 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
-                    company: 'PT Bank Central Asia Tbk (BCA)',
-                    role: 'Mobile Application Specialist',
-                    status: 'Interview HR',
-                    salary: 'Rp 18.500.000 / bln',
-                    statusColor: const Color(0xFFF8BA38),
+                    company: 'Bumi Data',
+                    role: 'Data Analis',
+                    status: 'Contoh',
+                    salary: 'Rp 7–9 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
-                    company: 'PT Telkom Indonesia Tbk',
-                    role: 'Lead Mobile Solution Architect',
-                    status: 'Interview User',
-                    salary: 'Rp 26.000.000 / bln',
-                    statusColor: const Color(0xFF5C44E4),
+                    company: 'Aruna Mart',
+                    role: 'QA Engineer',
+                    status: 'Contoh',
+                    salary: 'Rp 6–9 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
-                    company: 'PT Bukalapak.com Tbk',
-                    role: 'Frontend Engineer (React & Mobile)',
-                    status: 'Dikirim',
-                    salary: 'Rp 16.000.000 / bln',
-                    statusColor: const Color(0xFF3884F5),
+                    company: 'Sora Bank',
+                    role: 'HR Officer',
+                    status: 'Contoh',
+                    salary: 'Rp 6–8 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
-                    company: 'PT Traveloka Indonesia',
-                    role: 'QA Automation Engineer',
-                    status: 'Diterima',
-                    salary: 'Rp 19.000.000 / bln',
-                    statusColor: const Color(0xFF2E7D32),
+                    company: 'Tera Media',
+                    role: 'Copywriter',
+                    status: 'Contoh',
+                    salary: 'Rp 5–7 jt / bln',
+                    statusColor: const Color(0xFF7257D9),
                   ),
                 ],
               ),
@@ -1316,22 +1522,23 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
 
             const SizedBox(height: 12),
 
-            // Tombol Lanjut ke Konfirmasi Akhir (1/2)
+            // Tombol Muat 6 Data Contoh
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(ctx1);
-                  _showFinalConfirmationDialog();
+                  _finish(true);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF19191B),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
                 child: const Text(
-                  'Lanjut ke Konfirmasi Akhir (1/2) →',
+                  'Gunakan 6 Data Contoh',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                 ),
               ),
@@ -1343,45 +1550,22 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             SizedBox(
               width: double.infinity,
               child: TextButton(
-                onPressed: () async {
-                  Navigator.pop(ctx1);
-                  await PrefsService.setUserInterests(_selectedInterests.toList());
-                  widget.onComplete(false, _nameController.text.trim());
+                onPressed: () {
+                  _finish(false);
                 },
                 child: const Text(
                   'Tidak Perlu, Mulai dari Nol (Kosong)',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF707074)),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF707074),
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  void _showFinalConfirmationDialog() {
-    HapticFeedback.selectionClick();
-    // KONFIRMASI TAHAP 2: Dialog Konfirmasi Final
-    AppDialog.show(
-      context: context,
-      icon: Icons.help_outline_rounded,
-      iconColor: const Color(0xFF5C44E4),
-      title: 'Konfirmasi Akhir (2/2)',
-      content:
-          'Apakah Anda yakin ingin memuat 6 data contoh ini ke Beranda?\n\n(Catatan: Data contoh ini dapat diedit atau dihapus kapan saja di menu Pengaturan).',
-      secondaryLabel: 'Mulai Kosong',
-      primaryLabel: 'Ya, Muat Data Contoh',
-      onSecondary: () async {
-        Navigator.pop(context);
-        await PrefsService.setUserInterests(_selectedInterests.toList());
-        widget.onComplete(false, _nameController.text.trim());
-      },
-      onPrimary: () async {
-        Navigator.pop(context);
-        await PrefsService.setUserInterests(_selectedInterests.toList());
-        widget.onComplete(true, _nameController.text.trim());
-      },
     );
   }
 
@@ -1417,12 +1601,19 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
               children: [
                 Text(
                   company,
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF121214),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$role • $salary',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF555558)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF555558),
+                  ),
                 ),
               ],
             ),
@@ -1435,7 +1626,11 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
             child: Text(
               status,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: statusColor,
+              ),
             ),
           ),
         ],

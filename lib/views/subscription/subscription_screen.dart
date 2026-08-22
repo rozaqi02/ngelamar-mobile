@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/job_provider.dart';
+import '../../services/pro_verification_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_dialog.dart';
@@ -22,9 +23,9 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 }
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
+  static const bool _proActivationAvailable = true;
   String _selectedPlan = 'monthly'; // 'monthly' | 'yearly'
   static const String _adminWhatsAppNumber = '6283136049987';
-  static const String _validProCode = '2241760123';
   final TextEditingController _codeController = TextEditingController();
   bool _isActivating = false;
 
@@ -39,7 +40,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final planName = _selectedPlan == 'monthly'
         ? 'Paket Bulanan (Rp 10.000 / bln)'
         : 'Paket Tahunan (Rp 99.000 / thn)';
-    final message = 'Halo Admin Ngelamar, saya telah melakukan pembayaran untuk *Ngelamar PRO* ($planName). Mohon kirimkan *10 digit Kode Akses Aktivasi* saya. Terima kasih!';
+    final message =
+        'Halo Admin Ngelamar, saya telah melakukan pembayaran untuk *Ngelamar PRO* ($planName). Mohon kirimkan kode aktivasi saya untuk diverifikasi sistem. Terima kasih!';
     final encoded = Uri.encodeComponent(message);
     final url = 'https://wa.me/$_adminWhatsAppNumber?text=$encoded';
     try {
@@ -47,11 +49,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
         await Clipboard.setData(const ClipboardData(text: '083136049987'));
-        if (mounted) AppToast.info(context, 'Nomor Admin (0831-3604-9987) disalin ke clipboard');
+        if (mounted) {
+          AppToast.info(
+            context,
+            'Nomor Admin (0831-3604-9987) disalin ke clipboard',
+          );
+        }
       }
     } catch (_) {
       await Clipboard.setData(const ClipboardData(text: '083136049987'));
-      if (mounted) AppToast.info(context, 'Nomor Admin (0831-3604-9987) disalin ke clipboard');
+      if (mounted) {
+        AppToast.info(
+          context,
+          'Nomor Admin (0831-3604-9987) disalin ke clipboard',
+        );
+      }
     }
   }
 
@@ -64,11 +76,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     }
 
     setState(() => _isActivating = true);
-    await Future.delayed(const Duration(milliseconds: 300));
+    final result = await ProVerificationService.verify(
+      code: input,
+      plan: _selectedPlan,
+    );
 
-    if (input == _validProCode) {
+    if (!mounted) return;
+    if (result.isValid && result.expiresAt != null) {
       HapticFeedback.heavyImpact();
-      await ref.read(jobProvider.notifier).activateProSubscription(plan: _selectedPlan);
+      await ref
+          .read(jobProvider.notifier)
+          .activateProSubscription(
+            plan: _selectedPlan,
+            verifiedExpiry: result.expiresAt!,
+          );
       setState(() => _isActivating = false);
       _codeController.clear();
       if (mounted) {
@@ -77,7 +98,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           icon: Icons.stars_rounded,
           iconColor: const Color(0xFFF59E0B),
           title: '🎉 Selamat! PRO Aktif',
-          content: 'Kode 10 digit valid. Seluruh fitur Ngelamar PRO (Pencatatan Unlimited, Ekspor Data, Alarm Otomatis, dan Bank Soal) kini terbuka penuh!',
+          content:
+              'Langganan Anda telah diverifikasi. Seluruh fitur Ngelamar PRO yang tersedia kini terbuka penuh.',
           primaryLabel: 'Mulai Gunakan',
           onPrimary: () => Navigator.pop(context),
         );
@@ -90,8 +112,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           context: context,
           icon: Icons.error_outline_rounded,
           iconColor: const Color(0xFFE53935),
-          title: 'Kode Aktivasi Tidak Valid',
-          content: 'Kode yang Anda masukkan tidak sesuai. Pastikan Anda telah melakukan pembayaran dan meminta kode 10 digit ke Admin via WhatsApp.',
+          title: 'Aktivasi Belum Berhasil',
+          content: result.message,
           secondaryLabel: 'Coba Lagi',
           primaryLabel: 'Chat Admin WA',
           onPrimary: () {
@@ -106,14 +128,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   final List<Map<String, dynamic>> _comparisonRows = [
     {
       'feature': 'Pencatatan Lamaran',
-      'free': 'Maks. 10 Lamaran',
+      'free': 'Pencatatan dasar',
       'pro': 'Unlimited (Tanpa Batas)',
       'isProOnly': false,
     },
     {
       'feature': 'Alarm Pengingat Seleksi',
-      'free': 'Manual',
-      'pro': 'Otomatis Real-Time di HP',
+      'free': 'Otomatis saat jadwal dibuat',
+      'pro': 'Otomatis saat jadwal dibuat',
       'isProOnly': false,
     },
     {
@@ -135,16 +157,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       'isProOnly': false,
     },
     {
-      'feature': 'Impor & Ekspor Data Excel (.xlsx)',
-      'free': 'Tidak Tersedia',
-      'pro': 'Penuh Tanpa Batas 📊',
-      'isProOnly': true,
+      'feature': 'Backup Data JSON',
+      'free': 'Bagikan backup data',
+      'pro': 'Bagikan backup data',
+      'isProOnly': false,
     },
     {
-      'feature': 'Mode Gelap Eksklusif (Dark Mode OLED)',
-      'free': 'Standar',
-      'pro': 'Tersedia Premium 🌙',
-      'isProOnly': true,
+      'feature': 'Mode Gelap',
+      'free': 'Tersedia',
+      'pro': 'Tersedia',
+      'isProOnly': false,
     },
     {
       'feature': 'Badge Profil & Status Eksklusif',
@@ -166,23 +188,33 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         ? 'Paket Bulanan (Rp 10.000 / bln)'
         : 'Paket Tahunan (Rp 99.000 / thn)';
 
-    final message = 'Halo Admin Ngelamar, saya ingin berlangganan *Ngelamar PRO* dengan pilihan *$planName*. Mohon panduan pembayarannya. Terima kasih!';
+    final message =
+        'Halo Admin Ngelamar, saya ingin berlangganan *Ngelamar PRO* dengan pilihan *$planName*. Mohon panduan pembayarannya. Terima kasih!';
     final encodedMessage = Uri.encodeComponent(message);
     final waUrl = 'https://wa.me/$_adminWhatsAppNumber?text=$encodedMessage';
 
     try {
       final uri = Uri.parse(waUrl);
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched && mounted) {
         await Clipboard.setData(const ClipboardData(text: '083136049987'));
         if (mounted) {
-          AppToast.info(context, 'Nomor Admin (+62 831-3604-9987) disalin ke clipboard');
+          AppToast.info(
+            context,
+            'Nomor Admin (+62 831-3604-9987) disalin ke clipboard',
+          );
         }
       }
     } catch (e) {
       await Clipboard.setData(const ClipboardData(text: '083136049987'));
       if (mounted) {
-        AppToast.info(context, 'Nomor Admin (+62 831-3604-9987) disalin ke clipboard');
+        AppToast.info(
+          context,
+          'Nomor Admin (+62 831-3604-9987) disalin ke clipboard',
+        );
       }
     }
   }
@@ -194,15 +226,25 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       icon: Icons.warning_amber_rounded,
       iconColor: const Color(0xFFE53935),
       title: 'Batalkan Langganan PRO?',
-      content: 'Akses fitur eksklusif PRO Anda akan dinonaktifkan kembali ke versi Free.',
+      content:
+          'Akses fitur eksklusif PRO Anda akan dinonaktifkan kembali ke versi Free.',
       secondaryLabel: 'Tetap Berlangganan',
       primaryLabel: 'Ya, Batalkan',
       isDestructive: true,
       onPrimary: () async {
         Navigator.pop(context);
-        await ref.read(jobProvider.notifier).cancelProSubscription();
-        if (mounted) {
-          AppToast.warning(context, 'Langganan PRO telah dinonaktifkan');
+        try {
+          await ref.read(jobProvider.notifier).cancelProSubscription();
+          if (mounted) {
+            AppToast.warning(context, 'Langganan PRO telah dinonaktifkan');
+          }
+        } catch (_) {
+          if (mounted) {
+            AppToast.error(
+              context,
+              'Pembatalan belum tersimpan. Periksa koneksi internet.',
+            );
+          }
         }
       },
     );
@@ -217,7 +259,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     final expiryStr = state.proExpiryDate != null
-        ? DateFormat('dd MMMM yyyy, HH:mm', 'id_ID').format(state.proExpiryDate!)
+        ? DateFormat(
+            'dd MMMM yyyy, HH:mm',
+            'id_ID',
+          ).format(state.proExpiryDate!)
         : 'Aktif';
 
     return Scaffold(
@@ -242,11 +287,18 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: const Color(0xFFE5E0D5)),
                       ),
-                      child: const Icon(Icons.arrow_back_rounded, color: Color(0xFF121214), size: 20),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Color(0xFF121214),
+                        size: 20,
+                      ),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF19191B),
                       borderRadius: BorderRadius.circular(16),
@@ -254,11 +306,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.workspace_premium_rounded, size: 14, color: Color(0xFFFFD54F)),
+                        Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 14,
+                          color: Color(0xFFFFD54F),
+                        ),
                         SizedBox(width: 5),
                         Text(
                           'NGELAMAR PRO',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.5),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ],
                     ),
@@ -278,10 +339,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                     // ── MASCOT SEAMLESS ON BACKGROUND CANVAS (NO BOX / NO BORDER) ──
                     const Center(
-                      child: ProKingEnvelopeMascot(
-                        width: 175,
-                        height: 130,
-                      ),
+                      child: ProKingEnvelopeMascot(width: 175, height: 130),
                     ),
 
                     const SizedBox(height: 12),
@@ -337,28 +395,51 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.verified_rounded, color: Color(0xFFF59E0B), size: 20),
+                                Icon(
+                                  Icons.verified_rounded,
+                                  color: Color(0xFFF59E0B),
+                                  size: 20,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Status Langganan Aktif',
-                                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
                             Text(
                               'Aktif hingga: $expiryStr',
-                              style: TextStyle(color: Colors.grey.shade300, fontSize: 12.5),
+                              style: TextStyle(
+                                color: Colors.grey.shade300,
+                                fontSize: 12.5,
+                              ),
                             ),
                             const SizedBox(height: 14),
                             OutlinedButton(
                               onPressed: _confirmCancelSubscription,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.red.shade200,
-                                side: BorderSide(color: Colors.red.shade400.withValues(alpha: 0.6)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                side: BorderSide(
+                                  color: Colors.red.shade400.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
-                              child: const Text('Batalkan Langganan', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                'Batalkan Langganan',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -401,7 +482,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFE5E0D5), width: 1.2),
+                        border: Border.all(
+                          color: const Color(0xFFE5E0D5),
+                          width: 1.2,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.04),
@@ -415,7 +499,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.compare_arrows_rounded, size: 18, color: Color(0xFF121214)),
+                              Icon(
+                                Icons.compare_arrows_rounded,
+                                size: 18,
+                                color: Color(0xFF121214),
+                              ),
                               SizedBox(width: 8),
                               Text(
                                 'Perbandingan Free vs PRO',
@@ -431,7 +519,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                           // Table Header
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(12),
@@ -440,15 +531,38 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               children: [
                                 Expanded(
                                   flex: 4,
-                                  child: Text('Fitur', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF475569))),
+                                  child: Text(
+                                    'Fitur',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
                                 ),
                                 Expanded(
                                   flex: 3,
-                                  child: Text('Free', textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Color(0xFF475569))),
+                                  child: Text(
+                                    'Free',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF475569),
+                                    ),
+                                  ),
                                 ),
                                 Expanded(
                                   flex: 4,
-                                  child: Text('PRO 👑', textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+                                  child: Text(
+                                    'PRO 👑',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -459,7 +573,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           // Table Rows
                           ..._comparisonRows.map((row) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 10,
+                              ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
@@ -467,7 +584,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     flex: 4,
                                     child: Text(
                                       row['feature'] as String,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1E293B),
+                                      ),
                                     ),
                                   ),
                                   Expanded(
@@ -475,13 +596,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     child: Text(
                                       row['free'] as String,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF64748B),
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                   Expanded(
                                     flex: 4,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFDCFCE7),
                                         borderRadius: BorderRadius.circular(8),
@@ -489,7 +617,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                       child: Text(
                                         row['pro'] as String,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF15803D)),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF15803D),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -504,13 +636,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     const SizedBox(height: 18),
 
                     // ── KARTU AKTIVASI 10 DIGIT KODE AKSES PRO ──
-                    if (!isPro) ...[
+                    if (!isPro && _proActivationAvailable) ...[
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFAF7F2),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFF19191B), width: 1.8),
+                          border: Border.all(
+                            color: const Color(0xFF19191B),
+                            width: 1.8,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.06),
@@ -530,12 +665,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     color: const Color(0xFF5C44E4),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(Icons.key_rounded, color: Colors.white, size: 20),
+                                  child: const Icon(
+                                    Icons.key_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 const Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Aktivasi Kode Akses PRO',
@@ -548,7 +688,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                       ),
                                       Text(
                                         'Masukkan 10 digit kode yang diberikan Admin',
-                                        style: TextStyle(fontSize: 11.5, color: Color(0xFF555558)),
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: Color(0xFF555558),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -563,26 +706,31 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE5E0D5)),
+                                border: Border.all(
+                                  color: const Color(0xFFE5E0D5),
+                                ),
                               ),
                               child: Column(
                                 children: [
                                   _buildActivationStep(
                                     step: '1',
                                     title: 'Lakukan Pembayaran',
-                                    desc: 'Pilih paket lalu transfer via WhatsApp Admin resmi.',
+                                    desc:
+                                        'Pilih paket lalu transfer via WhatsApp Admin resmi.',
                                   ),
                                   const Divider(height: 14, thickness: 0.8),
                                   _buildActivationStep(
                                     step: '2',
                                     title: 'Minta Kode Aktivasi',
-                                    desc: 'Kirim bukti bayar ke Admin untuk menerima 10 digit kode.',
+                                    desc:
+                                        'Kirim bukti bayar ke Admin untuk menerima 10 digit kode.',
                                   ),
                                   const Divider(height: 14, thickness: 0.8),
                                   _buildActivationStep(
                                     step: '3',
                                     title: 'Input & Akses Fitur',
-                                    desc: 'Ketik 10 digit kode di bawah lalu tekan tombol Aktifkan.',
+                                    desc:
+                                        'Ketik 10 digit kode di bawah lalu tekan tombol Aktifkan.',
                                   ),
                                 ],
                               ),
@@ -616,18 +764,30 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                 filled: true,
                                 fillColor: Colors.white,
                                 counterText: '',
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.4),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF19191B),
+                                    width: 1.4,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: Color(0xFF19191B), width: 1.4),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF19191B),
+                                    width: 1.4,
+                                  ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  borderSide: const BorderSide(color: Color(0xFF5C44E4), width: 2.2),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF5C44E4),
+                                    width: 2.2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -639,22 +799,36 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               width: double.infinity,
                               height: 48,
                               child: ElevatedButton(
-                                onPressed: _isActivating ? null : _activateWithCode,
+                                onPressed: _isActivating
+                                    ? null
+                                    : _activateWithCode,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF5C44E4),
                                   foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
                                 child: _isActivating
-                                    ? const CupertinoActivityIndicator(color: Colors.white)
+                                    ? const CupertinoActivityIndicator(
+                                        color: Colors.white,
+                                      )
                                     : const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.check_circle_rounded, size: 18, color: Colors.white),
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
                                           SizedBox(width: 8),
                                           Text(
                                             'Aktifkan PRO Sekarang ✨',
-                                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -668,7 +842,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               width: double.infinity,
                               child: TextButton.icon(
                                 onPressed: _requestAdminCodeViaWhatsApp,
-                                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF25D366)),
+                                icon: const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 16,
+                                  color: Color(0xFF25D366),
+                                ),
                                 label: const Text(
                                   'Minta / Konfirmasi Kode ke Admin (WhatsApp)',
                                   style: TextStyle(
@@ -688,28 +866,45 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                     // WhatsApp Contact Direct Notice
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF25D366).withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: const Color(0xFF25D366).withValues(alpha: 0.3),
+                        ),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 22),
+                          Icon(
+                            Icons.chat_rounded,
+                            color: Color(0xFF25D366),
+                            size: 22,
+                          ),
                           SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Aktivasi Langsung via WhatsApp',
-                                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF121214)),
+                                  'Aktivasi Dilindungi Supabase',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF121214),
+                                  ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Nomor Resmi: 0831-3604-9987. Pembayaran via QRIS, Transfer Bank, atau E-Wallet.',
-                                  style: TextStyle(fontSize: 11.5, color: Color(0xFF555558), height: 1.3),
+                                  'Kode diverifikasi oleh database dan hanya dapat digunakan sesuai paket serta masa aktifnya.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Color(0xFF555558),
+                                    height: 1.3,
+                                  ),
                                 ),
                               ],
                             ),
@@ -723,9 +918,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             ),
 
             // ── BOTTOM FLOATING CTA (WHATSAPP REDIRECTION) ──
-            if (!isPro)
+            if (!isPro && _proActivationAvailable)
               Container(
-                padding: EdgeInsets.fromLTRB(20, 10, 20, bottomInset > 0 ? bottomInset + 12 : 20),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  10,
+                  20,
+                  bottomInset > 0 ? bottomInset + 12 : 20,
+                ),
                 decoration: BoxDecoration(
                   color: bg,
                   boxShadow: [
@@ -745,18 +945,28 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       backgroundColor: const Color(0xFF25D366),
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           _selectedPlan == 'monthly'
                               ? 'Beli via WhatsApp — Rp 10.000 / bln'
                               : 'Beli via WhatsApp — Rp 99.000 / thn',
-                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                       ],
                     ),
@@ -789,7 +999,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           color: isSelected ? const Color(0xFF19191B) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF19191B) : const Color(0xFFE5E0D5),
+            color: isSelected
+                ? const Color(0xFF19191B)
+                : const Color(0xFFE5E0D5),
             width: isSelected ? 2 : 1.2,
           ),
           boxShadow: isSelected
@@ -808,7 +1020,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFFF59E0B) : const Color(0xFFF3EEFF),
+                color: isSelected
+                    ? const Color(0xFFF59E0B)
+                    : const Color(0xFFF3EEFF),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -816,7 +1030,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
-                  color: isSelected ? const Color(0xFF121214) : const Color(0xFF5C44E4),
+                  color: isSelected
+                      ? const Color(0xFF121214)
+                      : const Color(0xFF5C44E4),
                 ),
               ),
             ),
@@ -826,7 +1042,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.grey.shade300 : const Color(0xFF555558),
+                color: isSelected
+                    ? Colors.grey.shade300
+                    : const Color(0xFF555558),
               ),
             ),
             const SizedBox(height: 4),
@@ -848,7 +1066,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.grey.shade400 : Colors.grey.shade600,
+                    color: isSelected
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
                   ),
                 ),
               ],

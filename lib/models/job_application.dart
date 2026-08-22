@@ -4,14 +4,16 @@ class JobApplication {
   final String id;
   final String companyName;
   final String position;
-  final String status; // 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
+  final String
+  status; // 'Contoh', 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
   final DateTime appliedDate;
   final String? salaryOffered; // Contoh: "Rp 18.000.000 - Rp 25.000.000"
   final int? minSalary; // Numeric value untuk sorting / filtering
   final int? maxSalary;
   final String workType; // 'WFO', 'WFH', 'Hybrid'
   final String? location;
-  final String? jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
+  final String?
+  jobSource; // 'LinkedIn', 'Glints', 'JobStreet', 'Kalibrr', 'Email', 'Lainnya'
   final String sourcePlatform; // 'Manual', 'Glints', 'JobStreet', 'LinkedIn'
   final String? jobUrl; // URL postingan asli dari portal lowongan
   final String jobDescription; // Snapshot deskripsi/kualifikasi awal
@@ -20,8 +22,10 @@ class JobApplication {
   final DateTime? interviewDate; // Tanggal Wawancara / Interview
   final String? notes;
   final bool isFavorite; // Status bookmark / simpan
+  final bool isSampleData; // Data tutorial yang tidak boleh mengubah status.
   final String? screenshotPath; // Path file lampiran screenshot poster loker
-  final String? companyLogoPath; // Path file custom logo / foto perusahaan yang diunggah
+  final String?
+  companyLogoPath; // Path file custom logo / foto perusahaan yang diunggah
 
   JobApplication({
     required this.id,
@@ -32,7 +36,7 @@ class JobApplication {
     this.salaryOffered,
     this.minSalary,
     this.maxSalary,
-    required this.workType,
+    required String workType,
     this.location,
     this.jobSource,
     this.sourcePlatform = 'Manual',
@@ -43,12 +47,30 @@ class JobApplication {
     this.interviewDate,
     this.notes,
     this.isFavorite = false,
+    this.isSampleData = false,
     this.screenshotPath,
     this.companyLogoPath,
-  });
+  }) : workType = normalizeWorkType(workType);
 
   bool get needsFollowup =>
       status == 'Dikirim' && DateTime.now().difference(appliedDate).inDays >= 7;
+
+  static String normalizeWorkType(String? rawWorkType) {
+    switch (rawWorkType?.trim().toLowerCase()) {
+      case 'wfh':
+      case 'remote':
+      case 'work from home':
+        return 'WFH';
+      case 'hybrid':
+        return 'Hybrid';
+      case 'on-site':
+      case 'onsite':
+      case 'on site':
+      case 'wfo':
+      default:
+        return 'WFO';
+    }
+  }
 
   JobApplication copyWith({
     String? id,
@@ -70,6 +92,7 @@ class JobApplication {
     DateTime? interviewDate,
     String? notes,
     bool? isFavorite,
+    bool? isSampleData,
     String? screenshotPath,
     String? companyLogoPath,
   }) {
@@ -93,6 +116,7 @@ class JobApplication {
       interviewDate: interviewDate ?? this.interviewDate,
       notes: notes ?? this.notes,
       isFavorite: isFavorite ?? this.isFavorite,
+      isSampleData: isSampleData ?? this.isSampleData,
       screenshotPath: screenshotPath ?? this.screenshotPath,
       companyLogoPath: companyLogoPath ?? this.companyLogoPath,
     );
@@ -108,7 +132,7 @@ class JobApplication {
       'salaryOffered': salaryOffered,
       'minSalary': minSalary,
       'maxSalary': maxSalary,
-      'workType': workType,
+      'workType': normalizeWorkType(workType),
       'location': location,
       'jobSource': jobSource,
       'sourcePlatform': sourcePlatform,
@@ -119,6 +143,7 @@ class JobApplication {
       'interviewDate': interviewDate?.toIso8601String(),
       'notes': notes,
       'isFavorite': isFavorite,
+      'isSampleData': isSampleData,
       'screenshotPath': screenshotPath,
       'companyLogoPath': companyLogoPath,
     };
@@ -126,7 +151,9 @@ class JobApplication {
 
   factory JobApplication.fromMap(Map<String, dynamic> map) {
     final rawStatus = map['status'] ?? 'Dikirim';
-    final cleanStatus = rawStatus == 'HR Screening' ? 'Interview HR' : rawStatus;
+    final cleanStatus = rawStatus == 'HR Screening'
+        ? 'Interview HR'
+        : rawStatus;
 
     return JobApplication(
       id: map['id'] ?? '',
@@ -139,19 +166,22 @@ class JobApplication {
       salaryOffered: map['salaryOffered'],
       minSalary: map['minSalary'] is int ? map['minSalary'] : null,
       maxSalary: map['maxSalary'] is int ? map['maxSalary'] : null,
-      workType: map['workType'] ?? 'WFO',
+      workType: normalizeWorkType(map['workType']?.toString()),
       location: map['location'],
       jobSource: map['jobSource'],
       sourcePlatform: map['sourcePlatform'] ?? 'Manual',
       jobUrl: map['jobUrl'],
       jobDescription: map['jobDescription'] ?? '',
       hrContact: map['hrContact'],
-      testDate: map['testDate'] != null ? DateTime.tryParse(map['testDate']) : null,
+      testDate: map['testDate'] != null
+          ? DateTime.tryParse(map['testDate'])
+          : null,
       interviewDate: map['interviewDate'] != null
           ? DateTime.tryParse(map['interviewDate'])
           : null,
       notes: map['notes'],
       isFavorite: map['isFavorite'] ?? false,
+      isSampleData: map['isSampleData'] ?? false,
       screenshotPath: map['screenshotPath'],
       companyLogoPath: map['companyLogoPath'],
     );

@@ -20,161 +20,145 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF111113),
-      body: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 12),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF111113),
+        body: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 12),
 
-              // Top Bar with Fluid Bounce Back Button
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  FluidBounceButton(
-                    onTap: () => _handleClose(context),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E22),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF2E2E34)),
-                      ),
-                      child: const Icon(CupertinoIcons.chevron_back, color: Colors.white, size: 20),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5C44E4).withValues(alpha: 0.20),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF5C44E4).withValues(alpha: 0.40)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school_rounded, size: 14, color: Color(0xFFA78BFA)),
-                        SizedBox(width: 6),
-                        Text(
-                          'Persiapan Karir',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFA78BFA),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 42), // Balanced spacer
-                ],
-              ),
-
-              const Spacer(),
-
-              // Large Prep Mascot (Seamless without box/border)
-              const Center(
-                child: CareerPrepMascot(
-                  width: 265,
-                  height: 190,
-                ),
-              ),
-
-              const Spacer(),
-
-              // Simple Headline with 1 Purple Keyword
-              RichText(
-                textAlign: TextAlign.center,
-                text: const TextSpan(
+                // Top Bar with Fluid Bounce Back Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextSpan(
-                      text: 'Kuasai Tahapan ',
-                      style: TextStyle(
-                        fontSize: 27,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.8,
-                        height: 1.15,
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'Seleksi',
-                      style: TextStyle(
-                        fontSize: 27,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFA78BFA),
-                        letterSpacing: -0.8,
-                        height: 1.15,
+                    FluidBounceButton(
+                      onTap: () => _handleClose(context),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E22),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF303036)),
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.chevron_down,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: 8),
+                const Spacer(),
 
-              // Simple 1-sentence explanation
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Siapkan checklist berkas ATS, latihan interview metode STAR, dan simulasi gaji UMR.',
+                // Large Prep Mascot (Seamless without box/border)
+                const Center(child: CareerPrepMascot(width: 265, height: 190)),
+
+                const Spacer(),
+
+                // Simple Headline with 1 Purple Keyword
+                RichText(
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    height: 1.45,
-                    color: Color(0xFFA1A1AA),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Fluid Action Button
-              FluidBounceButton(
-                onTap: () => _handleClose(context),
-                child: Container(
-                  width: double.infinity,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5C44E4),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF5C44E4).withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Kuasai Tahapan ',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: -1.1,
+                          height: 1.08,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Seleksi',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFF8BA38),
+                          letterSpacing: -1.1,
+                          height: 1.08,
+                        ),
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Mulai Latihan Sekarang',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                      ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Simple 1-sentence explanation
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'Siapkan checklist berkas ATS, latihan interview metode STAR, dan simulasi gaji UMR.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.55,
+                      color: Color(0xFFE0D2AF),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-              ),
 
-              SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
-            ],
+                const SizedBox(height: 20),
+
+                // Fluid Action Button
+                FluidBounceButton(
+                  onTap: () => _handleClose(context),
+                  child: Container(
+                    width: double.infinity,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8BA38),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFFF8BA38,
+                          ).withValues(alpha: 0.38),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Mulai Latihan Sekarang',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF19130A),
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Color(0xFF19130A),
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
+              ],
+            ),
           ),
         ),
       ),

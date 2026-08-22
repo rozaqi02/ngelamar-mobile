@@ -25,14 +25,19 @@ class AppDialog {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           child: Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E22) : Colors.white,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: isDark ? const Color(0xFF333338) : const Color(0xFFE5E0D5),
+                color: isDark
+                    ? const Color(0xFF333338)
+                    : const Color(0xFFE5E0D5),
                 width: 1.2,
               ),
               boxShadow: [
@@ -51,7 +56,9 @@ class AppDialog {
                     width: 54,
                     height: 54,
                     decoration: BoxDecoration(
-                      color: (iconColor ?? const Color(0xFF5C44E4)).withValues(alpha: 0.14),
+                      color: (iconColor ?? const Color(0xFF5C44E4)).withValues(
+                        alpha: 0.14,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -98,19 +105,27 @@ class AppDialog {
                         child: SizedBox(
                           height: 46,
                           child: OutlinedButton(
-                            onPressed: onSecondary ?? () => Navigator.pop(ctx, false),
+                            onPressed:
+                                onSecondary ?? () => Navigator.pop(ctx, false),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                color: isDark ? const Color(0xFF44444A) : const Color(0xFFDCD8CE),
+                                color: isDark
+                                    ? const Color(0xFF44444A)
+                                    : const Color(0xFFDCD8CE),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              foregroundColor: isDark ? Colors.white70 : const Color(0xFF121214),
+                              foregroundColor: isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF121214),
                             ),
                             child: Text(
                               secondaryLabel,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                              ),
                             ),
                           ),
                         ),
@@ -121,7 +136,8 @@ class AppDialog {
                       child: SizedBox(
                         height: 46,
                         child: ElevatedButton(
-                          onPressed: onPrimary ?? () => Navigator.pop(ctx, true),
+                          onPressed:
+                              onPrimary ?? () => Navigator.pop(ctx, true),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDestructive
                                 ? const Color(0xFFE53935)
@@ -134,7 +150,10 @@ class AppDialog {
                           ),
                           child: Text(
                             primaryLabel,
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ),

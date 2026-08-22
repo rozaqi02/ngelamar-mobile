@@ -178,10 +178,6 @@ class _ConfusedMascotPainter extends CustomPainter {
       ..lineTo(54, -38);
     canvas.drawPath(foldPath, foldPaint);
 
-    // Golden wax seal
-    canvas.drawCircle(const Offset(0, 6), 6, Paint()..color = const Color(0xFFF8BA38));
-    canvas.drawCircle(const Offset(0, 6), 6, borderPaint..strokeWidth = 1.5);
-
     // ── 3. CONFUSED / WONDERING FACE ──
     // Eyes looking up-left and around
     final lookX = math.cos(t) * 2.5;
@@ -192,7 +188,11 @@ class _ConfusedMascotPainter extends CustomPainter {
     // Left Eye (Raised eyebrow above it)
     final leftEye = const Offset(-20, -7);
     canvas.drawCircle(leftEye, 5.0, eyeBasePaint);
-    canvas.drawCircle(Offset(leftEye.dx + lookX, leftEye.dy + lookY), 1.8, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      Offset(leftEye.dx + lookX, leftEye.dy + lookY),
+      1.8,
+      Paint()..color = Colors.white,
+    );
 
     // Raised curved left eyebrow (surprised/curious)
     final leftEyebrow = Path()
@@ -210,7 +210,11 @@ class _ConfusedMascotPainter extends CustomPainter {
     // Right Eye (Worried/wondering lowered eyebrow)
     final rightEye = const Offset(20, -7);
     canvas.drawCircle(rightEye, 5.0, eyeBasePaint);
-    canvas.drawCircle(Offset(rightEye.dx + lookX, rightEye.dy + lookY), 1.8, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      Offset(rightEye.dx + lookX, rightEye.dy + lookY),
+      1.8,
+      Paint()..color = Colors.white,
+    );
 
     // Wondering right eyebrow
     final rightEyebrow = Path()
@@ -229,8 +233,14 @@ class _ConfusedMascotPainter extends CustomPainter {
     final blushPaint = Paint()
       ..color = const Color(0xFFFF8A80).withValues(alpha: 0.45)
       ..style = PaintingStyle.fill;
-    canvas.drawOval(Rect.fromCenter(center: const Offset(-25, 3), width: 9, height: 5), blushPaint);
-    canvas.drawOval(Rect.fromCenter(center: const Offset(25, 3), width: 9, height: 5), blushPaint);
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(-25, 3), width: 9, height: 5),
+      blushPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(25, 3), width: 9, height: 5),
+      blushPaint,
+    );
 
     // Wavy Confused Mouth (Squiggly `~`)
     final mouthPath = Path()
@@ -273,7 +283,14 @@ class _ConfusedMascotPainter extends CustomPainter {
     // Magnifying Glass
     final glassCenter = const Offset(74, 18);
     // Glass handle
-    canvas.drawLine(const Offset(62, 24), glassCenter, Paint()..color = const Color(0xFF19191B)..strokeWidth = 3.5..strokeCap = StrokeCap.round);
+    canvas.drawLine(
+      const Offset(62, 24),
+      glassCenter,
+      Paint()
+        ..color = const Color(0xFF19191B)
+        ..strokeWidth = 3.5
+        ..strokeCap = StrokeCap.round,
+    );
     // Glass rim
     final glassRimPaint = Paint()
       ..color = const Color(0xFF5C44E4)
@@ -281,7 +298,11 @@ class _ConfusedMascotPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawCircle(glassCenter, 9, glassRimPaint);
     // Glass lens fill (light blue transparent)
-    canvas.drawCircle(glassCenter, 7.5, Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.35));
+    canvas.drawCircle(
+      glassCenter,
+      7.5,
+      Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.35),
+    );
 
     canvas.restore(); // Restore tilted body
 
@@ -341,7 +362,10 @@ class _ConfusedMascotPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    textPainter.paint(canvas, Offset(-textPainter.width / 2, -textPainter.height / 2));
+    textPainter.paint(
+      canvas,
+      Offset(-textPainter.width / 2, -textPainter.height / 2),
+    );
     canvas.restore();
   }
 

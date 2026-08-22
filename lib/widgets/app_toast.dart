@@ -55,9 +55,7 @@ class AppToast {
                   color: color.withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Icon(icon, color: color, size: 18),
-                ),
+                child: Center(child: Icon(icon, color: color, size: 18)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -100,7 +98,10 @@ class AppToast {
                     onAction();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),

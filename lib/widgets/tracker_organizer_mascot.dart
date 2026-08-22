@@ -175,11 +175,19 @@ class _TrackerOrganizerMascotPainter extends CustomPainter {
     // ── 4. KAWAII FACE (BIG BRIGHT EYES & SMILE) ──
     // Left Eye
     canvas.drawCircle(Offset(-18 * scale, -4 * scale), 5.2 * scale, blackFill);
-    canvas.drawCircle(Offset(-16.5 * scale, -5.5 * scale), 1.8 * scale, bodyPaint); // Catchlight
+    canvas.drawCircle(
+      Offset(-16.5 * scale, -5.5 * scale),
+      1.8 * scale,
+      bodyPaint,
+    ); // Catchlight
 
     // Right Eye
     canvas.drawCircle(Offset(18 * scale, -4 * scale), 5.2 * scale, blackFill);
-    canvas.drawCircle(Offset(19.5 * scale, -5.5 * scale), 1.8 * scale, bodyPaint); // Catchlight
+    canvas.drawCircle(
+      Offset(19.5 * scale, -5.5 * scale),
+      1.8 * scale,
+      bodyPaint,
+    ); // Catchlight
 
     // Cute Cheerful Smile (U-shape)
     final mouthPath = Path()
@@ -208,7 +216,11 @@ class _TrackerOrganizerMascotPainter extends CustomPainter {
 
     // Folder Shape
     final folderRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset.zero, width: 34 * scale, height: 42 * scale),
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: 34 * scale,
+        height: 42 * scale,
+      ),
       Radius.circular(6 * scale),
     );
     canvas.drawRRect(folderRect, Paint()..color = const Color(0xFFF3EEFF));
@@ -260,7 +272,12 @@ class _TrackerOrganizerMascotPainter extends CustomPainter {
     // Thumb pointing up
     final thumbPath = Path()
       ..moveTo(handCenter.dx - 2 * scale, handCenter.dy - 4 * scale)
-      ..quadraticBezierTo(handCenter.dx, handCenter.dy - 12 * scale, handCenter.dx + 4 * scale, handCenter.dy - 10 * scale)
+      ..quadraticBezierTo(
+        handCenter.dx,
+        handCenter.dy - 12 * scale,
+        handCenter.dx + 4 * scale,
+        handCenter.dy - 10 * scale,
+      )
       ..lineTo(handCenter.dx + 2 * scale, handCenter.dy - 2 * scale);
     canvas.drawPath(thumbPath, bodyPaint);
     canvas.drawPath(thumbPath, strokePaint);
@@ -269,8 +286,16 @@ class _TrackerOrganizerMascotPainter extends CustomPainter {
     final sparklePaint = Paint()
       ..color = const Color(0xFFFBBF24)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(handCenter.dx + 12 * scale, handCenter.dy - 12 * scale), 2.5 * scale, sparklePaint);
-    canvas.drawCircle(Offset(handCenter.dx + 6 * scale, handCenter.dy - 20 * scale), 1.8 * scale, sparklePaint);
+    canvas.drawCircle(
+      Offset(handCenter.dx + 12 * scale, handCenter.dy - 12 * scale),
+      2.5 * scale,
+      sparklePaint,
+    );
+    canvas.drawCircle(
+      Offset(handCenter.dx + 6 * scale, handCenter.dy - 20 * scale),
+      1.8 * scale,
+      sparklePaint,
+    );
 
     canvas.restore();
 

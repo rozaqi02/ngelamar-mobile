@@ -56,6 +56,7 @@ class FluidBounceButton extends StatefulWidget {
   final VoidCallback? onTap;
   final double scaleFactor;
   final Duration duration;
+  final bool hapticEnabled;
 
   const FluidBounceButton({
     super.key,
@@ -63,6 +64,7 @@ class FluidBounceButton extends StatefulWidget {
     this.onTap,
     this.scaleFactor = 0.935,
     this.duration = const Duration(milliseconds: 130),
+    this.hapticEnabled = true,
   });
 
   @override
@@ -76,15 +78,21 @@ class _FluidBounceButtonState extends State<FluidBounceButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) {
-        HapticFeedback.selectionClick();
-        setState(() => _isPressed = true);
-      },
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onTap?.call();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
+      onTapDown: widget.onTap == null
+          ? null
+          : (_) {
+              if (widget.hapticEnabled) HapticFeedback.selectionClick();
+              setState(() => _isPressed = true);
+            },
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) {
+              setState(() => _isPressed = false);
+              widget.onTap?.call();
+            },
+      onTapCancel: widget.onTap == null
+          ? null
+          : () => setState(() => _isPressed = false),
       child: AnimatedScale(
         scale: _isPressed ? widget.scaleFactor : 1.0,
         duration: widget.duration,

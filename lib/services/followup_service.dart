@@ -27,7 +27,9 @@ class FollowupService {
     required String status,
     String? hrContact,
   }) {
-    final hrName = hrContact != null && hrContact.isNotEmpty ? hrContact : 'Bapak/Ibu HRD';
+    final hrName = hrContact != null && hrContact.isNotEmpty
+        ? hrContact
+        : 'Bapak/Ibu HRD';
 
     return [
       FollowupTemplate(
@@ -128,4 +130,3 @@ class FollowupService {
     return false;
   }
 }
-

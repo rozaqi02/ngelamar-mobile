@@ -43,6 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/.kotlin/
 
 # Abaikan semua artefak Android kecuali APK distribusi di root repository.
 *.apk

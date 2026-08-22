@@ -1,9 +1,15 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/job_application.dart';
 import '../services/prefs_service.dart';
 import '../services/notification_service.dart';
+import '../services/pro_verification_service.dart';
+import '../services/secure_hive_service.dart';
 
 class JobState {
   final List<JobApplication> jobs;
@@ -49,6 +55,7 @@ class JobState {
     bool? isDarkMode,
     bool? isProUser,
     DateTime? proExpiryDate,
+    bool clearProExpiryDate = false,
     String? proPlanType,
   }) {
     return JobState(
@@ -63,7 +70,9 @@ class JobState {
       userProfilePhoto: userProfilePhoto ?? this.userProfilePhoto,
       isDarkMode: isDarkMode ?? this.isDarkMode,
       isProUser: isProUser ?? this.isProUser,
-      proExpiryDate: proExpiryDate ?? this.proExpiryDate,
+      proExpiryDate: clearProExpiryDate
+          ? null
+          : (proExpiryDate ?? this.proExpiryDate),
       proPlanType: proPlanType ?? this.proPlanType,
     );
   }
@@ -73,9 +82,7 @@ class JobState {
   int get appliedCount => jobs.where((j) => j.status == 'Dikirim').length;
   int get interviewCount => jobs
       .where(
-        (j) =>
-            j.status.contains('Interview') ||
-            j.status == 'Tes / Psikotes',
+        (j) => j.status.contains('Interview') || j.status == 'Tes / Psikotes',
       )
       .length;
   int get offeringCount => jobs.where((j) => j.status == 'Offering').length;
@@ -108,23 +115,28 @@ class JobState {
         final hr = (job.hrContact ?? '').toLowerCase();
 
         // Setiap token pencarian harus cocok dengan minimal 1 atribut
-        final allTokensMatch = queryTokens.every((token) =>
-            pos.contains(token) ||
-            comp.contains(token) ||
-            loc.contains(token) ||
-            desc.contains(token) ||
-            notes.contains(token) ||
-            hr.contains(token));
+        final allTokensMatch = queryTokens.every(
+          (token) =>
+              pos.contains(token) ||
+              comp.contains(token) ||
+              loc.contains(token) ||
+              desc.contains(token) ||
+              notes.contains(token) ||
+              hr.contains(token),
+        );
 
         if (!allTokensMatch) return false;
       }
-      if (selectedStatusFilter != 'Semua' && job.status != selectedStatusFilter) {
+      if (selectedStatusFilter != 'Semua' &&
+          job.status != selectedStatusFilter) {
         return false;
       }
       if (onlyFavoritesFilter && !job.isFavorite) {
         return false;
       }
-      if (onlyWfhFilter && job.workType != 'WFH' && !job.jobDescription.toLowerCase().contains('remote')) {
+      if (onlyWfhFilter &&
+          job.workType != 'WFH' &&
+          !job.jobDescription.toLowerCase().contains('remote')) {
         return false;
       }
       return true;
@@ -134,7 +146,11 @@ class JobState {
   /// Mengembalikan maksimal 4 lamaran prioritas untuk tumpukan kartu Beranda.
   /// Urutan prioritas: Offering / Interview / Tes ➔ Favorit ➔ Terbaru.
   List<JobApplication> get priorityJobs {
-    final baseList = (selectedStatusFilter != 'Semua' || onlyFavoritesFilter || onlyWfhFilter || searchQuery.isNotEmpty)
+    final baseList =
+        (selectedStatusFilter != 'Semua' ||
+            onlyFavoritesFilter ||
+            onlyWfhFilter ||
+            searchQuery.isNotEmpty)
         ? filteredJobs
         : jobs;
 
@@ -160,8 +176,28 @@ class JobState {
   }
 }
 
+/// Thrown when a company and position already exist in the user's tracker.
+class DuplicateJobException implements Exception {
+  final JobApplication existingJob;
+
+  const DuplicateJobException(this.existingJob);
+
+  @override
+  String toString() =>
+      'Lamaran ${existingJob.position} di ${existingJob.companyName} sudah ada.';
+}
+
+class JobImportResult {
+  final int importedCount;
+  final int skippedCount;
+
+  const JobImportResult({
+    required this.importedCount,
+    required this.skippedCount,
+  });
+}
+
 class JobNotifier extends StateNotifier<JobState> {
-  static const String _boxName = 'ngelamar_jobs_box';
   late final Future<Box<String>> _boxReady;
 
   static const List<String> stageSequence = [
@@ -178,7 +214,7 @@ class JobNotifier extends StateNotifier<JobState> {
   }
 
   Future<Box<String>> _initHiveAndLoad() async {
-    final box = await Hive.openBox<String>(_boxName);
+    final box = await SecureHiveService.openJobsBox();
     final List<JobApplication> loaded = [];
 
     for (var key in box.keys) {
@@ -193,49 +229,64 @@ class JobNotifier extends StateNotifier<JobState> {
     }
 
     final hasSeeded = await PrefsService.isInitialDataSeeded();
-    final hasDollarCurrency = loaded.any((j) => j.salaryOffered?.contains('\$') ?? false);
 
-    // Hanya isi sampel pada instalasi baru atau saat mata uang lama masih USD
-    if (!hasSeeded || hasDollarCurrency) {
-      await box.clear();
-      loaded.clear();
+    // Ganti empat seed versi lama dengan paket enam data dummy yang konsisten.
+    // ID ini hanya pernah dipakai oleh seed bawaan, bukan lamaran buatan user.
+    const legacySampleIds = {'job_goto', 'job_bca', 'job_telkom', 'job_shopee'};
+    if (loaded.any((job) => legacySampleIds.contains(job.id))) {
+      loaded.removeWhere((job) => legacySampleIds.contains(job.id));
       final samples = _generateSampleJobs();
-      for (final sample in samples) {
-        try {
-          await box.put(sample.id, sample.toJson());
-          loaded.add(sample);
-        } catch (error) {
-          debugPrint('Gagal menyimpan data sampel awal: $error');
-        }
-      }
+      loaded.addAll(samples);
+      await box.deleteAll(legacySampleIds);
+      await box.putAll({
+        for (final sample in samples) sample.id: sample.toJson(),
+      });
+    }
+
+    // Data contoh hanya boleh dimuat melalui pilihan eksplisit pada onboarding.
+    // Versi lama tidak memiliki flag ini; jangan pernah menghapus data mereka.
+    if (!hasSeeded && loaded.isNotEmpty) {
       await PrefsService.setInitialDataSeeded(true);
     }
 
     loaded.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
 
     // Muat preferensi pengguna
-    final name = await PrefsService.getUserName() ?? 'Rozaqi';
+    final name = await PrefsService.getUserName() ?? '';
     final email = await PrefsService.getUserEmail() ?? '';
     final photo = await PrefsService.getProfilePhoto() ?? '';
-    final theme = await PrefsService.getThemeMode();
-    final isPro = await PrefsService.isProSubscriber();
-    final proExpiry = await PrefsService.getProExpiryDate();
-    final proPlan = await PrefsService.getProPlanPeriod();
-
     state = state.copyWith(
       jobs: loaded,
       isLoading: false,
       userName: name,
       userEmail: email,
       userProfilePhoto: photo,
-      isDarkMode: theme == 'dark',
-      isProUser: isPro,
-      proExpiryDate: proExpiry,
-      proPlanType: proPlan,
+      // Tema PRO tidak boleh diterapkan sebelum entitlement server terverifikasi.
+      isDarkMode: false,
+      isProUser: false,
+      clearProExpiryDate: true,
+      proPlanType: 'monthly',
     );
 
+    unawaited(refreshProEntitlement());
     _syncRemindersQuietly(loaded);
     return box;
+  }
+
+  /// Refreshes PRO from Supabase. Local preferences are never trusted as an
+  /// authorization source, so any failure leaves premium features locked.
+  Future<void> refreshProEntitlement() async {
+    final entitlement = await ProVerificationService.fetchCurrentEntitlement();
+    final savedTheme = entitlement.isActive
+        ? await PrefsService.getThemeMode()
+        : 'light';
+    state = state.copyWith(
+      isProUser: entitlement.isActive,
+      isDarkMode: entitlement.isActive && savedTheme == 'dark',
+      proExpiryDate: entitlement.expiresAt,
+      clearProExpiryDate: !entitlement.isActive,
+      proPlanType: entitlement.plan,
+    );
   }
 
   void _syncRemindersQuietly(List<JobApplication> jobs) {
@@ -253,12 +304,12 @@ class JobNotifier extends StateNotifier<JobState> {
   }
 
   void _cancelReminderQuietly(String jobId) {
-    NotificationService.cancelInterviewReminder(jobId).catchError(
-      (Object error) {
-        debugPrint('Pembatalan notifikasi gagal: $error');
-        return null;
-      },
-    );
+    NotificationService.cancelInterviewReminder(jobId).catchError((
+      Object error,
+    ) {
+      debugPrint('Pembatalan notifikasi gagal: $error');
+      return null;
+    });
   }
 
   List<JobApplication> _normalizedJobs(Iterable<JobApplication> jobs) {
@@ -271,35 +322,130 @@ class JobNotifier extends StateNotifier<JobState> {
     return result;
   }
 
-  Future<void> loadSampleJobs() async {
-    final box = await _boxReady;
-    await box.clear();
-    final samples = _generateSampleJobs();
-    await box.putAll({
-      for (final sample in samples) sample.id: sample.toJson(),
-    });
-    state = state.copyWith(jobs: samples);
-    _syncRemindersQuietly(samples);
+  JobApplication? _findDuplicate(
+    JobApplication candidate, {
+    String? excludingId,
+  }) {
+    final company = candidate.companyName.trim().toLowerCase();
+    final position = candidate.position.trim().toLowerCase();
+    return state.jobs.cast<JobApplication?>().firstWhere(
+      (job) =>
+          job != null &&
+          job.id != excludingId &&
+          job.companyName.trim().toLowerCase() == company &&
+          job.position.trim().toLowerCase() == position,
+      orElse: () => null,
+    );
   }
 
-  Future<void> importJobs(List<JobApplication> newJobs) async {
+  bool _isAttachmentStillReferenced(String path, {String? excludingId}) {
+    return state.jobs.any(
+      (job) =>
+          job.id != excludingId &&
+          (job.screenshotPath == path || job.companyLogoPath == path),
+    );
+  }
+
+  Future<void> _deleteAttachmentIfUnused(
+    String? path, {
+    String? excludingId,
+  }) async {
+    if (kIsWeb || path == null || path.isEmpty) return;
+    if (_isAttachmentStillReferenced(path, excludingId: excludingId)) return;
+
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (error) {
+      debugPrint('Gagal menghapus lampiran $path: $error');
+    }
+  }
+
+  Future<void> _deleteAttachmentsForJobs(Iterable<JobApplication> jobs) async {
+    for (final job in jobs) {
+      await _deleteAttachmentIfUnused(job.screenshotPath, excludingId: job.id);
+      await _deleteAttachmentIfUnused(job.companyLogoPath, excludingId: job.id);
+    }
+  }
+
+  Future<bool> loadSampleJobs() async {
+    try {
+      final box = await _boxReady;
+      final samples = _generateSampleJobs();
+      await box.putAll({
+        for (final sample in samples) sample.id: sample.toJson(),
+      });
+      final updated = _normalizedJobs([...state.jobs, ...samples]);
+      state = state.copyWith(jobs: updated);
+      _syncRemindersQuietly(updated);
+      return true;
+    } catch (e) {
+      debugPrint('Error loading sample jobs: $e');
+      return false;
+    }
+  }
+
+  Future<JobImportResult> importJobs(List<JobApplication> newJobs) async {
     final box = await _boxReady;
-    await box.putAll({
-      for (final job in newJobs) job.id: job.toJson(),
-    });
-    final updated = _normalizedJobs([...state.jobs, ...newJobs]);
+    final accepted = <JobApplication>[];
+    final seenCompanyPositions = <String>{
+      for (final job in state.jobs) _duplicateKey(job),
+    };
+    final usedIds = <String>{for (final job in state.jobs) job.id};
+
+    for (final job in newJobs) {
+      final duplicateKey = _duplicateKey(job);
+      if (seenCompanyPositions.contains(duplicateKey)) continue;
+
+      var importedJob = job;
+      if (usedIds.contains(job.id)) {
+        importedJob = job.copyWith(
+          id: 'job_import_${DateTime.now().microsecondsSinceEpoch}_${accepted.length}',
+        );
+      }
+      accepted.add(importedJob);
+      seenCompanyPositions.add(duplicateKey);
+      usedIds.add(importedJob.id);
+    }
+
+    await box.putAll({for (final job in accepted) job.id: job.toJson()});
+    final updated = _normalizedJobs([...state.jobs, ...accepted]);
     state = state.copyWith(jobs: updated);
     _syncRemindersQuietly(updated);
+    return JobImportResult(
+      importedCount: accepted.length,
+      skippedCount: newJobs.length - accepted.length,
+    );
   }
 
-  Future<void> clearAllJobs() async {
-    final box = await _boxReady;
-    await box.clear();
-    state = state.copyWith(jobs: []);
-    await NotificationService.cancelAllInterviewReminders();
+  String _duplicateKey(JobApplication job) =>
+      '${job.companyName.trim().toLowerCase()}\u0000${job.position.trim().toLowerCase()}';
+
+  Future<void> discardUnreferencedAttachments(Iterable<String> paths) async {
+    for (final path in paths) {
+      await _deleteAttachmentIfUnused(path);
+    }
+  }
+
+  Future<bool> clearAllJobs() async {
+    try {
+      final box = await _boxReady;
+      final jobsToDelete = List<JobApplication>.from(state.jobs);
+      await box.clear();
+      state = state.copyWith(jobs: []);
+      await _deleteAttachmentsForJobs(jobsToDelete);
+      await NotificationService.cancelAllInterviewReminders();
+      return true;
+    } catch (e) {
+      debugPrint('Error clearing jobs: $e');
+      return false;
+    }
   }
 
   Future<void> addJob(JobApplication job) async {
+    final duplicate = _findDuplicate(job);
+    if (duplicate != null) throw DuplicateJobException(duplicate);
+
     final box = await _boxReady;
     await box.put(job.id, job.toJson());
     final updated = _normalizedJobs([job, ...state.jobs]);
@@ -309,15 +455,8 @@ class JobNotifier extends StateNotifier<JobState> {
 
   /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet) dengan proteksi anti-duplikasi.
   Future<JobApplication> saveFromSearchEngine(JobApplication searchJob) async {
-    final existingIndex = state.jobs.indexWhere(
-      (j) =>
-          j.companyName.trim().toLowerCase() == searchJob.companyName.trim().toLowerCase() &&
-          j.position.trim().toLowerCase() == searchJob.position.trim().toLowerCase(),
-    );
-
-    if (existingIndex != -1) {
-      return state.jobs[existingIndex];
-    }
+    final duplicate = _findDuplicate(searchJob);
+    if (duplicate != null) return duplicate;
 
     final now = DateTime.now();
     final newJob = searchJob.copyWith(
@@ -343,12 +482,26 @@ class JobNotifier extends StateNotifier<JobState> {
   }
 
   Future<void> updateJob(JobApplication job) async {
+    final existing = state.jobs.where((item) => item.id == job.id).firstOrNull;
+    if (existing == null) {
+      throw StateError('Lamaran yang ingin diperbarui tidak ditemukan.');
+    }
+    final duplicate = _findDuplicate(job, excludingId: job.id);
+    if (duplicate != null) throw DuplicateJobException(duplicate);
+
     final box = await _boxReady;
     await box.put(job.id, job.toJson());
     final updated = _normalizedJobs(
       state.jobs.map((j) => j.id == job.id ? job : j),
     );
     state = state.copyWith(jobs: updated);
+
+    if (existing.screenshotPath != job.screenshotPath) {
+      await _deleteAttachmentIfUnused(existing.screenshotPath);
+    }
+    if (existing.companyLogoPath != job.companyLogoPath) {
+      await _deleteAttachmentIfUnused(existing.companyLogoPath);
+    }
 
     if (job.status == 'Ditolak' ||
         job.status == 'Diterima' ||
@@ -360,10 +513,13 @@ class JobNotifier extends StateNotifier<JobState> {
   }
 
   Future<void> deleteJob(String id) async {
+    final job = state.jobs.where((item) => item.id == id).firstOrNull;
+    if (job == null) return;
     final box = await _boxReady;
     await box.delete(id);
     final updated = state.jobs.where((j) => j.id != id).toList();
     state = state.copyWith(jobs: updated);
+    await _deleteAttachmentsForJobs([job]);
     _cancelReminderQuietly(id);
   }
 
@@ -375,6 +531,7 @@ class JobNotifier extends StateNotifier<JobState> {
 
   Future<void> updateStatus(String id, String status) async {
     final job = state.jobs.firstWhere((j) => j.id == id);
+    if (job.isSampleData) return;
     final updated = job.copyWith(status: status);
     await updateJob(updated);
   }
@@ -414,134 +571,194 @@ class JobNotifier extends StateNotifier<JobState> {
     state = state.copyWith(userEmail: email);
   }
 
-  Future<void> setUserProfilePhoto(String path) async {
-    await PrefsService.setProfilePhoto(path);
-    state = state.copyWith(userProfilePhoto: path);
+  Future<void> setUserProfilePhoto(String sourcePath) async {
+    var profilePhotoPath = sourcePath;
+    if (!kIsWeb && sourcePath.isNotEmpty) {
+      final sourceFile = File(sourcePath);
+      if (!await sourceFile.exists()) {
+        throw StateError('File foto profil tidak ditemukan.');
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final profileDir = Directory('${appDir.path}/profile');
+      if (!await profileDir.exists()) {
+        await profileDir.create(recursive: true);
+      }
+      final copied = await sourceFile.copy(
+        '${profileDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      profilePhotoPath = copied.path;
+    }
+
+    final previousPath = state.userProfilePhoto;
+    await PrefsService.setProfilePhoto(profilePhotoPath);
+    state = state.copyWith(userProfilePhoto: profilePhotoPath);
+    await _deleteManagedProfilePhoto(previousPath);
   }
 
-  Future<void> toggleThemeMode() async {
+  Future<void> _deleteManagedProfilePhoto(String path) async {
+    if (kIsWeb || path.isEmpty) return;
+    final appDir = await getApplicationDocumentsDirectory();
+    final managedPrefix = '${appDir.path}/profile/';
+    if (!path
+        .replaceAll('\\', '/')
+        .startsWith(managedPrefix.replaceAll('\\', '/'))) {
+      return;
+    }
+    await _deleteAttachmentIfUnused(path);
+  }
+
+  Future<bool> toggleThemeMode() async {
+    if (!state.isProUser) return false;
     final isDark = !state.isDarkMode;
     await PrefsService.setThemeMode(isDark ? 'dark' : 'light');
     state = state.copyWith(isDarkMode: isDark);
+    return true;
   }
 
   List<JobApplication> _generateSampleJobs() {
     final now = DateTime.now();
     return [
       JobApplication(
-        id: 'job_goto',
-        companyName: 'PT GoTo Gojek Tokopedia Tbk',
-        position: 'Senior Flutter Developer',
-        status: 'Tes / Psikotes',
+        id: 'sample_nusa',
+        companyName: 'Nusa Tech',
+        position: 'Flutter Dev',
+        status: 'Contoh',
         appliedDate: now.subtract(const Duration(days: 1)),
-        salaryOffered: 'Rp 22.000.000 / bln',
-        minSalary: 22000000,
-        maxSalary: 30000000,
+        salaryOffered: 'Rp 8–11 jt / bln',
+        minSalary: 8000000,
+        maxSalary: 11000000,
         workType: 'Hybrid',
-        location: 'Jakarta Selatan (Hybrid)',
-        jobSource: 'Glints',
-        sourcePlatform: 'Glints',
-        jobUrl: 'https://glints.com/id/opportunities/jobs/senior-flutter-engineer',
+        location: 'Jakarta',
+        jobSource: 'Portal A',
+        sourcePlatform: 'Portal A',
         jobDescription:
-            '• Menguasai pengembangan aplikasi mobile skala besar dengan Flutter & Dart.\n• Berpengalaman dengan Clean Architecture, State Management (Riverpod/Bloc), dan CI/CD.\n• Mampu berkolaborasi erat dengan Product Manager, UI/UX Designer, dan Backend Engineer.',
-        hrContact: '+62 21 2910 1000',
-        testDate: now.add(const Duration(days: 2)),
+            'Data dummy untuk mencoba tampilan detail lamaran dan fitur pelacakan.',
         isFavorite: true,
+        isSampleData: true,
       ),
       JobApplication(
-        id: 'job_bca',
-        companyName: 'PT Bank Central Asia Tbk',
-        position: 'Mobile Application Specialist',
-        status: 'Interview HR',
+        id: 'sample_karsa',
+        companyName: 'Karsa Labs',
+        position: 'UI Designer',
+        status: 'Contoh',
+        appliedDate: now.subtract(const Duration(days: 2)),
+        salaryOffered: 'Rp 7–10 jt / bln',
+        minSalary: 7000000,
+        maxSalary: 10000000,
+        workType: 'WFO',
+        location: 'Bandung',
+        jobSource: 'Portal B',
+        sourcePlatform: 'Portal B',
+        jobDescription:
+            'Data dummy untuk melihat contoh lowongan desain di dalam tracker.',
+        isFavorite: true,
+        isSampleData: true,
+      ),
+      JobApplication(
+        id: 'sample_bumi',
+        companyName: 'Bumi Data',
+        position: 'Data Analis',
+        status: 'Contoh',
         appliedDate: now.subtract(const Duration(days: 3)),
-        salaryOffered: 'Rp 18.500.000 / bln',
-        minSalary: 18500000,
-        maxSalary: 24000000,
-        workType: 'On-Site',
-        location: 'Jakarta Barat (WFO)',
-        jobSource: 'JobStreet',
-        sourcePlatform: 'JobStreet',
-        jobUrl: 'https://www.jobstreet.co.id/job/bca-mobile-developer',
-        jobDescription:
-            '• Pengalaman minimal 2 tahun dalam pengembangan mobile iOS/Android/Flutter.\n• Memahami secure coding standard untuk transaksi perbankan dan enkripsi data.\n• Berpengalaman dengan automated unit testing dan release store.',
-        hrContact: 'recruitment@bca.co.id',
-        interviewDate: now.add(const Duration(days: 3)),
-        isFavorite: true,
-      ),
-      JobApplication(
-        id: 'job_telkom',
-        companyName: 'PT Telkom Indonesia Tbk',
-        position: 'Lead Mobile Solution Architect',
-        status: 'Interview User',
-        appliedDate: now.subtract(const Duration(days: 5)),
-        salaryOffered: 'Rp 26.000.000 / bln',
-        minSalary: 26000000,
-        maxSalary: 35000000,
-        workType: 'Hybrid',
-        location: 'Jakarta / Bandung',
-        jobSource: 'JobStreet',
-        sourcePlatform: 'JobStreet',
-        jobUrl: 'https://www.jobstreet.co.id/job/telkom-lead-architect',
-        jobDescription:
-            '• Merancang arsitektur aplikasi mobile enterprise skala nasional.\n• Mendukung integrasi microservices, GraphQL, REST API, dan cloud infrastructure.\n• Memimpin tim developer dalam menerapkan best practice rekayasa perangkat lunak.',
-        hrContact: 'careers@telkom.co.id',
-        interviewDate: now.add(const Duration(days: 4)),
-        isFavorite: false,
-      ),
-      JobApplication(
-        id: 'job_shopee',
-        companyName: 'PT Shopee International Indonesia',
-        position: 'Software Development Engineer.',
-        status: 'Offering',
-        appliedDate: now.subtract(const Duration(days: 7)),
-        salaryOffered: 'Rp 25.000.000 / bln',
-        minSalary: 25000000,
-        maxSalary: 32000000,
+        salaryOffered: 'Rp 7–9 jt / bln',
+        minSalary: 7000000,
+        maxSalary: 9000000,
         workType: 'WFH',
-        location: 'Jakarta Pusat (WFH)',
-        jobSource: 'Glints',
-        sourcePlatform: 'Glints',
-        jobUrl: 'https://glints.com/id/opportunities/jobs/software-engineer-golang',
+        location: 'Remote',
+        jobSource: 'Portal C',
+        sourcePlatform: 'Portal C',
         jobDescription:
-            '• Lulusan S1 Teknik Informatika, Sistem Informasi, atau pengalaman setara.\n• Memiliki portofolio aplikasi mobile nyata dengan performa tinggi dan clean code.\n• Menguasai algoritma pemecahan masalah, multi-threading, dan state management modern.',
-        hrContact: 'hiring@shopee.co.id',
-        notes: 'Sesi review offering package pada hari Jumat pukul 14:00 WIB.',
+            'Data dummy untuk mencoba informasi gaji, lokasi, dan mode kerja.',
+        isFavorite: false,
+        isSampleData: true,
+      ),
+      JobApplication(
+        id: 'sample_aruna',
+        companyName: 'Aruna Mart',
+        position: 'QA Engineer',
+        status: 'Contoh',
+        appliedDate: now.subtract(const Duration(days: 4)),
+        salaryOffered: 'Rp 6–9 jt / bln',
+        minSalary: 6000000,
+        maxSalary: 9000000,
+        workType: 'Hybrid',
+        location: 'Surabaya',
+        jobSource: 'Portal D',
+        sourcePlatform: 'Portal D',
+        jobDescription:
+            'Data dummy untuk mengeksplorasi catatan dan detail proses seleksi.',
         isFavorite: true,
+        isSampleData: true,
+      ),
+      JobApplication(
+        id: 'sample_sora',
+        companyName: 'Sora Bank',
+        position: 'HR Officer',
+        status: 'Contoh',
+        appliedDate: now.subtract(const Duration(days: 5)),
+        salaryOffered: 'Rp 6–8 jt / bln',
+        minSalary: 6000000,
+        maxSalary: 8000000,
+        workType: 'WFO',
+        location: 'Bekasi',
+        jobSource: 'Portal E',
+        sourcePlatform: 'Portal E',
+        jobDescription:
+            'Data dummy untuk memahami susunan informasi pada kartu lamaran.',
+        isFavorite: false,
+        isSampleData: true,
+      ),
+      JobApplication(
+        id: 'sample_tera',
+        companyName: 'Tera Media',
+        position: 'Copywriter',
+        status: 'Contoh',
+        appliedDate: now.subtract(const Duration(days: 6)),
+        salaryOffered: 'Rp 5–7 jt / bln',
+        minSalary: 5000000,
+        maxSalary: 7000000,
+        workType: 'WFH',
+        location: 'Bogor',
+        jobSource: 'Portal F',
+        sourcePlatform: 'Portal F',
+        jobDescription:
+            'Data dummy untuk mencoba pencarian, bookmark, serta mode grid dan list.',
+        isFavorite: false,
+        isSampleData: true,
       ),
     ];
   }
 
   /// Mengaktifkan status langganan PRO pengguna (Bulanan / Tahunan)
-  Future<void> activateProSubscription({String plan = 'monthly'}) async {
+  Future<void> activateProSubscription({
+    String plan = 'monthly',
+    required DateTime verifiedExpiry,
+  }) async {
     final now = DateTime.now();
-    final expiry = plan == 'yearly'
-        ? now.add(const Duration(days: 365))
-        : now.add(const Duration(days: 30));
-
-    await PrefsService.setProSubscription(
-      isPro: true,
-      expiry: expiry,
-      plan: plan,
-    );
+    if (!verifiedExpiry.isAfter(now)) {
+      throw ArgumentError.value(
+        verifiedExpiry,
+        'verifiedExpiry',
+        'Masa aktif PRO harus berada di masa depan.',
+      );
+    }
 
     state = state.copyWith(
       isProUser: true,
-      proExpiryDate: expiry,
+      proExpiryDate: verifiedExpiry,
       proPlanType: plan,
     );
   }
 
   /// Membatalkan status langganan PRO
   Future<void> cancelProSubscription() async {
-    await PrefsService.setProSubscription(
-      isPro: false,
-      expiry: null,
-      plan: 'monthly',
-    );
+    await ProVerificationService.deactivateCurrentEntitlement();
 
     state = state.copyWith(
       isProUser: false,
-      proExpiryDate: null,
+      isDarkMode: false,
+      clearProExpiryDate: true,
       proPlanType: 'monthly',
     );
   }

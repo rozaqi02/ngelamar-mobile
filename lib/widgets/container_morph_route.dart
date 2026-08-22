@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Fluid Full-Page Route untuk Form Tambah / Edit Lamaran.
@@ -17,13 +17,13 @@ class MorphSheetRoute<T> extends PageRoute<T> {
   });
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 320);
+  Duration get transitionDuration => const Duration(milliseconds: 460);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 240);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 360);
 
   @override
-  bool get opaque => true;
+  bool get opaque => false;
 
   @override
   bool get barrierDismissible => false;
@@ -53,32 +53,35 @@ class MorphSheetRoute<T> extends PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    final screenSize = MediaQuery.sizeOf(context);
     final curvedAnimation = CurvedAnimation(
       parent: animation,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      curve: Curves.easeOutQuart,
+      reverseCurve: Curves.easeInOutCubic,
     );
+    final fullRect = Offset.zero & screenSize;
+    final origin =
+        startRect ??
+        Rect.fromCenter(
+          center: Offset(screenSize.width / 2, screenSize.height),
+          width: 72,
+          height: 48,
+        );
 
-    final slideAnim = Tween<Offset>(
-      begin: const Offset(0.0, 0.08),
-      end: Offset.zero,
-    ).animate(curvedAnimation);
-
-    final fadeAnim = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: animation,
-      curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
-      reverseCurve: const Interval(0.15, 1.0, curve: Curves.easeIn),
-    ));
-
-    return FadeTransition(
-      opacity: fadeAnim,
-      child: SlideTransition(
-        position: slideAnim,
-        child: child,
-      ),
+    return AnimatedBuilder(
+      animation: curvedAnimation,
+      child: ColoredBox(color: backgroundColor, child: child),
+      builder: (context, routeChild) {
+        final progress = curvedAnimation.value;
+        final rect = Rect.lerp(origin, fullRect, progress)!;
+        return ClipPath(
+          clipper: _MorphRectClipper(rect: rect, radius: 26 * (1 - progress)),
+          child: Transform.scale(
+            scale: 0.96 + (0.04 * progress),
+            child: routeChild,
+          ),
+        );
+      },
     );
   }
 
@@ -86,15 +89,42 @@ class MorphSheetRoute<T> extends PageRoute<T> {
     required BuildContext context,
     GlobalKey? buttonKey,
     required Widget child,
-    Color backgroundColor = const Color(0xFFF8BA38),
+    Color? backgroundColor,
   }) {
     HapticFeedback.mediumImpact();
+    final routeBackground =
+        backgroundColor ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF141418)
+            : const Color(0xFFF8BA38));
+    Rect? startRect;
+    final renderObject = buttonKey?.currentContext?.findRenderObject();
+    if (renderObject is RenderBox && renderObject.hasSize) {
+      final topLeft = renderObject.localToGlobal(Offset.zero);
+      startRect = topLeft & renderObject.size;
+    }
     return Navigator.push<T>(
       context,
       MorphSheetRoute<T>(
         child: child,
-        backgroundColor: backgroundColor,
+        startRect: startRect,
+        backgroundColor: routeBackground,
       ),
     );
   }
+}
+
+class _MorphRectClipper extends CustomClipper<Path> {
+  final Rect rect;
+  final double radius;
+
+  const _MorphRectClipper({required this.rect, required this.radius});
+
+  @override
+  Path getClip(Size size) =>
+      Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.circular(radius)));
+
+  @override
+  bool shouldReclip(covariant _MorphRectClipper oldClipper) =>
+      oldClipper.rect != rect || oldClipper.radius != radius;
 }

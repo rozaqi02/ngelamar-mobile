@@ -15,7 +15,8 @@ class FlyToTrackerAnimator {
     try {
       Offset? startPos = startOffset;
       if (startPos == null && sourceKey != null) {
-        final renderBox = sourceKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            sourceKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null && renderBox.attached) {
           startPos = renderBox.localToGlobal(Offset.zero);
         }
@@ -69,7 +70,8 @@ class _FlyParticleWidget extends StatefulWidget {
   State<_FlyParticleWidget> createState() => _FlyParticleWidgetState();
 }
 
-class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTickerProviderStateMixin {
+class _FlyParticleWidgetState extends State<_FlyParticleWidget>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _progress;
 
@@ -112,11 +114,13 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
           math.min(widget.startPos.dy, widget.endPos.dy) - 120,
         );
 
-        final x = (1 - t) * (1 - t) * widget.startPos.dx +
+        final x =
+            (1 - t) * (1 - t) * widget.startPos.dx +
             2 * (1 - t) * t * controlPoint.dx +
             t * t * widget.endPos.dx;
 
-        final y = (1 - t) * (1 - t) * widget.startPos.dy +
+        final y =
+            (1 - t) * (1 - t) * widget.startPos.dy +
             2 * (1 - t) * t * controlPoint.dy +
             t * t * widget.endPos.dy;
 
@@ -137,7 +141,10 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
                   child: Transform.rotate(
                     angle: rotation,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: widget.accentColor,
                         borderRadius: BorderRadius.circular(24),
@@ -159,8 +166,14 @@ class _FlyParticleWidgetState extends State<_FlyParticleWidget> with SingleTicke
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.bookmark_added_rounded, color: Colors.white, size: 20),
-                          if (widget.companyName != null && widget.companyName!.isNotEmpty && t < 0.5) ...[
+                          const Icon(
+                            Icons.bookmark_added_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          if (widget.companyName != null &&
+                              widget.companyName!.isNotEmpty &&
+                              t < 0.5) ...[
                             const SizedBox(width: 8),
                             Text(
                               widget.companyName!,

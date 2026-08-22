@@ -127,7 +127,9 @@ class AppleSheetWindow {
               margin: const EdgeInsets.only(top: 36),
               decoration: BoxDecoration(
                 color: surf,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
                 border: Border.all(color: bdr, width: 1.2),
                 boxShadow: [
                   BoxShadow(

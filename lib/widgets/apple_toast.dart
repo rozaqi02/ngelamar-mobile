@@ -33,7 +33,13 @@ class AppleToast {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    AppToast.success(context, message, subtitle: subtitle, actionLabel: actionLabel, onAction: onAction);
+    AppToast.success(
+      context,
+      message,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+      onAction: onAction,
+    );
   }
 
   static void error(
@@ -43,7 +49,13 @@ class AppleToast {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    AppToast.error(context, message, subtitle: subtitle, actionLabel: actionLabel, onAction: onAction);
+    AppToast.error(
+      context,
+      message,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+      onAction: onAction,
+    );
   }
 
   static void warning(
@@ -53,7 +65,13 @@ class AppleToast {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    AppToast.warning(context, message, subtitle: subtitle, actionLabel: actionLabel, onAction: onAction);
+    AppToast.warning(
+      context,
+      message,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+      onAction: onAction,
+    );
   }
 
   static void info(
@@ -63,6 +81,12 @@ class AppleToast {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    AppToast.info(context, message, subtitle: subtitle, actionLabel: actionLabel, onAction: onAction);
+    AppToast.info(
+      context,
+      message,
+      subtitle: subtitle,
+      actionLabel: actionLabel,
+      onAction: onAction,
+    );
   }
 }

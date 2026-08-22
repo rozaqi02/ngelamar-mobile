@@ -29,13 +29,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       duration: const Duration(milliseconds: 900),
     );
 
-    _scaleAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward().then((_) {
       Future.delayed(const Duration(milliseconds: 350), _navigate);
@@ -124,10 +126,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     child: SizedBox(
                       width: 76,
                       height: 58,
-                      child: RunningEnvelopeMascot(
-                        width: 76,
-                        height: 58,
-                      ),
+                      child: RunningEnvelopeMascot(width: 76, height: 58),
                     ),
                   ),
                 ),

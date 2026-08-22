@@ -71,14 +71,20 @@ class SalaryEvaluatorService {
   }
 
   /// Format range Rupiah (misal "Rp 8.000.000 - Rp 12.000.000" atau "Rp 8.000.000")
-  static String formatRupiahRange(double min, double max, {bool isRange = true}) {
+  static String formatRupiahRange(
+    double min,
+    double max, {
+    bool isRange = true,
+  }) {
     if (!isRange || (min - max).abs() < 1) {
       return formatRupiah(min);
     }
     return '${formatRupiah(min)} - ${formatRupiah(max)}';
   }
 
-  static ({double min, double max, bool isRange}) parseSalaryRange(String? input) {
+  static ({double min, double max, bool isRange}) parseSalaryRange(
+    String? input,
+  ) {
     if (input == null || input.trim().isEmpty) {
       return (min: 0.0, max: 0.0, isRange: false);
     }
@@ -136,7 +142,9 @@ class SalaryEvaluatorService {
       if (parsed != null) return parsed * 1000000;
     }
 
-    if (clean.contains('rb') || clean.contains('ribu') || RegExp(r'\d+k\b').hasMatch(clean)) {
+    if (clean.contains('rb') ||
+        clean.contains('ribu') ||
+        RegExp(r'\d+k\b').hasMatch(clean)) {
       final numStr = clean
           .replaceAll('rb', '')
           .replaceAll('ribu', '')
@@ -173,7 +181,9 @@ class SalaryEvaluatorService {
       orElse: () => const UmrData('Nasional (Rata-rata)', 3500000),
     );
 
-    final effectiveUmr = customUmr != null && customUmr > 0 ? customUmr : umrItem.umrAmount;
+    final effectiveUmr = customUmr != null && customUmr > 0
+        ? customUmr
+        : umrItem.umrAmount;
 
     final minUmrRatio = effectiveUmr > 0 ? (minGross / effectiveUmr) : 1.0;
     final maxUmrRatio = effectiveUmr > 0 ? (maxGross / effectiveUmr) : 1.0;

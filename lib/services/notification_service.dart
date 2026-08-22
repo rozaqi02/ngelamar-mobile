@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -16,7 +15,7 @@ class NotificationService {
   static const _notificationIdPrefix = 100000000;
 
   static Future<void> init() async {
-    if (_initialized) return;
+    if (kIsWeb || _initialized) return;
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -34,7 +33,9 @@ class NotificationService {
 
     try {
       tz_data.initializeTimeZones();
-      tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
+      // DateTime values from the form use the device's local clock. Keeping
+      // tz.local at its default prevents a schedule entered while travelling
+      // from being reinterpreted as Asia/Jakarta time.
       await _notificationsPlugin.initialize(initSettings);
       _initialized = true;
     } catch (error) {
@@ -48,28 +49,65 @@ class NotificationService {
       hash ^= codeUnit;
       hash = (hash * 16777619) & 0x7fffffff;
     }
-    return _notificationIdPrefix + (hash % 100000000);
+    // Reserve two consecutive IDs per job: event time and H-1 reminder.
+    return _notificationIdPrefix + ((hash % 400000000) * 2);
   }
 
   static Future<bool> requestPermission() async {
+    if (kIsWeb) return true;
     if (!_initialized) await init();
     if (!_initialized) return false;
 
-    final android = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    final androidGranted = await android?.requestNotificationsPermission();
-    final ios = _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >();
-    final iosGranted = await ios?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    return androidGranted ?? iosGranted ?? true;
+    try {
+      final android = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final androidGranted = await android?.requestNotificationsPermission();
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      final iosGranted = await ios?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return androidGranted ?? iosGranted ?? true;
+    } catch (e) {
+      debugPrint('Error requesting notification permission: $e');
+      return false;
+    }
+  }
+
+  /// Returns the current OS-level notification permission without prompting.
+  static Future<bool> areNotificationsEnabled() async {
+    if (kIsWeb) return true;
+    if (!_initialized) await init();
+    if (!_initialized) return false;
+
+    try {
+      final android = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        return await android.areNotificationsEnabled() ?? false;
+      }
+
+      final ios = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios == null) return true;
+      final permissions = await ios.checkPermissions();
+      return permissions?.isEnabled ??
+          permissions?.isProvisionalEnabled ??
+          false;
+    } catch (error) {
+      debugPrint('Gagal membaca status izin notifikasi: $error');
+      return false;
+    }
   }
 
   /// Edu-sheet untuk izin notifikasi di Android 13+ (POST_NOTIFICATIONS)
@@ -164,9 +202,7 @@ class NotificationService {
                     ),
                     child: const Text(
                       'Izinkan Notifikasi',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
                 ),
@@ -184,37 +220,46 @@ class NotificationService {
   }
 
   static Future<void> syncInterviewReminder(JobApplication job) async {
+    if (kIsWeb) return;
     if (!_initialized) await init();
     if (!_initialized) return;
 
-    final id = notificationIdFor(job.id);
-    final idH1 = id + 1;
-    await _notificationsPlugin.cancel(id);
-    await _notificationsPlugin.cancel(idH1);
-
-    final interviewDate = job.interviewDate ?? job.testDate;
-    if (interviewDate == null ||
-        !interviewDate.isAfter(DateTime.now()) ||
-        job.status == 'Diterima' ||
-        job.status == 'Ditolak') {
-      return;
-    }
-
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      'Pengingat Interview',
-      channelDescription: 'Pengingat jadwal interview & tes lamaran kerja',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const darwinDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
-    );
-
     try {
+      final id = notificationIdFor(job.id);
+      final idH1 = id + 1;
+      await _notificationsPlugin.cancel(id);
+      await _notificationsPlugin.cancel(idH1);
+
+      final interviewDate = job.interviewDate ?? job.testDate;
+      final isSelectionStage =
+          job.status == 'Tes / Psikotes' || job.status.startsWith('Interview');
+      final hasExplicitTime =
+          interviewDate == null ||
+          interviewDate.hour != 0 ||
+          interviewDate.minute != 0;
+      if (interviewDate == null ||
+          !interviewDate.isAfter(DateTime.now()) ||
+          !isSelectionStage ||
+          !hasExplicitTime ||
+          job.status == 'Diterima' ||
+          job.status == 'Ditolak') {
+        return;
+      }
+
+      const androidDetails = AndroidNotificationDetails(
+        _channelId,
+        'Pengingat Interview',
+        channelDescription: 'Pengingat jadwal interview & tes lamaran kerja',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const darwinDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
       // 1. Notifikasi Tepat Waktu
       await _notificationsPlugin.zonedSchedule(
         id,
@@ -250,15 +295,21 @@ class NotificationService {
   }
 
   static Future<void> cancelInterviewReminder(String jobId) async {
-    if (!_initialized) await init();
-    if (_initialized) {
-      final id = notificationIdFor(jobId);
-      await _notificationsPlugin.cancel(id);
-      await _notificationsPlugin.cancel(id + 1);
+    if (kIsWeb) return;
+    try {
+      if (!_initialized) await init();
+      if (_initialized) {
+        final id = notificationIdFor(jobId);
+        await _notificationsPlugin.cancel(id);
+        await _notificationsPlugin.cancel(id + 1);
+      }
+    } catch (e) {
+      debugPrint('Gagal membatalkan pengingat $jobId: $e');
     }
   }
 
   static Future<void> syncAll(Iterable<JobApplication> jobs) async {
+    if (kIsWeb) return;
     for (final job in jobs) {
       await syncInterviewReminder(job);
     }
@@ -269,40 +320,52 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
-    if (!_initialized) await init();
-    await requestPermission();
-
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      'Pengingat Interview & Notifikasi Loker',
-      channelDescription: 'Pengingat jadwal seleksi dan update lamaran kerja',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    const darwinDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
-    );
-
+    if (kIsWeb) return;
     try {
+      if (!_initialized) await init();
+      await requestPermission();
+
+      const androidDetails = AndroidNotificationDetails(
+        _channelId,
+        'Pengingat Interview & Notifikasi Loker',
+        channelDescription: 'Pengingat jadwal seleksi dan update lamaran kerja',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      );
+      const darwinDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
+
       final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      await _notificationsPlugin.show(id, title, body, details, payload: payload);
+      await _notificationsPlugin.show(
+        id,
+        title,
+        body,
+        details,
+        payload: payload,
+      );
     } catch (error) {
       debugPrint('Gagal menampilkan notifikasi instan: $error');
     }
   }
 
   static Future<void> cancelAllInterviewReminders() async {
-    if (!_initialized) await init();
-    if (!_initialized) return;
-    final pending = await _notificationsPlugin.pendingNotificationRequests();
-    for (final reminder in pending) {
-      if (reminder.id >= _notificationIdPrefix) {
-        await _notificationsPlugin.cancel(reminder.id);
+    if (kIsWeb) return;
+    try {
+      if (!_initialized) await init();
+      if (!_initialized) return;
+      final pending = await _notificationsPlugin.pendingNotificationRequests();
+      for (final reminder in pending) {
+        if (reminder.id >= _notificationIdPrefix) {
+          await _notificationsPlugin.cancel(reminder.id);
+        }
       }
+    } catch (e) {
+      debugPrint('Gagal membatalkan seluruh pengingat: $e');
     }
   }
 }

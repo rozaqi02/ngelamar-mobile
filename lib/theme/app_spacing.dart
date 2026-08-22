@@ -12,13 +12,13 @@ class AppSpacing {
   static const EdgeInsets edgeInsetsS = EdgeInsets.all(s);
   static const EdgeInsets edgeInsetsM = EdgeInsets.all(m);
   static const EdgeInsets edgeInsetsL = EdgeInsets.all(l);
-  
+
   static const SizedBox heightXs = SizedBox(height: xs);
   static const SizedBox heightS = SizedBox(height: s);
   static const SizedBox heightM = SizedBox(height: m);
   static const SizedBox heightL = SizedBox(height: l);
   static const SizedBox heightXl = SizedBox(height: xl);
-  
+
   static const SizedBox widthXs = SizedBox(width: xs);
   static const SizedBox widthS = SizedBox(width: s);
   static const SizedBox widthM = SizedBox(width: m);

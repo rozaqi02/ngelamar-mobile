@@ -96,7 +96,8 @@ class _OrganicRunningMascotPainter extends CustomPainter {
 
     // Harmonious body bounce (2 smooth arcs per stride cycle)
     final bodyBob = -math.sin(t * 2).abs() * 5.5 * scale;
-    const forwardLean = -0.12; // Forward tilt towards the left (running direction)
+    const forwardLean =
+        -0.12; // Forward tilt towards the left (running direction)
 
     // ── 0. TRAILING DUST & SPEED PUFFS (BEHIND FEET TO THE RIGHT) ──
     final dustPaint = Paint()
@@ -147,7 +148,9 @@ class _OrganicRunningMascotPainter extends CustomPainter {
       final thighAngle = -sinT * 0.60;
 
       // Knee bend: bends backwards (+ right) when leg is trailing (-cosT), straightens on strike
-      final kneeBend = (cosT < 0) ? (-cosT * 0.90) : (sinT * 0.25).clamp(0.0, 0.55);
+      final kneeBend = (cosT < 0)
+          ? (-cosT * 0.90)
+          : (sinT * 0.25).clamp(0.0, 0.55);
 
       final thighLength = 23.0 * scale;
       final shinLength = 23.0 * scale;
