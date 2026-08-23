@@ -28,6 +28,7 @@ import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
+import '../jobs/job_list_screen.dart';
 import '../subscription/subscription_screen.dart';
 
 /// Screen 5: Profil & Pengaturan.
@@ -279,6 +280,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showCareerInterestsSheet() {
     HapticFeedback.selectionClick();
     final tempInterests = List<String>.from(_userInterests);
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1A1A1F) : const Color(0xFFFBF8F2);
+    final primary = isDark ? Colors.white : const Color(0xFF121214);
+    final secondary = isDark
+        ? const Color(0xFFA0A0A8)
+        : const Color(0xFF707074);
 
     showModalBottomSheet(
       context: context,
@@ -291,9 +298,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               maxHeight: MediaQuery.of(context).size.height * 0.85,
             ),
             padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFBF8F2),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -310,19 +319,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Target & Minat Karir',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF121214),
+                    color: primary,
                     letterSpacing: -0.4,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Pilih posisi yang kamu minati berdasarkan keahlian:',
-                  style: TextStyle(fontSize: 13, color: Color(0xFF707074)),
+                  style: TextStyle(fontSize: 13, color: secondary),
                 ),
                 const SizedBox(height: 14),
                 Flexible(
@@ -338,10 +347,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             children: [
                               Text(
                                 category.key,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF121214),
+                                  color: primary,
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -354,20 +363,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   );
                                   return FilterChip(
                                     selected: isSelected,
+                                    showCheckmark: false,
                                     label: Text(interest),
                                     labelStyle: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: isSelected
                                           ? Colors.white
-                                          : const Color(0xFF121214),
+                                          : primary,
                                     ),
                                     selectedColor: const Color(0xFF19191B),
-                                    backgroundColor: Colors.white,
+                                    backgroundColor: isDark
+                                        ? const Color(0xFF29292F)
+                                        : Colors.white,
                                     side: BorderSide(
                                       color: isSelected
                                           ? const Color(0xFF19191B)
-                                          : const Color(0xFFE5E0D5),
+                                          : (isDark
+                                                ? const Color(0xFF3B3B42)
+                                                : const Color(0xFFE5E0D5)),
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
@@ -436,6 +450,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showEditAboutDialog() {
+    final isDark = AppTheme.isDark(context);
     _aboutController.text = _about;
     _aboutController.selection = TextSelection.fromPosition(
       TextPosition(offset: _aboutController.text.length),
@@ -457,15 +472,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           hintText:
               'Contoh: Mobile developer yang senang memecahkan masalah...',
           filled: true,
-          fillColor: const Color(0xFFF9F7F2),
+          fillColor: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
           alignLabelWithHint: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+            borderSide: BorderSide(
+              color: isDark ? const Color(0xFF3A3A42) : const Color(0xFFE5E0D5),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+            borderSide: BorderSide(
+              color: isDark ? const Color(0xFF3A3A42) : const Color(0xFFE5E0D5),
+            ),
           ),
         ),
       ),
@@ -726,52 +745,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _showFeedbackDialog() async {
-    final controller = TextEditingController();
-    await AppDialog.show<void>(
+    final sent = await showDialog<bool>(
       context: context,
-      icon: CupertinoIcons.chat_bubble_2_fill,
-      iconColor: const Color(0xFF5C44E4),
-      title: 'Kirim Masukan',
-      content:
-          'Ceritakan bug, ide fitur, atau pengalaman yang ingin Anda perbaiki.',
-      secondaryLabel: 'Batal',
-      primaryLabel: 'Kirim',
-      customBody: TextField(
-        controller: controller,
-        minLines: 4,
-        maxLines: 7,
-        maxLength: 3000,
-        decoration: InputDecoration(
-          hintText: 'Tulis masukan Anda...',
-          filled: true,
-          fillColor: const Color(0xFFF9F7F2),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-      onPrimary: () async {
-        try {
-          await FeedbackService.submit(
-            category: 'feedback',
-            message: controller.text,
-            appVersion: _appVersion,
-          );
-          if (mounted) {
-            Navigator.of(context, rootNavigator: true).pop();
-            AppToast.success(
-              context,
-              'Masukan berhasil dikirim. Terima kasih!',
-            );
-          }
-        } on FeedbackSubmissionException catch (error) {
-          if (mounted) AppToast.error(context, error.message);
-        } catch (_) {
-          if (mounted) {
-            AppToast.error(context, 'Masukan belum dapat dikirim. Coba lagi.');
-          }
-        }
-      },
+      barrierDismissible: false,
+      builder: (_) => _FeedbackDialog(appVersion: _appVersion),
     );
-    controller.dispose();
+    if (sent == true && mounted) {
+      AppToast.success(context, 'Masukan berhasil dikirim. Terima kasih!');
+    }
   }
 
   Future<void> _exportApplicationsData() async {
@@ -1544,7 +1525,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 state.isProUser
-                                    ? 'Member PRO ✨ • Pengalaman 4 th'
+                                    ? 'Member PRO • ${state.jobs.length} lamaran tercatat'
                                     : (state.jobs.isNotEmpty
                                           ? '${state.jobs.length} Lamaran Aktif • Siap Kerja'
                                           : 'Pencari Karir • Terbuka Peluang'),
@@ -1598,7 +1579,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      'CV PDF',
+                                      _cvPdfPath == null || _cvPdfPath!.isEmpty
+                                          ? 'Tambah CV'
+                                          : 'Buka CV',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
@@ -1739,7 +1722,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Pengalaman & Riwayat Lamaran',
+                    'Riwayat Lamaran',
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w900,
@@ -1747,13 +1730,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       letterSpacing: -0.4,
                     ),
                   ),
-                  if (state.jobs.isNotEmpty)
-                    Text(
-                      '${state.jobs.length} Lamaran',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1E3A8A),
+                  if (state.jobs.length > 3)
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder: (_) => const JobListScreen(),
+                        ),
+                      ),
+                      child: Text(
+                        'Lihat semua (${state.jobs.length})',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF5C44E4),
+                        ),
                       ),
                     ),
                 ],
@@ -1820,8 +1811,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   }
 
                   final job = jobList[index];
-                  final appliedYear = DateFormat(
-                    'yyyy',
+                  final appliedDate = DateFormat(
+                    'd MMM yyyy',
+                    'id_ID',
                   ).format(job.appliedDate);
 
                   return Container(
@@ -1869,7 +1861,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '$appliedYear - Sekarang',
+                                    appliedDate,
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       color: txtSec,
@@ -1880,7 +1872,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                job.position,
+                                '${job.position} • ${job.status}',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -2534,12 +2526,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ? const Color(0xFF5C44E4)
                         : const Color(0xFFD7C9FF),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(48, 44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -2641,6 +2629,167 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             color: isDark ? Colors.white38 : const Color(0xFFA0A0A5),
           ),
       onTap: onTap,
+    );
+  }
+}
+
+class _FeedbackDialog extends StatefulWidget {
+  final String appVersion;
+
+  const _FeedbackDialog({required this.appVersion});
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final _controller = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+    if (_controller.text.trim().length < 10) {
+      setState(
+        () => _error = 'Tulis sedikitnya 10 karakter agar masukan jelas.',
+      );
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await FeedbackService.submit(
+        category: 'feedback',
+        message: _controller.text.trim(),
+        appVersion: widget.appVersion,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } on FeedbackSubmissionException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'Masukan belum dapat dikirim. Periksa internet lalu coba lagi.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return PopScope(
+      canPop: !_submitting,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF37373D)
+                    : const Color(0xFFE5E0D5),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    CupertinoIcons.chat_bubble_2_fill,
+                    color: Color(0xFF5C44E4),
+                    size: 34,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Kirim Masukan',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF121214),
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    'Ceritakan bug, ide fitur, atau bagian aplikasi yang perlu diperbaiki.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : const Color(0xFF66666B),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _controller,
+                    enabled: !_submitting,
+                    minLines: 4,
+                    maxLines: 7,
+                    maxLength: 3000,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => setState(() => _error = null),
+                    decoration: InputDecoration(
+                      hintText: 'Tulis masukanmu…',
+                      errorText: _error,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _submitting
+                              ? null
+                              : () => Navigator.pop(context, false),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed:
+                              _submitting || _controller.text.trim().length < 10
+                              ? null
+                              : _submit,
+                          child: _submitting
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Kirim'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

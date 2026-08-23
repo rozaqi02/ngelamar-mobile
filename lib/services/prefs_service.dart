@@ -1,10 +1,13 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Centralized service for persisting user preferences and settings.
 class PrefsService {
+  static final ValueNotifier<List<String>?> userInterestsListenable =
+      ValueNotifier<List<String>?>(null);
   static const _keyUserName = 'user_name';
   static const _keyUserEmail = 'user_email';
   static const _keyThemeMode = 'theme_mode'; // 'dark' | 'light'
@@ -185,12 +188,15 @@ class PrefsService {
 
   /// Returns user career interests. Defaults to empty list.
   static Future<List<String>> getUserInterests() async {
-    return await _readSensitiveStringList(_keyUserInterests) ?? [];
+    final interests = await _readSensitiveStringList(_keyUserInterests) ?? [];
+    userInterestsListenable.value = List.unmodifiable(interests);
+    return interests;
   }
 
   /// Saves user career interests.
   static Future<void> setUserInterests(List<String> interests) async {
     await _writeSensitiveStringList(_keyUserInterests, interests);
+    userInterestsListenable.value = List.unmodifiable(interests);
   }
 
   /// Returns whether user has set at least 3 career interests.

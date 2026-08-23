@@ -38,9 +38,11 @@ class AppSearchField extends StatelessWidget {
     final iconColor = isDark
         ? const Color(0xFFA0A0A8)
         : const Color(0xFF707074);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final fieldHeight = (48 + (textScale - 1) * 14).clamp(48, 64).toDouble();
 
     return Container(
-      height: 48,
+      height: fieldHeight,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: bg,
@@ -85,15 +87,18 @@ class AppSearchField extends StatelessWidget {
             valueListenable: controller,
             builder: (context, val, _) {
               if (val.text.isEmpty) return const SizedBox.shrink();
-              return GestureDetector(
-                onTap: () {
-                  controller.clear();
-                  if (onClear != null) onClear!();
-                  if (onChanged != null) onChanged!('');
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Container(
+              return Semantics(
+                button: true,
+                label: 'Hapus pencarian',
+                child: IconButton(
+                  tooltip: 'Hapus pencarian',
+                  onPressed: () {
+                    controller.clear();
+                    if (onClear != null) onClear!();
+                    if (onChanged != null) onChanged!('');
+                  },
+                  padding: const EdgeInsets.only(right: 10),
+                  icon: Container(
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(

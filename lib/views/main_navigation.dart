@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/prefs_service.dart';
-import '../theme/app_theme.dart';
 import '../widgets/apple_toast.dart';
 import '../widgets/welcome_screen_route.dart';
 import 'dashboard/dashboard_screen.dart';
@@ -75,7 +74,6 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     ),
   ];
 
-  int _previousIndex = 0;
   late final List<Widget> _screens;
 
   @override
@@ -150,9 +148,12 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   void _onTabTapped(int index) {
     if (_currentIndex != index) {
       HapticFeedback.selectionClick();
-      _scaleControllers[index].forward(from: 0.0);
+      final reduceMotion =
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      if (!reduceMotion) {
+        _scaleControllers[index].forward(from: 0.0);
+      }
       setState(() {
-        _previousIndex = _currentIndex;
         _currentIndex = index;
       });
       _checkAndShowTabWelcomeScreen(index);
@@ -162,6 +163,8 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -181,42 +184,20 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         SystemNavigator.pop();
       },
       child: Scaffold(
-        backgroundColor: AppTheme.warmBackground,
-        resizeToAvoidBottomInset: false,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Stack(
           children: [
-            // Active Screen with Authentic Fluid Slide + Fade Transition
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                final isMovingForward = _currentIndex >= _previousIndex;
-                final beginOffset = isMovingForward
-                    ? const Offset(0.06, 0.0)
-                    : const Offset(-0.06, 0.0);
-                final slideAnimation =
-                    Tween<Offset>(begin: beginOffset, end: Offset.zero).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.fastOutSlowIn,
-                      ),
-                    );
-
-                return SlideTransition(
-                  position: slideAnimation,
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: animation,
-                      curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
-                    ),
-                    child: child,
-                  ),
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<int>(_currentIndex),
-                child: _screens[_currentIndex],
+            // Keep every tab alive so scroll, search, filter, and expanded-card
+            // state are not lost when users move around the app.
+            IndexedStack(
+              index: _currentIndex,
+              sizing: StackFit.expand,
+              children: List.generate(
+                _screens.length,
+                (index) => TickerMode(
+                  enabled: index == _currentIndex,
+                  child: _screens[index],
+                ),
               ),
             ),
 
@@ -236,10 +217,12 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF202024) : colors.surface,
                     borderRadius: BorderRadius.circular(36),
                     border: Border.all(
-                      color: const Color(0xFFE5E0D5),
+                      color: isDark
+                          ? const Color(0xFF38383E)
+                          : const Color(0xFFE5E0D5),
                       width: 1.4,
                     ),
                     boxShadow: [
@@ -261,41 +244,57 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                       final item = _items[index];
                       final isSelected = _currentIndex == index;
 
-                      return GestureDetector(
-                        onTap: () => _onTabTapped(index),
-                        behavior: HitTestBehavior.opaque,
-                        child: ScaleTransition(
-                          scale: _scaleAnimations[index],
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: isSelected ? 48 : 44,
-                            height: isSelected ? 48 : 44,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF1C1C1E)
-                                  : Colors.transparent,
-                              shape: BoxShape.circle,
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.22,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                isSelected
-                                    ? item.activeIcon
-                                    : item.inactiveIcon,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF8E8E93),
-                                size: isSelected ? 22 : 21,
+                      return Semantics(
+                        button: true,
+                        selected: isSelected,
+                        label: item.label,
+                        child: Tooltip(
+                          message: item.label,
+                          child: GestureDetector(
+                            onTap: () => _onTabTapped(index),
+                            behavior: HitTestBehavior.opaque,
+                            child: SizedBox.square(
+                              dimension: 48,
+                              child: ScaleTransition(
+                                scale: _scaleAnimations[index],
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  margin: EdgeInsets.all(isSelected ? 0 : 2),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1C1C1E))
+                                        : Colors.transparent,
+                                    shape: BoxShape.circle,
+                                    boxShadow: isSelected
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: isDark ? 0.16 : 0.22,
+                                              ),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 3),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      isSelected
+                                          ? item.activeIcon
+                                          : item.inactiveIcon,
+                                      color: isSelected
+                                          ? (isDark
+                                                ? const Color(0xFF1C1C1E)
+                                                : Colors.white)
+                                          : (isDark
+                                                ? const Color(0xFFAEAEB2)
+                                                : const Color(0xFF8E8E93)),
+                                      size: isSelected ? 22 : 21,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),

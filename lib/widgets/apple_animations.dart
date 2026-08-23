@@ -8,6 +8,7 @@ class AppleBouncyCard extends StatefulWidget {
   final VoidCallback? onTap;
   final double scaleFactor;
   final Duration duration;
+  final String? semanticLabel;
 
   const AppleBouncyCard({
     super.key,
@@ -15,6 +16,7 @@ class AppleBouncyCard extends StatefulWidget {
     this.onTap,
     this.scaleFactor = 0.965,
     this.duration = const Duration(milliseconds: 140),
+    this.semanticLabel,
   });
 
   @override
@@ -26,22 +28,28 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onTap?.call();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedScale(
-        scale: _isPressed ? widget.scaleFactor : 1.0,
-        duration: widget.duration,
-        curve: Curves.fastOutSlowIn,
-        child: AnimatedOpacity(
-          opacity: _isPressed ? 0.88 : 1.0,
-          duration: widget.duration,
-          curve: Curves.fastOutSlowIn,
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return Semantics(
+      button: widget.onTap != null,
+      enabled: widget.onTap != null,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.onTap == null
+            ? null
+            : (_) => setState(() => _isPressed = true),
+        onTapUp: widget.onTap == null
+            ? null
+            : (_) => setState(() => _isPressed = false),
+        onTapCancel: widget.onTap == null
+            ? null
+            : () => setState(() => _isPressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: !reduceMotion && _isPressed ? widget.scaleFactor : 1.0,
+          duration: reduceMotion ? Duration.zero : widget.duration,
+          curve: Curves.easeOutCubic,
           child: widget.child,
         ),
       ),
@@ -57,6 +65,8 @@ class FluidBounceButton extends StatefulWidget {
   final double scaleFactor;
   final Duration duration;
   final bool hapticEnabled;
+  final String? semanticLabel;
+  final bool? selected;
 
   const FluidBounceButton({
     super.key,
@@ -65,6 +75,8 @@ class FluidBounceButton extends StatefulWidget {
     this.scaleFactor = 0.935,
     this.duration = const Duration(milliseconds: 130),
     this.hapticEnabled = true,
+    this.semanticLabel,
+    this.selected,
   });
 
   @override
@@ -76,31 +88,32 @@ class _FluidBounceButtonState extends State<FluidBounceButton> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onTap == null
-          ? null
-          : (_) {
-              if (widget.hapticEnabled) HapticFeedback.selectionClick();
-              setState(() => _isPressed = true);
-            },
-      onTapUp: widget.onTap == null
-          ? null
-          : (_) {
-              setState(() => _isPressed = false);
-              widget.onTap?.call();
-            },
-      onTapCancel: widget.onTap == null
-          ? null
-          : () => setState(() => _isPressed = false),
-      child: AnimatedScale(
-        scale: _isPressed ? widget.scaleFactor : 1.0,
-        duration: widget.duration,
-        curve: Curves.fastOutSlowIn,
-        child: AnimatedOpacity(
-          opacity: _isPressed ? 0.82 : 1.0,
-          duration: widget.duration,
-          curve: Curves.fastOutSlowIn,
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return Semantics(
+      button: widget.onTap != null,
+      enabled: widget.onTap != null,
+      selected: widget.selected,
+      label: widget.semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.onTap == null
+            ? null
+            : (_) {
+                if (widget.hapticEnabled) HapticFeedback.selectionClick();
+                setState(() => _isPressed = true);
+              },
+        onTapUp: widget.onTap == null
+            ? null
+            : (_) => setState(() => _isPressed = false),
+        onTapCancel: widget.onTap == null
+            ? null
+            : () => setState(() => _isPressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: !reduceMotion && _isPressed ? widget.scaleFactor : 1.0,
+          duration: reduceMotion ? Duration.zero : widget.duration,
+          curve: Curves.easeOutCubic,
           child: widget.child,
         ),
       ),
@@ -126,6 +139,9 @@ class YouTubeStyleEntrance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return child;
+    }
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
       duration: duration + (delay * index),

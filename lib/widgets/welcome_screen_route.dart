@@ -21,33 +21,36 @@ class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
                 14,
                 bottomInset > 0 ? bottomInset + 6 : 12,
               ),
-              child: FractionallySizedBox(
-                widthFactor: 1,
-                heightFactor: 0.82,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      child,
-                      Positioned(
-                        top: 10,
-                        left: 0,
-                        right: 0,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: Container(
-                              width: 38,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(99),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: FractionallySizedBox(
+                  widthFactor: 1,
+                  heightFactor: 0.82,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        child,
+                        Positioned(
+                          top: 10,
+                          left: 0,
+                          right: 0,
+                          child: IgnorePointer(
+                            child: Center(
+                              child: Container(
+                                width: 38,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -57,6 +60,9 @@ class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 250),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+            return child;
+          }
           final curvedAnim = CurvedAnimation(
             parent: animation,
             curve: Curves.easeOutCubic,

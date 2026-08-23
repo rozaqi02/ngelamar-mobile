@@ -35,23 +35,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _addBtnKey = GlobalKey();
   bool _isSearchActive = false;
-  int _expandedIndex = 3; // Default kartu paling bawah terbuka
+  int? _expandedIndex;
   Timer? _debounce;
   String _profileSubtitle = 'Minat belum dipilih';
 
   @override
   void initState() {
     super.initState();
+    PrefsService.userInterestsListenable.addListener(_syncProfileSubtitle);
     PrefsService.getUserInterests().then((interests) {
-      if (mounted && interests.isNotEmpty) {
-        setState(() => _profileSubtitle = 'Minat: ${interests.first}');
-      }
+      if (mounted) _applyProfileSubtitle(interests);
     });
+  }
+
+  void _syncProfileSubtitle() {
+    final interests = PrefsService.userInterestsListenable.value;
+    if (interests != null && mounted) _applyProfileSubtitle(interests);
+  }
+
+  void _applyProfileSubtitle(List<String> interests) {
+    final next = interests.isEmpty ? 'Minat belum dipilih' : interests.first;
+    if (_profileSubtitle != next) setState(() => _profileSubtitle = next);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    PrefsService.userInterestsListenable.removeListener(_syncProfileSubtitle);
     _searchController.dispose();
     super.dispose();
   }
@@ -608,11 +618,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ? state.userName
         : 'Pencari Kerja';
     final displayJobs = state.priorityJobs;
-    final activeExpandedIndex = displayJobs.isEmpty
-        ? 0
-        : (_expandedIndex >= displayJobs.length
-              ? displayJobs.length - 1
-              : _expandedIndex);
+    final activeExpandedIndex =
+        _expandedIndex != null && _expandedIndex! < displayJobs.length
+        ? _expandedIndex
+        : null;
 
     final hasProfilePhoto =
         state.userProfilePhoto.isNotEmpty &&
@@ -1025,7 +1034,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Widget _buildEdgeToEdgeStackedDeck(
     List<JobApplication> jobs,
-    int activeExpandedIndex,
+    int? activeExpandedIndex,
   ) {
     return Column(
       children: List.generate(jobs.length, (index) {
@@ -1040,11 +1049,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
 
         final isLast = index == jobs.length - 1;
-        final topMargin = index == 0 ? 0.0 : -30.0;
-        final minimumLastHeight =
-            (MediaQuery.sizeOf(context).height - 350 - ((jobs.length - 1) * 74))
-                .clamp(280.0, 520.0)
-                .toDouble();
+        final topMargin = index == 0 ? 0.0 : -22.0;
+        final minimumLastHeight = (MediaQuery.sizeOf(context).height * 0.38)
+            .clamp(280.0, 440.0)
+            .toDouble();
 
         // Cek peringatan pintar H+7 Follow-Up
         final daysSinceApplied = DateTime.now()
@@ -1052,246 +1060,245 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             .inDays;
         final needsFollowup = job.status == 'Dikirim' && daysSinceApplied >= 7;
 
-        return GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            if (isExpanded) {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
-              );
-            } else {
-              setState(() {
-                _expandedIndex = index;
-              });
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.fastOutSlowIn,
-            width: double.infinity,
-            constraints: BoxConstraints(
-              minHeight: isLast ? minimumLastHeight : 0,
-            ),
-            margin: EdgeInsets.only(top: topMargin),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.vertical(
-                top: const Radius.circular(32),
-                bottom: isLast
-                    ? const Radius.circular(32)
-                    : const Radius.circular(0),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.10),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: AnimatedSize(
+        return Semantics(
+          button: true,
+          label:
+              '${job.companyName}, ${job.position}. ${isExpanded ? 'Terbuka. Ketuk untuk menutup.' : 'Tertutup. Ketuk untuk membuka.'}',
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _expandedIndex = isExpanded ? null : index);
+            },
+            child: AnimatedContainer(
               duration: const Duration(milliseconds: 320),
               curve: Curves.fastOutSlowIn,
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  22,
-                  18,
-                  22,
-                  isLast
-                      ? 135 + MediaQuery.paddingOf(context).bottom
-                      : (isExpanded ? 48 : 44),
+              width: double.infinity,
+              constraints: BoxConstraints(
+                minHeight: isLast ? minimumLastHeight : 0,
+              ),
+              margin: EdgeInsets.only(top: topMargin),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.vertical(
+                  top: const Radius.circular(32),
+                  bottom: isLast
+                      ? const Radius.circular(32)
+                      : const Radius.circular(0),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Top Row: Logo + Company Name + Smart Alert / Arrow
-                    Row(
-                      children: [
-                        Hero(
-                          tag: 'company_logo_${job.id}',
-                          flightShuttleBuilder:
-                              (
-                                flightContext,
-                                animation,
-                                flightDirection,
-                                fromHeroContext,
-                                toHeroContext,
-                              ) {
-                                return Material(
-                                  type: MaterialType.transparency,
-                                  child: toHeroContext.widget,
-                                );
-                              },
-                          child: CompanyLogoBadge(
-                            companyName: job.companyName,
-                            size: 42,
-                            customImagePath: job.companyLogoPath,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.10),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.fastOutSlowIn,
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    22,
+                    18,
+                    22,
+                    isLast
+                        ? 135 + MediaQuery.paddingOf(context).bottom
+                        : (isExpanded ? 48 : 44),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Top Row: Logo + Company Name + Smart Alert / Arrow
+                      Row(
+                        children: [
+                          Hero(
+                            tag: 'company_logo_${job.id}',
+                            flightShuttleBuilder:
+                                (
+                                  flightContext,
+                                  animation,
+                                  flightDirection,
+                                  fromHeroContext,
+                                  toHeroContext,
+                                ) {
+                                  return Material(
+                                    type: MaterialType.transparency,
+                                    child: toHeroContext.widget,
+                                  );
+                                },
+                            child: CompanyLogoBadge(
+                              companyName: job.companyName,
+                              size: 42,
+                              customImagePath: job.companyLogoPath,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
+                          const SizedBox(width: 14),
 
-                        // Company Name
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                job.companyName,
-                                style: TextStyle(
-                                  fontSize: 18.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: titleColor,
-                                  letterSpacing: -0.3,
+                          // Company Name
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  job.companyName,
+                                  style: TextStyle(
+                                    fontSize: 18.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: titleColor,
+                                    letterSpacing: -0.3,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (needsFollowup) ...[
-                                const SizedBox(height: 2),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
+                                if (needsFollowup) ...[
+                                  const SizedBox(height: 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      'H+7 Waktunya Follow-Up',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Text(
-                                    'H+7 Waktunya Follow-Up',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          // Diagonal Arrow in Circular White Container with Fluid Fade Animation
+                          AnimatedOpacity(
+                            opacity: isExpanded ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.fastOutSlowIn,
+                            child: AnimatedScale(
+                              scale: isExpanded ? 0.82 : 1.0,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.fastOutSlowIn,
+                              child: IgnorePointer(
+                                ignoring: isExpanded,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    Navigator.push(
+                                      context,
+                                      CupertinoPageRoute(
+                                        builder: (_) =>
+                                            JobDetailScreen(job: job),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: const BoxDecoration(
                                       color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.arrow_outward_rounded,
+                                        size: 18,
+                                        color: Color(0xFF121214),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Expanded Card Body (Position Title, Salary, Details Button)
+                      if (isExpanded) ...[
+                        const SizedBox(height: 18),
+
+                        // Position Title
+                        Text(
+                          job.position,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                            letterSpacing: -0.5,
+                            height: 1.18,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Bottom Row: Salary in Rp & Right Chevron >
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (_) => JobDetailScreen(job: job),
+                              ),
+                            );
+                          },
+                          behavior: HitTestBehavior.opaque,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  job.salaryOffered != null &&
+                                          job.salaryOffered!.isNotEmpty
+                                      ? job.salaryOffered!
+                                      : 'Gaji belum dicantumkan',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: titleColor,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Row(
+                                children: [
+                                  Text(
+                                    'Lihat Detail',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: titleColor.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 22,
+                                    color: titleColor,
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-
-                        // Diagonal Arrow in Circular White Container with Fluid Fade Animation
-                        AnimatedOpacity(
-                          opacity: isExpanded ? 0.0 : 1.0,
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.fastOutSlowIn,
-                          child: AnimatedScale(
-                            scale: isExpanded ? 0.82 : 1.0,
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.fastOutSlowIn,
-                            child: IgnorePointer(
-                              ignoring: isExpanded,
-                              child: GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  Navigator.push(
-                                    context,
-                                    CupertinoPageRoute(
-                                      builder: (_) => JobDetailScreen(job: job),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.arrow_outward_rounded,
-                                      size: 18,
-                                      color: Color(0xFF121214),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
-                    ),
-
-                    // Expanded Card Body (Position Title, Salary, Details Button)
-                    if (isExpanded) ...[
-                      const SizedBox(height: 18),
-
-                      // Position Title
-                      Text(
-                        job.position,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                          letterSpacing: -0.5,
-                          height: 1.18,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // Bottom Row: Salary in Rp & Right Chevron >
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.push(
-                            context,
-                            CupertinoPageRoute(
-                              builder: (_) => JobDetailScreen(job: job),
-                            ),
-                          );
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                job.salaryOffered != null &&
-                                        job.salaryOffered!.isNotEmpty
-                                    ? job.salaryOffered!
-                                    : 'Gaji belum dicantumkan',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: titleColor,
-                                  letterSpacing: -0.2,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Row(
-                              children: [
-                                Text(
-                                  'Lihat Detail',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: titleColor.withValues(alpha: 0.85),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 22,
-                                  color: titleColor,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),

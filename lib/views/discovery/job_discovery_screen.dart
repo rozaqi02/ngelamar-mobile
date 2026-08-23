@@ -32,6 +32,7 @@ class JobDiscoveryScreen extends ConsumerStatefulWidget {
 class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = 'Semua bidang';
+  Timer? _searchDebounce;
 
   final List<String> _categories = [
     'Semua bidang',
@@ -208,6 +209,7 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -217,6 +219,7 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     if (interests.isNotEmpty && mounted) {
       setState(() {
         _searchController.text = interests.first;
+        _selectedCategory = '';
       });
     }
   }
@@ -254,25 +257,29 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
         mode: LaunchMode.externalApplication,
       );
       if (!success && mounted) {
-        await Clipboard.setData(ClipboardData(text: url));
-        if (mounted) {
-          AppleToast.info(
-            context,
-            'Tautan ${portal['name']} disalin ke clipboard',
-          );
-        }
+        await _showPortalError(portal['name'].toString(), url);
       } else if (mounted) {
         AppleToast.success(context, 'Membuka ${portal['name']}');
       }
     } catch (_) {
-      await Clipboard.setData(ClipboardData(text: url));
-      if (mounted) {
-        AppleToast.info(
-          context,
-          'Tautan ${portal['name']} disalin ke clipboard',
-        );
-      }
+      if (mounted) await _showPortalError(portal['name'].toString(), url);
     }
+  }
+
+  Future<void> _showPortalError(String portalName, String url) async {
+    final copy = await AppDialog.show<bool>(
+      context: context,
+      icon: Icons.link_off_rounded,
+      iconColor: const Color(0xFFE0594F),
+      title: '$portalName belum dapat dibuka',
+      content:
+          'Periksa koneksi internet atau salin tautannya untuk dibuka secara manual.',
+      secondaryLabel: 'Tutup',
+      primaryLabel: 'Salin tautan',
+    );
+    if (copy != true || !mounted) return;
+    await Clipboard.setData(ClipboardData(text: url));
+    if (mounted) AppleToast.success(context, 'Tautan berhasil disalin');
   }
 
   void _openWelcomeModal() {
@@ -291,492 +298,515 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
         ? const [Color(0xFF0F1E14), Color(0xFF14241B), Color(0xFF121214)]
         : const [Color(0xFFD8F3DC), Color(0xFFEEF8EE), Color(0xFFF5EFE6)];
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: gradientColors,
-            stops: const [0.0, 0.35, 1.0],
-          ),
+    final content = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: gradientColors,
+          stops: const [0.0, 0.35, 1.0],
         ),
-        child: SafeArea(
-          top: !widget.embedded,
-          bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── TOP HEADER (STYLE IDENTIK DENGAN DAFTAR LAMARAN & PERSIAPAN KARIR) ──
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    widget.embedded ? 76 : 16,
-                    20,
-                    12,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'CARI\nLOKERKU',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: txtPri,
-                              letterSpacing: -1.2,
-                              height: 1.0,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: _openWelcomeModal,
-                            child: Container(
-                              padding: const EdgeInsets.all(9),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF242428)
-                                    : Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? const Color(0xFF383842)
-                                      : const Color(0xFFE5E0D5),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.2 : 0.04,
-                                    ),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                CupertinoIcons.question_circle_fill,
-                                size: 18,
-                                color: Color(0xFF1E8E3E),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      AppSearchField(
-                        controller: _searchController,
-                        hintText: 'Contoh: Flutter, BUMN, remote, startup...',
-                        onChanged: (_) => setState(() {}),
-                        onClear: () => setState(() {}),
-                      ),
-                    ],
-                  ),
+      ),
+      child: SafeArea(
+        top: !widget.embedded,
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── TOP HEADER (STYLE IDENTIK DENGAN DAFTAR LAMARAN & PERSIAPAN KARIR) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  widget.embedded ? 8 : 16,
+                  20,
+                  12,
                 ),
-              ),
-
-              // ── QUICK KEYWORD CHIPS ──
-              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 42,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: _categories.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          final cat = _categories[index];
-                          final isSelected = _selectedCategory == cat;
-                          return FluidBounceButton(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = cat;
-                                _searchController.text = cat == 'Semua bidang'
-                                    ? ''
-                                    : cat;
-                                _searchController.selection =
-                                    TextSelection.collapsed(
-                                      offset: _searchController.text.length,
-                                    );
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOutCubic,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'CARI\nLOKERKU',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: txtPri,
+                            letterSpacing: -1.2,
+                            height: 1.0,
+                          ),
+                        ),
+                        FluidBounceButton(
+                          onTap: _openWelcomeModal,
+                          semanticLabel: 'Buka panduan Cari Lokerku',
+                          child: Container(
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF242428)
+                                  : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF383842)
+                                    : const Color(0xFFE5E0D5),
                               ),
-                              decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.question_circle_fill,
+                              size: 18,
+                              color: Color(0xFF1E8E3E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    AppSearchField(
+                      controller: _searchController,
+                      hintText: 'Contoh: Flutter, BUMN, remote, startup...',
+                      onChanged: (value) {
+                        _searchDebounce?.cancel();
+                        _searchDebounce = Timer(
+                          const Duration(milliseconds: 250),
+                          () {
+                            if (!mounted) return;
+                            final normalized = value.trim();
+                            setState(() {
+                              _selectedCategory =
+                                  _categories.contains(normalized)
+                                  ? normalized
+                                  : '';
+                            });
+                          },
+                        );
+                      },
+                      onClear: () {
+                        _searchDebounce?.cancel();
+                        setState(() => _selectedCategory = 'Semua bidang');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── QUICK KEYWORD CHIPS ──
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 42,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _categories.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final cat = _categories[index];
+                        final isSelected = _selectedCategory == cat;
+                        return FluidBounceButton(
+                          semanticLabel: 'Gunakan kata kunci $cat',
+                          selected: isSelected,
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = cat;
+                              _searchController.text = cat == 'Semua bidang'
+                                  ? ''
+                                  : cat;
+                              _searchController.selection =
+                                  TextSelection.collapsed(
+                                    offset: _searchController.text.length,
+                                  );
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFF1E8E3E)
+                                  : (isDark
+                                        ? const Color(0xFF203027)
+                                        : Colors.white),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
                                 color: isSelected
                                     ? const Color(0xFF1E8E3E)
                                     : (isDark
-                                          ? const Color(0xFF203027)
-                                          : Colors.white),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? const Color(0xFF1E8E3E)
-                                      : (isDark
-                                            ? const Color(0xFF31523A)
-                                            : const Color(0xFFBFDCC6)),
-                                  width: 1.1,
+                                          ? const Color(0xFF31523A)
+                                          : const Color(0xFFBFDCC6)),
+                                width: 1.1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF1E8E3E,
+                                  ).withValues(alpha: isSelected ? 0.22 : 0.04),
+                                  blurRadius: 7,
+                                  offset: const Offset(0, 2),
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF1E8E3E).withValues(
-                                      alpha: isSelected ? 0.22 : 0.04,
-                                    ),
-                                    blurRadius: 7,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    cat,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : (isDark
-                                                ? const Color(0xFFCFE9D5)
-                                                : const Color(0xFF20442A)),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              ],
                             ),
-                          );
-                        },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  cat,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                              ? const Color(0xFFCFE9D5)
+                                              : const Color(0xFF20442A)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── SECTION HEADER: "PILIHAN PORTAL LOKER" ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Pilihan Portal Loker',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: txtPri,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    Text(
+                      '6 Portal Pilihan',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade600,
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
 
-              // ── SECTION HEADER: "PILIHAN PORTAL LOKER" ──
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Pilihan Portal Loker',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: txtPri,
-                          letterSpacing: -0.3,
+            // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, idx) {
+                  final portal = _portals[idx];
+                  final Color cardBg = isDark
+                      ? const Color(0xFF1E1E24)
+                      : (portal['bgColor'] as Color);
+                  final Color portalColor = portal['portalColor'] as Color;
+                  final String name = portal['name'] as String;
+                  final String watermark = portal['watermark'] as String;
+                  final String roleTitle = portal['roleTitle'] as String;
+                  final String tagline = portal['tagline'] as String;
+                  final IconData icon = portal['icon'] as IconData;
+                  final String logoAsset = portal['logoAsset'] as String;
+                  final String logoUrl = portal['logoUrl'] as String;
+
+                  return AppleBouncyCard(
+                    onTap: () => _launchPortal(portal),
+                    semanticLabel: 'Buka ${portal['name']} di aplikasi browser',
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF383842)
+                              : Colors.transparent,
                         ),
-                      ),
-                      Text(
-                        '6 Portal Pilihan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, idx) {
-                    final portal = _portals[idx];
-                    final Color cardBg = isDark
-                        ? const Color(0xFF1E1E24)
-                        : (portal['bgColor'] as Color);
-                    final Color portalColor = portal['portalColor'] as Color;
-                    final String name = portal['name'] as String;
-                    final String watermark = portal['watermark'] as String;
-                    final String roleTitle = portal['roleTitle'] as String;
-                    final String tagline = portal['tagline'] as String;
-                    final IconData icon = portal['icon'] as IconData;
-                    final String logoAsset = portal['logoAsset'] as String;
-                    final String logoUrl = portal['logoUrl'] as String;
-
-                    return GestureDetector(
-                      onTap: () => _launchPortal(portal),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF383842)
-                                : Colors.transparent,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.25 : 0.05,
+                            ),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.25 : 0.05,
-                              ),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            // ── GIANT FAINT WATERMARK LETTER ──
-                            Positioned(
-                              right: -12,
-                              bottom: -20,
-                              child: Text(
-                                watermark,
-                                style: TextStyle(
-                                  fontSize: 170,
-                                  fontWeight: FontWeight.w900,
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.05)
-                                      : Colors.white.withValues(alpha: 0.28),
-                                  letterSpacing: -10,
-                                ),
-                              ),
-                            ),
-
-                            // ── CARD FOREGROUND CONTENT ──
-                            Padding(
-                              padding: const EdgeInsets.all(22),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Top Row: identitas portal. Aksi eksternal hanya
-                                  // ditampilkan sekali pada CTA di bagian bawah.
-                                  Row(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 44,
-                                            height: 44,
-                                            padding: const EdgeInsets.all(7),
-                                            decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? const Color(0xFF282830)
-                                                  : Colors.white,
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.08),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: ClipOval(
-                                              child: Image.asset(
-                                                logoAsset,
-                                                width: 30,
-                                                height: 30,
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (_, _, _) =>
-                                                    Image.network(
-                                                      logoUrl,
-                                                      width: 30,
-                                                      height: 30,
-                                                      fit: BoxFit.contain,
-                                                      errorBuilder: (_, _, _) =>
-                                                          Icon(
-                                                            icon,
-                                                            size: 22,
-                                                            color: portalColor,
-                                                          ),
-                                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Text(
-                                            name,
-                                            style: TextStyle(
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w900,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF121214),
-                                              letterSpacing: -0.3,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 18),
-
-                                  // Honest portal destination label (not a live job count).
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        'Cari cepat',
-                                        style: TextStyle(
-                                          fontSize: 30,
-                                          fontWeight: FontWeight.w900,
-                                          color: isDark
-                                              ? Colors.white
-                                              : const Color(0xFF121214),
-                                          letterSpacing: -1.0,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'di portal resmi',
-                                        style: TextStyle(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: isDark
-                                              ? const Color(0xFFA0A0A8)
-                                              : const Color(0xFF4A5568),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 4),
-
-                                  // Role Title & Tagline
-                                  Text(
-                                    _searchController.text.trim().isNotEmpty
-                                        ? 'Mencari "${_searchController.text.trim()}" di $name'
-                                        : '$roleTitle • $tagline',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: isDark
-                                          ? const Color(0xFFE5E5E8)
-                                          : const Color(0xFF1E293B),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-
-                                  const SizedBox(height: 22),
-
-                                  // Bottom Row: external destination + action button.
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      // Left: explicit external navigation label.
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Tujuan',
-                                            style: TextStyle(
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: isDark
-                                                  ? const Color(0xFFA0A0A8)
-                                                  : const Color(0xFF4A5568),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 9,
-                                              vertical: 5,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: isDark ? 0.10 : 0.78,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: isDark
-                                                    ? const Color(0xFF383842)
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.9,
-                                                      ),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Situs eksternal',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
-                                                color: isDark
-                                                    ? Colors.white70
-                                                    : const Color(0xFF1E293B),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      // Right: Solid Black Circle Action Button ↗
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF5C44E4)
-                                              : const Color(0xFF121214),
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.25,
-                                              ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            CupertinoIcons.arrow_up_right,
-                                            size: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
-                    );
-                  }, childCount: _portals.length),
-                ),
+                      child: Stack(
+                        children: [
+                          // ── GIANT FAINT WATERMARK LETTER ──
+                          Positioned(
+                            right: -12,
+                            bottom: -20,
+                            child: Text(
+                              watermark,
+                              style: TextStyle(
+                                fontSize: 170,
+                                fontWeight: FontWeight.w900,
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.white.withValues(alpha: 0.28),
+                                letterSpacing: -10,
+                              ),
+                            ),
+                          ),
+
+                          // ── CARD FOREGROUND CONTENT ──
+                          Padding(
+                            padding: const EdgeInsets.all(22),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top Row: identitas portal. Aksi eksternal hanya
+                                // ditampilkan sekali pada CTA di bagian bawah.
+                                Row(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? const Color(0xFF282830)
+                                                : Colors.white,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.08,
+                                                ),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
+                                          ),
+                                          child: ClipOval(
+                                            child: Image.asset(
+                                              logoAsset,
+                                              width: 30,
+                                              height: 30,
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (_, _, _) =>
+                                                  Image.network(
+                                                    logoUrl,
+                                                    width: 30,
+                                                    height: 30,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder: (_, _, _) =>
+                                                        Icon(
+                                                          icon,
+                                                          size: 22,
+                                                          color: portalColor,
+                                                        ),
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          name,
+                                          style: TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w900,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF121214),
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 18),
+
+                                // Honest portal destination label (not a live job count).
+                                Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      'Cari cepat',
+                                      style: TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w900,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF121214),
+                                        letterSpacing: -1.0,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'di portal resmi',
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? const Color(0xFFA0A0A8)
+                                            : const Color(0xFF4A5568),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                // Role Title & Tagline
+                                Text(
+                                  _searchController.text.trim().isNotEmpty
+                                      ? 'Mencari "${_searchController.text.trim()}" di $name'
+                                      : '$roleTitle • $tagline',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDark
+                                        ? const Color(0xFFE5E5E8)
+                                        : const Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+
+                                const SizedBox(height: 22),
+
+                                // Bottom Row: external destination + action button.
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    // Left: explicit external navigation label.
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Tujuan',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark
+                                                ? const Color(0xFFA0A0A8)
+                                                : const Color(0xFF4A5568),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 9,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: isDark ? 0.10 : 0.78,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: isDark
+                                                  ? const Color(0xFF383842)
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.9,
+                                                    ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Situs eksternal',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: isDark
+                                                  ? Colors.white70
+                                                  : const Color(0xFF1E293B),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // Right: Solid Black Circle Action Button ↗
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF5C44E4)
+                                            : const Color(0xFF121214),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.25,
+                                            ),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          CupertinoIcons.arrow_up_right,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }, childCount: _portals.length),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+    return widget.embedded ? content : Scaffold(body: content);
   }
 }

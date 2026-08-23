@@ -34,9 +34,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ScrollController _tabScrollController = ScrollController();
+  late final List<GlobalKey> _tabKeys;
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _addBtnKey = GlobalKey();
   Timer? _debounce;
+  int _lastTabIndex = 0;
 
   String _sortBy = 'Terbaru';
   String _viewMode = 'grid';
@@ -57,10 +59,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabKeys = List.generate(_tabs.length, (_) => GlobalKey());
     _tabController.addListener(() {
-      if (mounted) {
+      if (mounted && _lastTabIndex != _tabController.index) {
+        _lastTabIndex = _tabController.index;
         setState(() {});
-        _scrollToActiveTab();
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scrollToActiveTab(),
+        );
         if (!_tabController.indexIsChanging) {
           unawaited(
             PrefsService.setJobListStatusTab(_tabs[_tabController.index]),
@@ -100,10 +106,11 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   }
 
   void _scrollToActiveTab() {
-    if (!_tabScrollController.hasClients) return;
-    final targetOffset = (_tabController.index * 110.0) - 50.0;
-    _tabScrollController.animateTo(
-      targetOffset.clamp(0.0, _tabScrollController.position.maxScrollExtent),
+    final tabContext = _tabKeys[_tabController.index].currentContext;
+    if (tabContext == null) return;
+    Scrollable.ensureVisible(
+      tabContext,
+      alignment: 0.5,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
     );
@@ -343,9 +350,13 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     final state = ref.watch(jobProvider);
     final isDark = AppTheme.isDark(context);
     final txtPri = AppTheme.getTextPrimary(context);
+    final txtSec = AppTheme.getTextSecondary(context);
     final purpleGradient = isDark
         ? const [Color(0xFF19142E), Color(0xFF151324), Color(0xFF121214)]
         : const [Color(0xFFEFEAFF), Color(0xFFF7F4FF), Color(0xFFF5EFE6)];
+    final jobsByTab = <String, List<JobApplication>>{
+      for (final tab in _tabs) tab: _filterJobs(state.jobs, tab, state),
+    };
 
     return Scaffold(
       body: Container(
@@ -367,26 +378,22 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    SizedBox(
-                      width: 138,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'LAMARAN\nSAYA',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: txtPri,
-                            letterSpacing: -1.2,
-                            height: 1.0,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'LAMARAN\nSAYA',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                          letterSpacing: -1.2,
+                          height: 1.0,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     Row(
                       children: [
-                        GestureDetector(
+                        FluidBounceButton(
                           onTap: () {
                             HapticFeedback.selectionClick();
                             Navigator.push(
@@ -396,6 +403,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                               ),
                             );
                           },
+                          semanticLabel: 'Buka panduan Lamaran Saya',
                           child: Container(
                             padding: const EdgeInsets.all(9),
                             decoration: BoxDecoration(
@@ -426,9 +434,10 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
+                        FluidBounceButton(
                           key: _addBtnKey,
                           onTap: () => _openAddJob(context, _addBtnKey),
+                          semanticLabel: 'Tambah lamaran',
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -561,15 +570,15 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     children: List.generate(_tabs.length, (i) {
                       final tabName = _tabs[i];
                       final isSelected = _tabController.index == i;
-                      final count = _filterJobs(
-                        state.jobs,
-                        tabName,
-                        state,
-                      ).length;
+                      final count = jobsByTab[tabName]!.length;
 
                       return Padding(
+                        key: _tabKeys[i],
                         padding: const EdgeInsets.only(right: 8),
                         child: FluidBounceButton(
+                          semanticLabel:
+                              'Tampilkan status $tabName, $count lamaran',
+                          selected: isSelected,
                           onTap: () {
                             setState(() {
                               _tabController.animateTo(i);
@@ -682,7 +691,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   physics: const BouncingScrollPhysics(),
                   children: List.generate(_tabs.length, (tabIdx) {
                     final category = _tabs[tabIdx];
-                    final jobs = _filterJobs(state.jobs, category, state);
+                    final jobs = jobsByTab[category]!;
 
                     if (jobs.isEmpty) {
                       return Transform.translate(
@@ -719,13 +728,15 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12.5,
-                                    color: Colors.grey.shade600,
+                                    color: txtSec,
                                     height: 1.4,
                                   ),
                                 ),
                                 const SizedBox(height: 18),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
                                     if (state.searchQuery.isNotEmpty ||
                                         state.onlyFavoritesFilter ||
@@ -771,7 +782,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                               : Colors.white,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
                                     ],
                                     ElevatedButton.icon(
                                       onPressed: () => _openAddJob(context),
@@ -813,7 +823,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                     if (_viewMode == 'grid') {
                       return GridView.builder(
-                        key: const PageStorageKey('job_grid'),
+                        key: PageStorageKey('job_grid_${_tabs[tabIdx]}'),
                         padding: EdgeInsets.fromLTRB(
                           16,
                           8,
@@ -821,13 +831,19 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           120 + MediaQuery.of(context).padding.bottom,
                         ),
                         physics: const BouncingScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 220,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              mainAxisExtent: 226,
-                            ),
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 220,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          mainAxisExtent:
+                              (226 +
+                                      (MediaQuery.textScalerOf(
+                                                context,
+                                              ).scale(1) -
+                                              1) *
+                                          56)
+                                  .clamp(226, 282),
+                        ),
                         itemCount: jobs.length,
                         itemBuilder: (context, i) {
                           final job = jobs[i];
@@ -838,38 +854,18 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           final isDarkText =
                               cardColor == AppTheme.cardYellow ||
                               cardColor == AppTheme.cardGreen;
-                          return Dismissible(
-                            key: ValueKey('grid_${job.id}'),
-                            direction: DismissDirection.endToStart,
-                            confirmDismiss: (_) => _confirmDelete(job),
-                            onDismissed: (_) => _deleteJob(job),
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE53935),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusCardLarge,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.delete_outline_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                            child: _buildJobGridCard(
-                              context: context,
-                              job: job,
-                              cardColor: cardColor,
-                              isDarkText: isDarkText,
-                            ),
+                          return _buildJobGridCard(
+                            context: context,
+                            job: job,
+                            cardColor: cardColor,
+                            isDarkText: isDarkText,
                           );
                         },
                       );
                     }
 
                     return ListView.builder(
-                      key: const PageStorageKey('job_list'),
+                      key: PageStorageKey('job_list_${_tabs[tabIdx]}'),
                       padding: EdgeInsets.fromLTRB(
                         16,
                         8,
@@ -908,10 +904,18 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                               );
                             },
                             onDismissed: (_) {
-                              ref.read(jobProvider.notifier).deleteJob(job.id);
+                              unawaited(
+                                ref
+                                    .read(jobProvider.notifier)
+                                    .deleteJob(job.id),
+                              );
                               AppToast.success(
                                 context,
                                 'Lamaran di ${job.companyName} dihapus.',
+                                actionLabel: 'Urungkan',
+                                onAction: () => unawaited(
+                                  ref.read(jobProvider.notifier).addJob(job),
+                                ),
                               );
                             },
                             background: Container(
@@ -963,27 +967,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         ),
       ),
     );
-  }
-
-  Future<bool> _confirmDelete(JobApplication job) async {
-    HapticFeedback.heavyImpact();
-    return await AppDialog.show<bool>(
-          context: context,
-          icon: Icons.delete_outline_rounded,
-          iconColor: const Color(0xFFE53935),
-          title: 'Hapus Lamaran? ',
-          content:
-              'Hapus ${job.position} di ${job.companyName} dari tracker-mu?',
-          secondaryLabel: 'Batal',
-          primaryLabel: 'Hapus',
-          isDestructive: true,
-        ) ??
-        false;
-  }
-
-  void _deleteJob(JobApplication job) {
-    ref.read(jobProvider.notifier).deleteJob(job.id);
-    AppToast.success(context, '${job.companyName} dihapus dari tracker-mu.');
   }
 
   Widget _buildJobGridCard({
@@ -1136,68 +1119,81 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     bool active = false,
     int? count,
   }) {
-    return Semantics(
-      button: true,
-      selected: active,
-      label: tooltip,
-      child: Tooltip(
-        message: tooltip,
-        child: FluidBounceButton(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            height: 36,
-            constraints: const BoxConstraints(minWidth: 36),
-            padding: EdgeInsets.symmetric(horizontal: count == null ? 9 : 10),
-            decoration: BoxDecoration(
-              color: active
-                  ? const Color(0xFF5C44E4)
-                  : (isDark
-                        ? const Color(0xFF28243A)
-                        : const Color(0xFFF4F0FF)),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: active
-                    ? const Color(0xFF5C44E4)
-                    : (isDark
-                          ? const Color(0xFF4B426F)
-                          : const Color(0xFFD9CDF8)),
-              ),
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF5C44E4).withValues(alpha: 0.24),
-                        blurRadius: 7,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: active
-                      ? Colors.white
-                      : (isDark ? Colors.white70 : const Color(0xFF5C5360)),
+    return SizedBox(
+      height: 48,
+      child: Center(
+        child: Semantics(
+          button: true,
+          selected: active,
+          label: tooltip,
+          child: Tooltip(
+            message: tooltip,
+            child: FluidBounceButton(
+              onTap: onTap,
+              semanticLabel: tooltip,
+              selected: active,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                height: 36,
+                constraints: const BoxConstraints(minWidth: 36),
+                padding: EdgeInsets.symmetric(
+                  horizontal: count == null ? 9 : 10,
                 ),
-                if (count != null) ...[
-                  const SizedBox(width: 5),
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                decoration: BoxDecoration(
+                  color: active
+                      ? const Color(0xFF5C44E4)
+                      : (isDark
+                            ? const Color(0xFF28243A)
+                            : const Color(0xFFF4F0FF)),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: active
+                        ? const Color(0xFF5C44E4)
+                        : (isDark
+                              ? const Color(0xFF4B426F)
+                              : const Color(0xFFD9CDF8)),
+                  ),
+                  boxShadow: active
+                      ? [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF5C44E4,
+                            ).withValues(alpha: 0.24),
+                            blurRadius: 7,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 16,
                       color: active
                           ? Colors.white
                           : (isDark ? Colors.white70 : const Color(0xFF5C5360)),
                     ),
-                  ),
-                ],
-              ],
+                    if (count != null) ...[
+                      const SizedBox(width: 5),
+                      Text(
+                        '$count',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: active
+                              ? Colors.white
+                              : (isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF5C5360)),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

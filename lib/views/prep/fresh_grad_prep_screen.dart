@@ -292,7 +292,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final copy = List<Map<String, String>>.from(_allQaPool)..shuffle();
     setState(() {
       _activeQaItems = copy.take(5).toList();
-      _expandedQaIndex = 0;
+      _expandedQaIndex = -1;
     });
     AppleToast.success(context, '5 Pertanyaan interview baru telah diacak!');
     DelightCelebration.show(
@@ -432,130 +432,130 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       },
     ];
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF121214)
-          : const Color(0xFFFAF8F5),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: bgGradient,
-            stops: const [0.0, 0.4, 1.0],
-          ),
+    final content = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: bgGradient,
+          stops: const [0.0, 0.4, 1.0],
         ),
-        child: SafeArea(
-          top: !widget.embedded,
-          bottom: false,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ── TOP HEADER SECTION (IDENTIK FOTO: TITLE + SPARKLES + SUBTITLE + CIRCLE BUTTON) ──
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    widget.embedded ? 76 : 20,
-                    24,
-                    16,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header mengikuti pola menu Portal dan Daftar Lamaran.
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'SIAPKAN\nKARIRMU',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: txtPri,
-                              letterSpacing: -1.2,
-                              height: 1.0,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              Navigator.push(
-                                context,
-                                WelcomeScreenRoute(
-                                  child: const CareerPrepWelcomeScreen(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF222226)
-                                    : Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? const Color(0xFF333338)
-                                      : const Color(0xFFE5E0D5),
-                                ),
-                              ),
-                              child: const Icon(
-                                CupertinoIcons.question_circle_fill,
-                                size: 18,
-                                color: Color(0xFFF59E0B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Subtitle
-                      Padding(
-                        padding: EdgeInsets.zero,
-                        child: Text(
-                          'Berkas, interview, gaji, dan pesan HRD dalam satu tempat.',
-                          textAlign: TextAlign.left,
+      ),
+      child: SafeArea(
+        top: !widget.embedded,
+        bottom: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ── TOP HEADER SECTION (IDENTIK FOTO: TITLE + SPARKLES + SUBTITLE + CIRCLE BUTTON) ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  widget.embedded ? 8 : 20,
+                  24,
+                  16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header mengikuti pola menu Portal dan Daftar Lamaran.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'SIAPKAN\nKARIRMU',
                           style: TextStyle(
-                            fontSize: 13.5,
-                            color: txtSec,
-                            height: 1.45,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: txtPri,
+                            letterSpacing: -1.2,
+                            height: 1.0,
                           ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              WelcomeScreenRoute(
+                                child: const CareerPrepWelcomeScreen(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF222226)
+                                  : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF333338)
+                                    : const Color(0xFFE5E0D5),
+                              ),
+                            ),
+                            child: const Icon(
+                              CupertinoIcons.question_circle_fill,
+                              size: 18,
+                              color: Color(0xFFF59E0B),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
 
-                      const SizedBox(height: 14),
-                    ],
-                  ),
+                    const SizedBox(height: 12),
+
+                    // Subtitle
+                    Padding(
+                      padding: EdgeInsets.zero,
+                      child: Text(
+                        'Berkas, interview, gaji, dan pesan HRD dalam satu tempat.',
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: txtSec,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+                  ],
                 ),
               ),
+            ),
 
-              // ── STACKED CARDS DECK WITH DOODLE LOOP BACKGROUND ──
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(0, 6, 0, 18),
-                sliver: SliverToBoxAdapter(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // 4 Overlapping Cascading Stacked Cards
-                      Column(
-                        children: List.generate(cardConfigs.length, (i) {
-                          final config = cardConfigs[i];
-                          final isExpanded = _selectedSegment == i;
-                          final cardBg = config['color'] as Color;
-                          final dotColor = config['dotColor'] as Color;
-                          final cardTextColor = config['textColor'] as Color;
-                          final title = config['title'] as String;
-                          final subtitle = config['subtitle'] as String;
-                          final builder =
-                              config['builder'] as Widget Function();
+            // ── STACKED CARDS DECK WITH DOODLE LOOP BACKGROUND ──
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(0, 6, 0, 18),
+              sliver: SliverToBoxAdapter(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // 4 Overlapping Cascading Stacked Cards
+                    Column(
+                      children: List.generate(cardConfigs.length, (i) {
+                        final config = cardConfigs[i];
+                        final isExpanded = _selectedSegment == i;
+                        final cardBg = config['color'] as Color;
+                        final dotColor = config['dotColor'] as Color;
+                        final cardTextColor = config['textColor'] as Color;
+                        final title = config['title'] as String;
+                        final subtitle = config['subtitle'] as String;
+                        final builder = config['builder'] as Widget Function();
 
-                          return GestureDetector(
+                        return Semantics(
+                          button: true,
+                          expanded: isExpanded,
+                          label:
+                              '$title, ${isExpanded ? 'terbuka' : 'tertutup'}',
+                          child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
                               HapticFeedback.selectionClick();
@@ -675,77 +675,81 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                                     ),
                                   ),
 
-                                  // Keep content mounted and reveal it only
-                                  // vertically to avoid rebuild flicker.
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(
-                                      end: isExpanded ? 1 : 0,
-                                    ),
-                                    duration: const Duration(milliseconds: 440),
-                                    curve: Curves.easeInOutCubicEmphasized,
-                                    child: RepaintBoundary(
-                                      child: Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          0,
-                                          22,
-                                          32,
-                                        ),
-                                        child: builder(),
+                                  // AnimatedSize changes only the vertical
+                                  // extent, so content never slides or fades.
+                                  ClipRect(
+                                    child: AnimatedSize(
+                                      duration: const Duration(
+                                        milliseconds: 440,
                                       ),
-                                    ),
-                                    builder: (context, reveal, child) =>
-                                        IgnorePointer(
-                                          ignoring: !isExpanded,
-                                          child: ClipRect(
-                                            child: Align(
-                                              alignment: Alignment.topCenter,
-                                              heightFactor: reveal,
-                                              child: child,
+                                      curve: Curves.easeInOutCubicEmphasized,
+                                      alignment: Alignment.topCenter,
+                                      child: isExpanded
+                                          ? RepaintBoundary(
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.fromLTRB(
+                                                      22,
+                                                      0,
+                                                      22,
+                                                      32,
+                                                    ),
+                                                child: builder(),
+                                              ),
+                                            )
+                                          : const SizedBox(
+                                              width: double.infinity,
+                                              height: 0,
                                             ),
-                                          ),
-                                        ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    4,
-                    20,
-                    120 + (bottomInset > 0 ? bottomInset : 0),
-                  ),
-                  child: Column(
-                    children: [
-                      const ReadingBookMascot(width: 240, height: 178),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Belajar pelan-pelan, tumbuh setiap hari.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: txtSec,
-                          letterSpacing: -0.15,
-                        ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  4,
+                  20,
+                  120 + (bottomInset > 0 ? bottomInset : 0),
+                ),
+                child: Column(
+                  children: [
+                    const ReadingBookMascot(width: 240, height: 178),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Belajar pelan-pelan, tumbuh setiap hari.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: txtSec,
+                        letterSpacing: -0.15,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+    if (widget.embedded) return content;
+    return Scaffold(
+      backgroundColor: isDark
+          ? const Color(0xFF121214)
+          : const Color(0xFFFAF8F5),
+      body: content,
     );
   }
 
@@ -1606,153 +1610,196 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               ? const Color(0xFF333336)
               : Colors.white.withValues(alpha: 0.90);
 
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _expandedQaIndex = isExpanded ? -1 : idx;
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.fastOutSlowIn,
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: AnimatedSize(
+          return Semantics(
+            button: true,
+            expanded: isExpanded,
+            label: 'Pertanyaan ${idx + 1}: ${qa['q']}',
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _expandedQaIndex = isExpanded ? -1 : idx;
+                });
+              },
+              child: AnimatedContainer(
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.fastOutSlowIn,
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Top Row: Tag Pill & Expand Icon
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDarkText
-                                  ? const Color(
-                                      0xFF19191B,
-                                    ).withValues(alpha: 0.12)
-                                  : Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              'SOAL 0${idx + 1}',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w900,
-                                color: titleColor,
-                                letterSpacing: 0.4,
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.fastOutSlowIn,
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Top Row: Tag Pill & Expand Icon
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
                               ),
-                            ),
-                          ),
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: isDarkText
-                                  ? const Color(0xFF19191B)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              isExpanded
-                                  ? CupertinoIcons.chevron_up
-                                  : CupertinoIcons.chevron_down,
-                              size: 14,
-                              color: isDarkText ? Colors.white : cardColor,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      // Focus Subtitle
-                      Text(
-                        qa['sub']!,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: descColor,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      // Question Title
-                      Text(
-                        qa['q']!,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: titleColor,
-                          letterSpacing: -0.3,
-                          height: 1.25,
-                        ),
-                      ),
-
-                      // Expanded Answer & Strategy Box
-                      if (isExpanded) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isDarkText
-                                ? Colors.white.withValues(alpha: 0.95)
-                                : Colors.black.withValues(alpha: 0.20),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '💡 Rekomendasi Jawaban & STAR Tips:',
+                              decoration: BoxDecoration(
+                                color: isDarkText
+                                    ? const Color(
+                                        0xFF19191B,
+                                      ).withValues(alpha: 0.12)
+                                    : Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'SOAL 0${idx + 1}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w900,
+                                  color: titleColor,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
+                            AnimatedRotation(
+                              turns: isExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeInOutCubic,
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
                                   color: isDarkText
-                                      ? const Color(0xFF121214)
+                                      ? const Color(0xFF19191B)
                                       : Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.chevron_down,
+                                  size: 14,
+                                  color: isDarkText ? Colors.white : cardColor,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                qa['a']!,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  height: 1.45,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDarkText
-                                      ? const Color(0xFF222224)
-                                      : Colors.white.withValues(alpha: 0.95),
-                                ),
-                              ),
-                            ],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // Focus Subtitle
+                        Text(
+                          qa['sub']!,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: descColor,
+                          ),
+                        ),
+
+                        const SizedBox(height: 4),
+
+                        // Question Title
+                        Text(
+                          qa['q']!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: titleColor,
+                            letterSpacing: -0.3,
+                            height: 1.25,
+                          ),
+                        ),
+
+                        // Answer expands vertically without a lateral entrance.
+                        ClipRect(
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOutCubic,
+                            alignment: Alignment.topCenter,
+                            child: isExpanded
+                                ? Padding(
+                                    padding: const EdgeInsets.only(top: 14),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: isDarkText
+                                            ? Colors.white.withValues(
+                                                alpha: 0.95,
+                                              )
+                                            : Colors.black.withValues(
+                                                alpha: 0.20,
+                                              ),
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.lightbulb_outline_rounded,
+                                                size: 16,
+                                                color: isDarkText
+                                                    ? const Color(0xFF121214)
+                                                    : Colors.white,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  'Rekomendasi jawaban dan STAR tips',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: isDarkText
+                                                        ? const Color(
+                                                            0xFF121214,
+                                                          )
+                                                        : Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            qa['a']!,
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              height: 1.45,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDarkText
+                                                  ? const Color(0xFF222224)
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.95,
+                                                    ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox(
+                                    width: double.infinity,
+                                    height: 0,
+                                  ),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),

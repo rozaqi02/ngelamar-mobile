@@ -43,8 +43,17 @@ class InboxService {
       return rows
           .map((row) => InboxMessage.fromMap(row))
           .toList(growable: false);
-    } catch (_) {
-      return const [];
+    } catch (error) {
+      throw InboxFetchException(error.toString());
     }
   }
+}
+
+class InboxFetchException implements Exception {
+  final String message;
+
+  const InboxFetchException(this.message);
+
+  @override
+  String toString() => message;
 }

@@ -21,9 +21,8 @@ class AppToast {
       final messenger = ScaffoldMessenger.maybeOf(context);
       if (messenger == null) return;
 
-      messenger.hideCurrentSnackBar();
-
       final bottomPadding = MediaQuery.of(context).padding.bottom;
+      final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
 
       messenger.showSnackBar(
         SnackBar(
@@ -34,7 +33,9 @@ class AppToast {
             16,
             0,
             16,
-            bottomPadding > 0 ? bottomPadding + 70 : 80,
+            keyboardInset > 0
+                ? keyboardInset + 16
+                : (bottomPadding > 0 ? bottomPadding + 76 : 84),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           shape: RoundedRectangleBorder(
@@ -71,7 +72,7 @@ class AppToast {
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
                       ),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (subtitle != null && subtitle.isNotEmpty) ...[
@@ -83,7 +84,7 @@ class AppToast {
                           fontSize: 11,
                           fontWeight: FontWeight.w400,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -92,26 +93,30 @@ class AppToast {
               ),
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () {
-                    messenger.hideCurrentSnackBar();
-                    onAction();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      actionLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                Semantics(
+                  button: true,
+                  label: actionLabel,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: TextButton(
+                      onPressed: () {
+                        messenger.hideCurrentSnackBar();
+                        onAction();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white.withValues(alpha: 0.15),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        actionLabel,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),

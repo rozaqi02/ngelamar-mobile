@@ -202,6 +202,22 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       final result = await TextParserService.extractFromUrlOrText(text);
       if (!mounted) return;
 
+      final extractedFields = <String>[
+        if (result.companyName.isNotEmpty) 'perusahaan',
+        if (result.position.isNotEmpty) 'posisi',
+        if (result.location?.isNotEmpty == true) 'lokasi',
+        if (result.salary?.isNotEmpty == true) 'gaji',
+        if (result.rawDescription.isNotEmpty) 'deskripsi',
+      ];
+      if (extractedFields.isEmpty) {
+        AppleToast.warning(
+          context,
+          'Belum ada informasi lowongan yang dapat dikenali.',
+          subtitle: 'Coba tempel teks lowongan yang lebih lengkap.',
+        );
+        return;
+      }
+
       setState(() {
         if (result.companyName.isNotEmpty) {
           _companyController.text = result.companyName;
@@ -230,21 +246,23 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             _sourceOptions.contains(result.sourcePlatform)) {
           _jobSource = result.sourcePlatform;
         }
-        _showSmartImport = false;
       });
 
       AppleToast.success(
         context,
-        'Berhasil Diekstrak!',
-        subtitle: '${_positionController.text} di ${_companyController.text}',
+        '${extractedFields.length} bagian berhasil ditemukan',
+        subtitle: extractedFields.join(', '),
       );
-      DelightCelebration.show(
-        context,
-        message: 'Detail lowongan terisi otomatis!',
-        accent: const Color(0xFF5C44E4),
-        icon: Icons.auto_fix_high_rounded,
-        preset: DelightPreset.smartImport,
-      );
+      if (result.companyName.isNotEmpty && result.position.isNotEmpty) {
+        setState(() => _showSmartImport = false);
+        DelightCelebration.show(
+          context,
+          message: 'Detail utama lowongan sudah terisi!',
+          accent: const Color(0xFF5C44E4),
+          icon: Icons.auto_fix_high_rounded,
+          preset: DelightPreset.smartImport,
+        );
+      }
     } catch (e) {
       if (mounted) {
         AppleToast.warning(context, 'Gagal mengekstrak link secara otomatis.');
@@ -1180,7 +1198,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final isEdit = widget.jobToEdit != null;
     final isDark = AppTheme.isDark(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final canvasBg = isDark ? const Color(0xFF141418) : const Color(0xFFF8BA38);
+    final canvasBg = isDark ? const Color(0xFF141418) : const Color(0xFFF6F1E8);
     final pillCream = isDark
         ? const Color(0xFF26262E)
         : const Color(0xFFFDE7A8);
@@ -1228,7 +1246,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   physics: const BouncingScrollPhysics(),
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottomInset),
+                  padding: EdgeInsets.fromLTRB(20, 10, 20, 28 + bottomInset),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -1247,6 +1265,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                   Navigator.pop(context);
                                 }
                               },
+                              semanticLabel: 'Kembali',
                               child: Container(
                                 width: 44,
                                 height: 44,
@@ -1277,6 +1296,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             // Center Circular Logo Container
                             FluidBounceButton(
                               onTap: _pickCompanyLogo,
+                              semanticLabel: 'Pilih logo perusahaan',
                               hapticEnabled: false,
                               scaleFactor: 0.96,
                               child: Stack(
@@ -1365,10 +1385,16 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             FluidBounceButton(
                               onTap: () {
                                 HapticFeedback.selectionClick();
+                                if (_showSmartImport) {
+                                  FocusScope.of(context).unfocus();
+                                }
                                 setState(
                                   () => _showSmartImport = !_showSmartImport,
                                 );
                               },
+                              semanticLabel: _showSmartImport
+                                  ? 'Tutup impor lowongan'
+                                  : 'Buka impor lowongan',
                               hapticEnabled: false,
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 220),
@@ -1474,11 +1500,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     ),
                                     FluidBounceButton(
                                       onTap: _pasteFromClipboard,
+                                      semanticLabel: 'Tempel dari clipboard',
                                       hapticEnabled: false,
                                       scaleFactor: 0.9,
                                       child: Container(
-                                        width: 34,
-                                        height: 34,
+                                        width: 48,
+                                        height: 48,
                                         decoration: BoxDecoration(
                                           color: isDark
                                               ? const Color(0xFF5C44E4)
@@ -1500,7 +1527,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                 const SizedBox(height: 10),
                                 TextField(
                                   controller: _linkOrTextController,
-                                  maxLines: 2,
+                                  minLines: 3,
+                                  maxLines: 6,
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     color: txtPri,
@@ -1567,6 +1595,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                       : _extractFromLinkOrText,
                                   hapticEnabled: false,
                                   scaleFactor: 0.98,
+                                  semanticLabel: 'Isi form dari lowongan',
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 180),
                                     width: double.infinity,
@@ -2489,54 +2518,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             ],
                           ),
 
-                        const SizedBox(height: 24),
-
-                        // ── 8. SOLID PILL BUTTON (APPLY FOR THIS JOB STYLE - PERSIS MOCKUP) ──
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isSaving ? null : _saveJob,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isDark
-                                  ? const Color(0xFF5C44E4)
-                                  : const Color(0xFF19191B),
-                              foregroundColor: Colors.white,
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                            ),
-                            child: _isSaving
-                                ? const CupertinoActivityIndicator(
-                                    color: Colors.white,
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        _quickMode
-                                            ? 'Catat Lamaran Cepat'
-                                            : isEdit
-                                            ? 'Simpan Perubahan Lamaran'
-                                            : 'Catat Lamaran Sekarang',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-
                         // Tombol Hapus jika mode Edit
                         if (isEdit) ...[
                           const SizedBox(height: 10),
@@ -2566,7 +2547,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
                                 ),
-                                backgroundColor: Colors.white,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF1E1E24)
+                                    : Colors.white,
                               ),
                             ),
                           ),
@@ -2577,6 +2560,75 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+            decoration: BoxDecoration(
+              color: canvasBg,
+              border: Border(
+                top: BorderSide(
+                  color: isDark
+                      ? const Color(0xFF303038)
+                      : const Color(0xFFE7E0D4),
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _saveJob,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark
+                      ? const Color(0xFF5C44E4)
+                      : const Color(0xFF19191B),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+                child: _isSaving
+                    ? const CupertinoActivityIndicator(color: Colors.white)
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _quickMode
+                                  ? 'Catat Lamaran Cepat'
+                                  : isEdit
+                                  ? 'Simpan Perubahan Lamaran'
+                                  : 'Catat Lamaran Sekarang',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+              ),
+            ),
           ),
         ),
       ),

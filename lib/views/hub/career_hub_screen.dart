@@ -47,27 +47,27 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
           : AppTheme.warmBackground,
       body: SafeArea(
         bottom: false,
-        child: Stack(
+        child: Column(
           children: [
-            PageView(
-              controller: _pageController,
-              physics: const BouncingScrollPhysics(),
-              onPageChanged: (value) {
-                if (_section == value) return;
-                HapticFeedback.selectionClick();
-                setState(() => _section = value);
-                unawaited(_showWelcomeIfNeeded(value));
-              },
-              children: const [
-                JobDiscoveryScreen(embedded: true),
-                FreshGradPrepScreen(embedded: true),
-              ],
-            ),
-            Positioned(
-              top: 10,
-              left: 16,
-              right: 16,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
               child: _buildSwitcher(isDark, surface),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (value) {
+                  if (_section == value) return;
+                  HapticFeedback.selectionClick();
+                  setState(() => _section = value);
+                  unawaited(_showWelcomeIfNeeded(value));
+                },
+                children: const [
+                  JobDiscoveryScreen(embedded: true),
+                  FreshGradPrepScreen(embedded: true),
+                ],
+              ),
             ),
           ],
         ),
@@ -170,6 +170,8 @@ class _HubSegment extends StatelessWidget {
     final selectedText = darkText ? const Color(0xFF211A08) : Colors.white;
     return FluidBounceButton(
       onTap: onTap,
+      semanticLabel: label,
+      selected: selected,
       scaleFactor: 0.985,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 240),

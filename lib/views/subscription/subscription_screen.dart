@@ -225,11 +225,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       context: context,
       icon: Icons.warning_amber_rounded,
       iconColor: const Color(0xFFE53935),
-      title: 'Batalkan Langganan PRO?',
+      title: 'Nonaktifkan akses PRO?',
       content:
-          'Akses fitur eksklusif PRO Anda akan dinonaktifkan kembali ke versi Free.',
-      secondaryLabel: 'Tetap Berlangganan',
-      primaryLabel: 'Ya, Batalkan',
+          'Aplikasi ini akan kembali ke versi Free. Tindakan ini tidak membatalkan atau mengembalikan pembayaran yang sudah dilakukan melalui WhatsApp.',
+      secondaryLabel: 'Pertahankan PRO',
+      primaryLabel: 'Nonaktifkan',
       isDestructive: true,
       onPrimary: () async {
         Navigator.pop(context);
@@ -254,7 +254,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(jobProvider);
     final isPro = state.isProUser;
+    final isDark = AppTheme.isDark(context);
     final txtPri = AppTheme.getTextPrimary(context);
+    final txtSec = AppTheme.getTextSecondary(context);
     final bg = AppTheme.getBackground(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
@@ -279,17 +281,22 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 children: [
                   FluidBounceButton(
                     onTap: () => Navigator.pop(context),
+                    semanticLabel: 'Kembali',
                     child: Container(
-                      width: 38,
-                      height: 38,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF242428) : Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFE5E0D5)),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF38383E)
+                              : const Color(0xFFE5E0D5),
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_rounded,
-                        color: Color(0xFF121214),
+                        color: txtPri,
                         size: 20,
                       ),
                     ),
@@ -324,7 +331,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 38), // Balanced spacer
+                  const SizedBox(width: 48), // Balanced spacer
                 ],
               ),
             ),
@@ -346,7 +353,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
                     // Heading Title
                     Text(
-                      'Akselerasi Karir Impianmu\nDengan Ngelamar PRO ✨',
+                      'Akselerasi Karir Impianmu\nDengan Ngelamar PRO',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 23,
@@ -366,7 +373,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade700,
+                          color: txtSec,
                           height: 1.4,
                           fontWeight: FontWeight.w500,
                         ),
@@ -434,7 +441,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                 ),
                               ),
                               child: const Text(
-                                'Batalkan Langganan',
+                                'Nonaktifkan PRO',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
@@ -480,10 +487,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E24) : Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFFE5E0D5),
+                          color: isDark
+                              ? const Color(0xFF383842)
+                              : const Color(0xFFE5E0D5),
                           width: 1.2,
                         ),
                         boxShadow: [
@@ -497,20 +506,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(
                                 Icons.compare_arrows_rounded,
                                 size: 18,
-                                color: Color(0xFF121214),
+                                color: txtPri,
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
                                 'Perbandingan Free vs PRO',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF121214),
+                                  color: txtPri,
                                 ),
                               ),
                             ],
@@ -524,10 +533,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
+                              color: isDark
+                                  ? const Color(0xFF29292F)
+                                  : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
                                 Expanded(
                                   flex: 4,
@@ -536,7 +547,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w800,
-                                      color: Color(0xFF475569),
+                                      color: txtSec,
                                     ),
                                   ),
                                 ),
@@ -548,19 +559,19 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w800,
-                                      color: Color(0xFF475569),
+                                      color: txtSec,
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   flex: 4,
                                   child: Text(
-                                    'PRO 👑',
+                                    'PRO',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
+                                      color: txtPri,
                                     ),
                                   ),
                                 ),
@@ -584,10 +595,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     flex: 4,
                                     child: Text(
                                       row['feature'] as String,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1E293B),
+                                        color: txtPri,
                                       ),
                                     ),
                                   ),
@@ -596,9 +607,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                     child: Text(
                                       row['free'] as String,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
-                                        color: Color(0xFF64748B),
+                                        color: txtSec,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -640,7 +651,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFAF7F2),
+                          color: isDark
+                              ? const Color(0xFF1E1E24)
+                              : const Color(0xFFFAF7F2),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: const Color(0xFF19191B),
@@ -672,7 +685,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -682,7 +695,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF121214),
+                                          color: txtPri,
                                           letterSpacing: -0.3,
                                         ),
                                       ),
@@ -690,7 +703,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                         'Masukkan 10 digit kode yang diberikan Admin',
                                         style: TextStyle(
                                           fontSize: 11.5,
-                                          color: Color(0xFF555558),
+                                          color: txtSec,
                                         ),
                                       ),
                                     ],
@@ -704,10 +717,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF29292F)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: const Color(0xFFE5E0D5),
+                                  color: isDark
+                                      ? const Color(0xFF3B3B42)
+                                      : const Color(0xFFE5E0D5),
                                 ),
                               ),
                               child: Column(
@@ -747,11 +764,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                 LengthLimitingTextInputFormatter(10),
                               ],
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 4.0,
-                                color: Color(0xFF121214),
+                                color: txtPri,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'Ketik 10 digit kode aktivasi...',
@@ -762,7 +779,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                   color: Colors.grey.shade400,
                                 ),
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: isDark
+                                    ? const Color(0xFF29292F)
+                                    : Colors.white,
                                 counterText: '',
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -824,7 +843,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                           ),
                                           SizedBox(width: 8),
                                           Text(
-                                            'Aktifkan PRO Sekarang ✨',
+                                            'Aktifkan PRO sekarang',
                                             style: TextStyle(
                                               fontWeight: FontWeight.w900,
                                               fontSize: 14,
@@ -847,12 +866,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                   size: 16,
                                   color: Color(0xFF25D366),
                                 ),
-                                label: const Text(
+                                label: Text(
                                   'Minta / Konfirmasi Kode ke Admin (WhatsApp)',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF121214),
+                                    color: txtPri,
                                     decoration: TextDecoration.underline,
                                   ),
                                 ),
@@ -877,14 +896,14 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                           color: const Color(0xFF25D366).withValues(alpha: 0.3),
                         ),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.chat_rounded,
                             color: Color(0xFF25D366),
                             size: 22,
                           ),
-                          SizedBox(width: 12),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -894,15 +913,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF121214),
+                                    color: txtPri,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
                                   'Kode diverifikasi oleh database dan hanya dapat digunakan sesuai paket serta masa aktifnya.',
                                   style: TextStyle(
                                     fontSize: 11.5,
-                                    color: Color(0xFF555558),
+                                    color: txtSec,
                                     height: 1.3,
                                   ),
                                 ),
@@ -987,93 +1006,104 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     required String badge,
     required bool isSelected,
   }) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _selectedPlan = id);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF19191B) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    final isDark = AppTheme.isDark(context);
+    final muted = isDark ? const Color(0xFFB1B1B8) : const Color(0xFF555558);
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$title, $price$period',
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _selectedPlan = id);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xFF19191B)
-                : const Color(0xFFE5E0D5),
-            width: isSelected ? 2 : 1.2,
+                : (isDark ? const Color(0xFF242429) : Colors.white),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF19191B)
+                  : (isDark
+                        ? const Color(0xFF3B3B42)
+                        : const Color(0xFFE5E0D5)),
+              width: isSelected ? 2 : 1.2,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFFF59E0B)
-                    : const Color(0xFFF3EEFF),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                badge,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF121214)
-                      : const Color(0xFF5C44E4),
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFF3EEFF),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: isSelected
-                    ? Colors.grey.shade300
-                    : const Color(0xFF555558),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  price,
+                child: Text(
+                  badge,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: isSelected ? Colors.white : const Color(0xFF121214),
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                Text(
-                  period,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
                     color: isSelected
-                        ? Colors.grey.shade400
-                        : Colors.grey.shade600,
+                        ? const Color(0xFF121214)
+                        : const Color(0xFF5C44E4),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: isSelected ? Colors.grey.shade300 : muted,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    price,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white : const Color(0xFF121214)),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    period,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1084,6 +1114,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     required String title,
     required String desc,
   }) {
+    final isDark = AppTheme.isDark(context);
+    final primary = isDark ? Colors.white : const Color(0xFF121214);
+    final secondary = isDark
+        ? const Color(0xFFB1B1B8)
+        : const Color(0xFF555558);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1112,20 +1147,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF121214),
+                  color: primary,
                 ),
               ),
               const SizedBox(height: 1),
               Text(
                 desc,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF555558),
-                  height: 1.3,
-                ),
+                style: TextStyle(fontSize: 11, color: secondary, height: 1.3),
               ),
             ],
           ),

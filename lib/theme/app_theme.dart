@@ -244,7 +244,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: cardDark, width: 2),
+          borderSide: const BorderSide(color: cardPurple, width: 2),
         ),
         hintStyle: TextStyle(
           color: txtSec,

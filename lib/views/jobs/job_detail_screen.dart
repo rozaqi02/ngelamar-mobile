@@ -570,15 +570,19 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF9F7F2),
+                              color: isDark
+                                  ? const Color(0xFF29292F)
+                                  : const Color(0xFFF9F7F2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               tpl.body,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12.5,
                                 height: 1.45,
-                                color: Color(0xFF333336),
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF333336),
                               ),
                             ),
                           ),
@@ -819,7 +823,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           _buildDetailRow(
                             icon: Icons.location_on_outlined,
                             label: 'Lokasi Kantor',
-                            value: currentJob.location ?? 'Jakarta / Remote',
+                            value:
+                                currentJob.location?.trim().isNotEmpty == true
+                                ? currentJob.location!.trim()
+                                : 'Belum dicantumkan',
                           ),
                           const Divider(height: 20, color: Color(0xFFF0ECE3)),
                           _buildDetailRow(
@@ -1270,10 +1277,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         currentJob.location != null && currentJob.location!.isNotEmpty
         ? currentJob.location!
         : 'Lokasi belum dicantumkan';
+    final hasLocation =
+        currentJob.location != null && currentJob.location!.trim().isNotEmpty;
 
-    final experienceText = currentJob.status == 'Diterima'
-        ? 'Diterima'
-        : (currentJob.jobSource ?? 'Full-Time');
+    final experienceText = currentJob.status;
 
     // Scroll animation factor (0.0 to 1.0)
     final scrollRatio = (_scrollOffset / 160.0).clamp(0.0, 1.0);
@@ -1321,7 +1328,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Left Circular Back Button
-                        GestureDetector(
+                        FluidBounceButton(
+                          semanticLabel: 'Kembali',
+                          hapticEnabled: false,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             Navigator.pop(context);
@@ -1385,7 +1394,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         ),
 
                         // Circular Bookmark Button with Animated Scale & Pop Feedback
-                        GestureDetector(
+                        FluidBounceButton(
+                          semanticLabel: currentJob.isFavorite
+                              ? 'Hapus dari bookmark'
+                              : 'Simpan ke bookmark',
+                          selected: currentJob.isFavorite,
+                          hapticEnabled: false,
                           onTap: () {
                             HapticFeedback.heavyImpact();
                             _bookmarkAnimController.forward(from: 0.0);
@@ -1532,66 +1546,78 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         const SizedBox(height: 10),
 
                         // Location Row (Clickable to open in Google Maps / Apple Maps)
-                        GestureDetector(
-                          onTap: () async {
-                            HapticFeedback.selectionClick();
-                            final loc =
-                                currentJob.location ?? 'Jakarta, Indonesia';
-                            final Uri mapUri;
-                            if (loc.startsWith('http://') ||
-                                loc.startsWith('https://')) {
-                              mapUri = Uri.parse(loc);
-                            } else {
-                              mapUri = Uri.parse(
-                                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(loc)}',
-                              );
-                            }
-                            try {
-                              await launchUrl(
-                                mapUri,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            } catch (_) {
-                              if (context.mounted) {
-                                AppleToast.info(
-                                  context,
-                                  'Tidak dapat membuka aplikasi peta',
-                                );
-                              }
-                            }
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                size: 15,
-                                color: Color(0xFFE53935),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  locationText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF454549),
+                        Semantics(
+                          button: hasLocation,
+                          enabled: hasLocation,
+                          label: hasLocation
+                              ? 'Buka lokasi $locationText di peta'
+                              : 'Lokasi belum dicantumkan',
+                          child: GestureDetector(
+                            onTap: !hasLocation
+                                ? null
+                                : () async {
+                                    HapticFeedback.selectionClick();
+                                    final loc = currentJob.location!.trim();
+                                    final Uri mapUri;
+                                    if (loc.startsWith('http://') ||
+                                        loc.startsWith('https://')) {
+                                      mapUri = Uri.parse(loc);
+                                    } else {
+                                      mapUri = Uri.parse(
+                                        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(loc)}',
+                                      );
+                                    }
+                                    try {
+                                      await launchUrl(
+                                        mapUri,
+                                        mode: LaunchMode.externalApplication,
+                                      );
+                                    } catch (_) {
+                                      if (context.mounted) {
+                                        AppleToast.info(
+                                          context,
+                                          'Tidak dapat membuka aplikasi peta',
+                                        );
+                                      }
+                                    }
+                                  },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  size: 15,
+                                  color: hasLocation
+                                      ? Color(0xFFE53935)
+                                      : Color(0xFF8E8E93),
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    locationText,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF454549),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.open_in_new_rounded,
-                                size: 12,
-                                color: isDark
-                                    ? Colors.white54
-                                    : const Color(0xFF77777A),
-                              ),
-                            ],
+                                if (hasLocation) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.open_in_new_rounded,
+                                    size: 12,
+                                    color: isDark
+                                        ? Colors.white54
+                                        : const Color(0xFF77777A),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
 
@@ -1711,10 +1737,17 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
                         const SizedBox(height: 10),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOutCubicEmphasized,
-                          alignment: Alignment.topCenter,
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 240),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) => ClipRect(
+                            child: SizeTransition(
+                              sizeFactor: animation,
+                              alignment: Alignment.topCenter,
+                              child: child,
+                            ),
+                          ),
                           child: _buildDetailSectionCard(currentJob, isDark),
                         ),
                       ],
@@ -2018,12 +2051,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   List<String> _getQualificationsList(JobApplication job) {
     final raw = job.jobDescription;
     if (raw.isEmpty) {
-      return [
-        'Minimal lulusan D3 / S1 jurusan terkait atau pengalaman kerja setara.',
-        'Memiliki pemahaman kuat mengenai dasar industri dan tools yang digunakan.',
-        'Kemampuan komunikasi verbal dan tulisan yang baik serta proaktif.',
-        'Mampu bekerja secara mandiri maupun berkolaborasi dalam tim agile.',
-      ];
+      return const ['Kualifikasi belum dicantumkan pada lamaran ini.'];
     }
 
     final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
@@ -2045,31 +2073,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
     if (quals.isNotEmpty) return quals;
 
-    // Fallback split
-    if (lines.length >= 2) {
-      return lines
-          .take(lines.length ~/ 2 + 1)
-          .map((l) => l.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim())
-          .toList();
-    }
-
-    return [
-      'Pendidikan minimal Diploma (D3) / Sarjana (S1) atau sederajat.',
-      'Pengalaman kerja minimal 1 tahun di bidang ${job.position}.',
-      'Menguasai kompetensi utama dan problem-solving yang sistematis.',
-      'Disiplin, bertanggung jawab, dan berorientasi pada target.',
+    return const [
+      'Kualifikasi belum dapat dipisahkan dari deskripsi asli. Buka tab Deskripsi untuk membaca teks lengkap.',
     ];
   }
 
   List<String> _getJobResponsibilitiesList(JobApplication job) {
     final raw = job.jobDescription;
     if (raw.isEmpty) {
-      return [
-        'Merancang, mengembangkan, dan memelihara kebutuhan operasional pada posisi ${job.position}.',
-        'Berkolaborasi erat dengan tim lintas fungsi untuk memastikan target perusahaan tercapai.',
-        'Membuat dokumentasi teknis dan laporan evaluasi berkala secara terstruktur.',
-        'Melakukan perbaikan berkelanjutan untuk efisiensi dan performa tim.',
-      ];
+      return const ['Deskripsi pekerjaan belum dicantumkan pada lamaran ini.'];
     }
 
     final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
@@ -2091,19 +2103,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
     if (resps.isNotEmpty) return resps;
 
-    if (lines.length >= 2) {
-      return lines
-          .skip(lines.length ~/ 2)
-          .map((l) => l.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim())
-          .toList();
-    }
-
-    return [
-      'Menjalankan tugas utama dan tanggung jawab harian sebagai ${job.position} di ${job.companyName}.',
-      'Memastikan kualitas dan ketepatan waktu pengiriman pekerjaan sesuai standar perusahaan.',
-      'Berkoordinasi dengan rekan tim dalam sesi perencanaan dan review rutin.',
-      'Mengidentifikasi kendala dan memberikan solusi inovatif secara proaktif.',
-    ];
+    return lines
+        .map((line) => line.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
   }
 
   List<String> _getBenefitsList(JobApplication job) {
@@ -2155,62 +2158,72 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         ? (isExpanded ? expandedWidth : compactWidth)
         : equalWidth;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() {
-          if (_expandedInfoChipIndex == index) {
-            _expandedInfoChipIndex = null;
-          } else {
-            _expandedInfoChipIndex = index;
-          }
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOutCubicEmphasized,
-        width: targetWidth,
-        height: compactWidth,
-        padding: EdgeInsets.symmetric(horizontal: isCompact ? 0 : 14),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF242428) : Colors.white,
-          borderRadius: BorderRadius.circular(compactWidth / 2),
-          border: Border.all(
-            color: isExpanded
-                ? const Color(0xFFB9A7F3)
-                : (isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5)),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isExpanded
-                  ? const Color(0xFF5C44E4).withValues(alpha: 0.12)
-                  : Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
-              blurRadius: isExpanded ? 12 : 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            iconWidget,
-            if (!isCompact) ...[
-              const SizedBox(width: 9),
-              Flexible(
-                child: Text(
-                  isExpanded ? fullText : shortText,
-                  style: TextStyle(
-                    fontSize: isExpanded ? 12.5 : 12,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF121214),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+    return Semantics(
+      button: true,
+      selected: isExpanded,
+      label: '$fullText. Ketuk untuk ${isExpanded ? 'tutup' : 'buka'} detail.',
+      child: Tooltip(
+        message: fullText,
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              if (_expandedInfoChipIndex == index) {
+                _expandedInfoChipIndex = null;
+              } else {
+                _expandedInfoChipIndex = index;
+              }
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubicEmphasized,
+            width: targetWidth,
+            height: compactWidth,
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 0 : 14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF242428) : Colors.white,
+              borderRadius: BorderRadius.circular(compactWidth / 2),
+              border: Border.all(
+                color: isExpanded
+                    ? const Color(0xFFB9A7F3)
+                    : (isDark
+                          ? const Color(0xFF383842)
+                          : const Color(0xFFE5E0D5)),
               ),
-            ],
-          ],
+              boxShadow: [
+                BoxShadow(
+                  color: isExpanded
+                      ? const Color(0xFF5C44E4).withValues(alpha: 0.12)
+                      : Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+                  blurRadius: isExpanded ? 12 : 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                iconWidget,
+                if (!isCompact) ...[
+                  const SizedBox(width: 9),
+                  Flexible(
+                    child: Text(
+                      isExpanded ? fullText : shortText,
+                      style: TextStyle(
+                        fontSize: isExpanded ? 12.5 : 12,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF121214),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -2226,6 +2239,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     };
     return Expanded(
       child: FluidBounceButton(
+        semanticLabel: 'Tampilkan $label',
+        selected: isSelected,
         onTap: () {
           if (_selectedTab != index) setState(() => _selectedTab = index);
         },
@@ -2233,7 +2248,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
-          height: 43,
+          constraints: const BoxConstraints(minHeight: 48),
           decoration: BoxDecoration(
             color: isSelected
                 ? (isDark ? activeColor.withValues(alpha: 0.22) : Colors.white)
@@ -2263,20 +2278,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               ),
               const SizedBox(width: 5),
               Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: isSelected
-                          ? FontWeight.w800
-                          : FontWeight.w600,
-                      color: isSelected
-                          ? (isDark ? Colors.white : const Color(0xFF252529))
-                          : (isDark ? Colors.white60 : const Color(0xFF68686D)),
-                    ),
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.1,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected
+                        ? (isDark ? Colors.white : const Color(0xFF252529))
+                        : (isDark ? Colors.white60 : const Color(0xFF68686D)),
                   ),
                 ),
               ),
@@ -2391,21 +2404,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 20,
-                    height: 20,
+                    width: 8,
+                    height: 8,
                     margin: const EdgeInsets.only(top: 1),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: isDark ? 0.20 : 0.13),
+                      color: accent,
                       shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w900,
-                        color: accent,
-                      ),
                     ),
                   ),
                   const SizedBox(width: 11),

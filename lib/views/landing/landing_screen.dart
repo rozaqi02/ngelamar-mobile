@@ -306,8 +306,9 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                   const SizedBox(height: 24),
 
                   // Lilac Capsule CTA Button ("Mulai Sekarang !" + Circle Arrow)
-                  GestureDetector(
+                  FluidBounceButton(
                     onTap: _onGetStarted,
+                    semanticLabel: 'Mulai onboarding',
                     child: Container(
                       height: 64,
                       padding: const EdgeInsets.fromLTRB(26, 6, 8, 6),
@@ -329,7 +330,7 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                         children: [
                           const Spacer(),
                           const Text(
-                            "Mulai Sekarang !",
+                            'Mulai Sekarang!',
                             style: TextStyle(
                               fontSize: 16.5,
                               fontWeight: FontWeight.w800,
@@ -490,11 +491,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
   final TextEditingController _nameController = TextEditingController();
   int _currentPage = 0;
 
-  final Set<String> _selectedInterests = {
-    'Flutter / Mobile Dev',
-    'UI/UX & Product Design',
-    'QA Automation / Tester',
-  };
+  final Set<String> _selectedInterests = {};
 
   final TextEditingController _customInterestController =
       TextEditingController();
@@ -548,7 +545,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
 
   void _addCustomInterest() {
     final text = _customInterestController.text.trim();
-    if (text.isNotEmpty) {
+    if (text.isNotEmpty && text.length <= 32) {
       setState(() {
         if (!_customInterests.contains(text)) {
           _customInterests.insert(0, text);
@@ -574,6 +571,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
   }
 
   Widget _pageMotion(int index, Widget child) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) return child;
     return AnimatedBuilder(
       animation: _pageController,
       child: child,
@@ -583,15 +581,12 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             : _currentPage.toDouble();
         final delta = (page - index).clamp(-1.0, 1.0);
         final distance = delta.abs();
-        return Opacity(
-          opacity: 1 - (distance * 0.22),
-          child: Transform.translate(
-            offset: Offset(-delta * 18, distance * 5),
-            child: Transform.scale(
-              scale: 1 - (distance * 0.025),
-              alignment: Alignment.center,
-              child: child,
-            ),
+        return Transform.translate(
+          offset: Offset(-delta * 18, distance * 5),
+          child: Transform.scale(
+            scale: 1 - (distance * 0.025),
+            alignment: Alignment.center,
+            child: child,
           ),
         );
       },
@@ -601,7 +596,10 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
   @override
   Widget build(BuildContext context) {
     const totalPages = 5;
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final media = MediaQuery.of(context);
+    final bottomInset = media.viewInsets.bottom > media.padding.bottom
+        ? media.viewInsets.bottom
+        : media.padding.bottom;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.90,
@@ -628,46 +626,79 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Page Indicator Dots
-                Row(
-                  children: List.generate(totalPages, (i) {
-                    final isCurrent = _currentPage == i;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      margin: const EdgeInsets.only(right: 6),
-                      width: isCurrent ? 24 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? const Color(0xFF121214)
-                            : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    );
-                  }),
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: _currentPage > 0
+                      ? IconButton(
+                          tooltip: 'Kembali ke langkah sebelumnya',
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            _pageController.previousPage(
+                              duration: const Duration(milliseconds: 340),
+                              curve: Curves.easeOutCubic,
+                            );
+                          },
+                          icon: const Icon(Icons.arrow_back_rounded),
+                        )
+                      : const SizedBox.shrink(),
                 ),
-
-                if (_currentPage < totalPages - 1)
-                  TextButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      _pageController.animateToPage(
-                        totalPages - 1,
-                        duration: const Duration(milliseconds: 520),
-                        curve: Curves.easeInOutCubicEmphasized,
-                      );
-                    },
-                    child: const Text(
-                      'Lewati',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+                const SizedBox(width: 8),
+                // Page Indicator Dots
+                Expanded(
+                  child: Semantics(
+                    label: 'Langkah ${_currentPage + 1} dari $totalPages',
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(totalPages, (i) {
+                        final isCurrent = _currentPage == i;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: isCurrent ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? const Color(0xFF121214)
+                                : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
                     ),
                   ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: _currentPage < totalPages - 1
+                      ? TextButton(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(48, 48),
+                          ),
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            HapticFeedback.selectionClick();
+                            _pageController.animateToPage(
+                              totalPages - 1,
+                              duration: const Duration(milliseconds: 520),
+                              curve: Curves.easeInOutCubicEmphasized,
+                            );
+                          },
+                          child: const Text(
+                            'Lewati',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
@@ -676,7 +707,9 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
           Expanded(
             child: PageView(
               controller: _pageController,
-              physics: const BouncingScrollPhysics(parent: PageScrollPhysics()),
+              physics: _currentPage == 3 && _selectedInterests.length < 3
+                  ? const NeverScrollableScrollPhysics()
+                  : const BouncingScrollPhysics(parent: PageScrollPhysics()),
               onPageChanged: (idx) {
                 HapticFeedback.selectionClick();
                 setState(() => _currentPage = idx);
@@ -924,6 +957,8 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                                     final isSelected = _selectedInterests
                                         .contains(interest);
                                     return FluidBounceButton(
+                                      semanticLabel: interest,
+                                      selected: isSelected,
                                       onTap: () {
                                         setState(() {
                                           if (isSelected) {
@@ -1017,6 +1052,8 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                                     final isSelected = _selectedInterests
                                         .contains(interest);
                                     return FluidBounceButton(
+                                      semanticLabel: interest,
+                                      selected: isSelected,
                                       onTap: () {
                                         setState(() {
                                           if (isSelected) {
@@ -1075,10 +1112,11 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                             Expanded(
                               child: TextField(
                                 controller: _customInterestController,
+                                maxLength: 32,
                                 style: const TextStyle(fontSize: 13),
                                 decoration: InputDecoration(
-                                  hintText:
-                                      'Tambah minat lain (misal: AI Engineer)...',
+                                  hintText: 'Minat lain, misalnya AI Engineer',
+                                  counterText: '',
                                   fillColor: Colors.white,
                                   filled: true,
                                   contentPadding: const EdgeInsets.symmetric(
@@ -1203,12 +1241,16 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                 bottomInset > 0 ? bottomInset + 14 : 24,
               ),
               child: FluidBounceButton(
+                semanticLabel: _currentPage == 3
+                    ? 'Lanjut dengan ${_selectedInterests.length} minat'
+                    : 'Lanjut ke langkah berikutnya',
                 onTap: (_currentPage == 3 && _selectedInterests.length < 3)
                     ? null
                     : () {
+                        FocusScope.of(context).unfocus();
                         _pageController.nextPage(
-                          duration: const Duration(milliseconds: 520),
-                          curve: Curves.easeInOutCubicEmphasized,
+                          duration: const Duration(milliseconds: 340),
+                          curve: Curves.easeOutCubic,
                         );
                       },
                 child: Container(
