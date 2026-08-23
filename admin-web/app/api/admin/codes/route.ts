@@ -1,10 +1,14 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, randomInt } from 'node:crypto'
 import { apiError, audit, requireAdmin, supabaseAdmin } from '@/lib/admin-server'
 
 export const dynamic = 'force-dynamic'
 
 function makeCode() {
-  return randomBytes(5).toString('hex').toUpperCase()
+  // Two cryptographically-secure five-digit groups retain leading zeroes and
+  // produce a familiar 10-digit code that is easy to send over WhatsApp.
+  return [randomInt(0, 100000), randomInt(0, 100000)]
+    .map((part) => part.toString().padStart(5, '0'))
+    .join('')
 }
 
 export async function GET(request: Request) {
@@ -27,13 +31,9 @@ export async function POST(request: Request) {
     const user = await requireAdmin(request)
     const body = await request.json()
     const plan = body.plan === 'yearly' ? 'yearly' : 'monthly'
-    const durationDays = Number(body.durationDays)
-    const maxRedemptions = Number(body.maxRedemptions ?? 1)
+    const durationDays = plan === 'yearly' ? 365 : 30
+    const maxRedemptions = 1
     const validUntil = typeof body.validUntil === 'string' && body.validUntil ? body.validUntil : null
-    if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650 ||
-        !Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 10000) {
-      return Response.json({ error: 'Parameter kode PRO tidak valid.' }, { status: 400 })
-    }
     const code = makeCode()
     const codeHash = createHash('sha256').update(code).digest('hex')
     const { data, error } = await supabaseAdmin()

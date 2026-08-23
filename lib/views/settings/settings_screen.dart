@@ -51,7 +51,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _aboutController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.21.0';
+  static const String _appVersion = '2.21.1';
   static const String _buildNumber = '221';
 
   List<String> _userInterests = [];
@@ -756,13 +756,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             appVersion: _appVersion,
           );
           if (mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
             AppToast.success(
               context,
               'Masukan berhasil dikirim. Terima kasih!',
             );
           }
+        } on FeedbackSubmissionException catch (error) {
+          if (mounted) AppToast.error(context, error.message);
         } catch (_) {
-          if (mounted) AppToast.error(context, 'Masukan belum dapat dikirim.');
+          if (mounted) {
+            AppToast.error(context, 'Masukan belum dapat dikirim. Coba lagi.');
+          }
         }
       },
     );

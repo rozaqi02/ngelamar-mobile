@@ -36,7 +36,6 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false)
   const [code, setCode] = useState('')
   const [plan, setPlan] = useState('monthly')
-  const [durationDays, setDurationDays] = useState(30)
   const [announcementTitle, setAnnouncementTitle] = useState('')
   const [announcementMessage, setAnnouncementMessage] = useState('')
   const [broadcastTitle, setBroadcastTitle] = useState('')
@@ -94,7 +93,7 @@ export default function AdminPage() {
     try {
       const response = await adminFetch<{ code: string }>('/api/admin/codes', {
         method: 'POST',
-        body: JSON.stringify({ plan, durationDays, maxRedemptions: 1 }),
+        body: JSON.stringify({ plan }),
       })
       setCode(response.code)
       setNotice('Kode baru dibuat. Salin sekarang; kode asli tidak disimpan di dashboard.')
@@ -155,7 +154,7 @@ export default function AdminPage() {
       <section className="metrics">{[
         ['Pengguna total', overview.metrics.totalUsers], ['Aktif 24 jam', overview.metrics.dau], ['Aktif 7 hari', overview.metrics.wau], ['Aktif 30 hari', overview.metrics.mau], ['PRO aktif', overview.metrics.activePro], ['Masukan baru', overview.metrics.newFeedback],
       ].map(([label, value]) => <article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</section>
-      <section className="grid two"><article className="panel"><h2>Buat kode PRO</h2><p>Plaintext hanya ditampilkan sekali setelah dibuat.</p><form onSubmit={createCode}><label>Paket<select value={plan} onChange={(event) => setPlan(event.target.value)}><option value="monthly">Bulanan</option><option value="yearly">Tahunan</option></select></label><label>Masa aktif (hari)<input type="number" min="1" max="3650" value={durationDays} onChange={(event) => setDurationDays(Number(event.target.value))}/></label><button disabled={busy}>Buat kode</button></form>{code && <div className="code"><code>{code}</code><button className="ghost" onClick={() => navigator.clipboard.writeText(code)}>Salin</button></div>}</article>
+      <section className="grid two"><article className="panel"><h2>Buat kode PRO</h2><p>Kode 10 digit, sekali pakai, dan plaintext hanya ditampilkan sekali.</p><form onSubmit={createCode}><label>Paket<select value={plan} onChange={(event) => setPlan(event.target.value)}><option value="monthly">Bulanan · 30 hari</option><option value="yearly">Tahunan · 365 hari</option></select></label><p className="helper">Masa aktif ditetapkan otomatis sesuai paket agar tidak terjadi salah kirim kode.</p><button disabled={busy}>Buat kode</button></form>{code && <div className="code"><code>{code}</code><button className="ghost" onClick={() => navigator.clipboard.writeText(code)}>Salin</button></div>}</article>
       <article className="panel"><h2>Pengumuman aplikasi</h2><p>Tampil saat aplikasi mengambil remote config.</p><form onSubmit={saveAnnouncement}><label>Judul<input value={announcementTitle} onChange={(event) => setAnnouncementTitle(event.target.value)} placeholder="Contoh: Pembaruan tersedia"/></label><label>Pesan<textarea value={announcementMessage} onChange={(event) => setAnnouncementMessage(event.target.value)} placeholder="Pesan singkat untuk pengguna"/></label><button disabled={busy}>Simpan pengumuman</button></form></article></section>
       <section className="grid two"><article className="panel"><h2>Kirim ke Kotak Masuk</h2><p>Pengumuman server-side untuk seluruh pengguna.</p><form onSubmit={sendBroadcast}><label>Judul<input value={broadcastTitle} onChange={(event) => setBroadcastTitle(event.target.value)} required/></label><label>Pesan<textarea value={broadcastMessage} onChange={(event) => setBroadcastMessage(event.target.value)} required/></label><button disabled={busy}>Kirim</button></form></article>
       <article className="panel"><h2>Event terbaru</h2><div className="event-list">{Object.entries(overview.events).length ? Object.entries(overview.events).map(([name, count]) => <p key={name}><code>{name}</code><span>{count}</span></p>) : <p>Belum ada event privat yang masuk.</p>}</div></article></section>
