@@ -1,4 +1,4 @@
-# Ngelamar App (v2.20.0)
+# Ngelamar App (v2.21.0)
 
 Aplikasi personal career CRM dan pelacak lamaran kerja yang menggabungkan pencarian portal, persiapan karier, pengingat, CV, dan tracker lamaran dalam satu pengalaman mobile.
 
@@ -8,7 +8,19 @@ Dikembangkan oleh **idka-solutions team**.
 
 ## Fitur Utama & Keunggulan Unik
 
-### Pembaruan v2.20.0
+### Pembaruan v2.21.0
+
+- **Ngelamar Cloud:** akun Google opsional menautkan identitas anonim agar UID,
+  status PRO, serta file cloud pengguna tetap konsisten saat ganti perangkat.
+- **Backup dan CV privat:** backup ZIP tetap terenkripsi sebelum diunggah ke
+  Storage privat; CV PDF memakai bucket dan RLS per pengguna.
+- **Control room admin:** proyek `admin-web` siap Vercel untuk metrik,
+  pembuatan kode PRO, pengumuman, remote config, feedback, dan audit aksi.
+- **Backend yang dapat dioperasikan:** migration, Edge Function digest/AI,
+  inbox aplikasi, event privat, template, referral, serta dokumentasi setup
+  Google OAuth dan Vercel sudah tersedia.
+
+### Sorotan v2.20.0
 
 - **Detail lowongan baru:** Kualifikasi, deskripsi, dan benefit memakai selector tiga kolom yang selalu terlihat tanpa perlu menggeser tab.
 - **Bubble informasi presisi:** Gaji, mode kerja, dan tahap memakai satu permukaan serta satu border; bubble yang menyusut selalu berbentuk lingkaran 50×50.
@@ -22,6 +34,12 @@ Dikembangkan oleh **idka-solutions team**.
 - **Profil dan CV:** Bagian Tentang dapat diisi manual dan tombol CV membuka PDF milik pengguna.
 - **Backup aman:** Ekspor ZIP terenkripsi dengan konfirmasi dan visibilitas kata sandi serta peringatan bahwa kata sandi tidak dapat dipulihkan.
 - **PRO tervalidasi backend:** Entitlement diverifikasi melalui Supabase dan tidak mempercayai status premium lokal.
+- **Ngelamar Cloud (opsional):** Login Google menautkan akun anonim tanpa
+  mengubah UID, lalu membuka backup ZIP terenkripsi, sinkronisasi preferensi,
+  CV privat, remote config, feedback, serta inbox pengumuman.
+- **Admin web siap Vercel:** Dashboard terpisah untuk kode PRO, pengguna aktif,
+  remote announcement, feedback, dan audit admin. Lihat
+  [panduan deploy](admin-web/README.md).
 
 1. **Apple iOS 26 Liquid Glass Bottom Navbar**
    - Dual-layer glassmorphic blur (`sigmaX: 35, sigmaY: 35`).

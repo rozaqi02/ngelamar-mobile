@@ -51,6 +51,11 @@ app.*.map.json
 *.aab
 /build/app/outputs/
 
+# Dashboard admin Next.js: dependensi dan build bersifat lokal.
+/admin-web/node_modules/
+/admin-web/.next/
+/admin-web/.env.local
+
 # Local Scratch & Scripts
 scratch/
 generate_mascot_png.js

@@ -1,4 +1,4 @@
-# Setup Supabase untuk Ngelamar PRO
+# Setup Supabase untuk Ngelamar Cloud & PRO
 
 Implementasi aplikasi memakai **Supabase Anonymous Auth** agar pengguna tidak
 perlu membuat akun pada versi awal. Setiap instalasi mendapatkan `auth.uid()`
@@ -14,7 +14,7 @@ dipulihkan setelah pengguna menghapus data aplikasi atau pindah perangkat.
 Sebelum rilis publik besar, tautkan akun anonim ke email/Google dan aktifkan
 CAPTCHA/Turnstile untuk mengurangi penyalahgunaan pembuatan akun anonim.
 
-## 2. Buat tabel, RLS, dan RPC
+## 2. Buat tabel, RLS, dan RPC PRO
 
 Buka **SQL Editor → New query**, salin seluruh isi
 `supabase/migrations/202608230001_pro_entitlements.sql`, lalu tekan **Run**.
@@ -76,7 +76,75 @@ where last_seen_at > now() - interval '30 days';
 setelah migration dipasang. Karena memakai Anonymous Auth, hapus data aplikasi
 atau instal ulang akan dihitung sebagai instalasi baru.
 
-## 5. Uji alur
+## 5. Aktifkan platform cloud, admin, dan Storage privat
+
+Jalankan seluruh isi migration berikut setelah dua migration sebelumnya:
+
+```text
+supabase/migrations/202608230003_cloud_admin_platform.sql
+```
+
+Migration ini membuat profile akun, backup cloud terenkripsi, CV privat,
+preferensi/cloud templates, event analitik privat, remote config, feedback,
+inbox notifikasi, referral, audit admin, serta bucket Storage privat:
+
+- `cloud-backups`: ZIP backup yang sudah dienkripsi oleh aplikasi sebelum
+  diunggah. Kata sandi tidak pernah disimpan server.
+- `user-documents`: CV PDF privat.
+
+Setiap objek Storage harus menggunakan folder awal berupa `auth.uid()`. RLS
+memastikan seorang pengguna tidak dapat melihat objek milik UID lain.
+
+## 6. Aktifkan Google Sign-In
+
+1. Buka **Google Cloud Console → Google Auth Platform → Clients**.
+2. Buat OAuth Client bertipe **Web application**.
+3. Pada **Authorized redirect URIs**, masukkan callback yang terlihat pada
+   Supabase Dashboard → Authentication → Providers → Google. Untuk proyek ini
+   formatnya adalah:
+
+   ```text
+   https://jfmmfnfxofodmallkmsq.supabase.co/auth/v1/callback
+   ```
+
+4. Salin Client ID dan Client Secret ke provider Google di Supabase lalu
+   aktifkan provider tersebut.
+5. Di Supabase **Authentication → URL Configuration → Redirect URLs**, tambah:
+
+   ```text
+   ngelamar://auth/callback
+   http://localhost:3000
+   https://URL_DASHBOARD_VERCEL_ANDA
+   ```
+
+6. Android dan iOS aplikasi sudah memiliki deep link `ngelamar://auth/callback`.
+   Pengguna anonim akan *link* ke Google sehingga UID, PRO, dan backupnya
+   tetap sama.
+
+## 7. Deploy dashboard admin Vercel
+
+Ikuti [panduan dashboard admin](../admin-web/README.md). Environment variable
+`SUPABASE_SERVICE_ROLE_KEY` hanya untuk Vercel server. Jangan menambahkannya ke
+Flutter, GitHub Actions yang tidak terlindungi, atau aplikasi klien.
+
+## 8. Aktifkan tugas server (opsional)
+
+Deploy function berikut melalui Supabase CLI:
+
+```bash
+supabase functions deploy weekly-digest --no-verify-jwt
+supabase functions deploy career-ai
+supabase secrets set CRON_SECRET=<secret-acak>
+supabase secrets set OPENAI_API_KEY=<api-key-anda>
+```
+
+Untuk `weekly-digest`, buat schedule `pg_cron` yang memanggil function dan
+mengirim header `x-cron-secret`. Untuk `career-ai`, set juga `OPENAI_MODEL`
+jika ingin menggunakan model selain default. Jangan deploy fitur AI sebelum
+Anda siap menanggung biaya API dan menyampaikan persetujuan pengiriman konteks
+karier kepada pengguna.
+
+## 9. Uji alur
 
 1. Buka halaman PRO dan pilih paket yang sesuai dengan kode.
 2. Masukkan kode 10 digit.

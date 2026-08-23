@@ -1,4 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+class AccountIdentity {
+  final String id;
+  final String? email;
+  final String? displayName;
+  final String? avatarUrl;
+  final bool isAnonymous;
+
+  const AccountIdentity({
+    required this.id,
+    required this.isAnonymous,
+    this.email,
+    this.displayName,
+    this.avatarUrl,
+  });
+
+  factory AccountIdentity.fromUser(User user) {
+    final metadata = user.userMetadata ?? const <String, dynamic>{};
+    return AccountIdentity(
+      id: user.id,
+      isAnonymous: user.isAnonymous,
+      email: user.email,
+      displayName:
+          metadata['full_name']?.toString() ?? metadata['name']?.toString(),
+      avatarUrl: metadata['avatar_url']?.toString(),
+    );
+  }
+}
 
 /// Supabase client configuration for this privately distributed APK.
 /// The anon/publishable key is intentionally a client-side identifier; data
@@ -18,10 +47,16 @@ class SupabaseService {
   static Future<User>? _pendingAnonymousSignIn;
   static DateTime? _lastActivitySentAt;
   static const _activityInterval = Duration(minutes: 5);
+  static const _mobileAuthRedirect = 'ngelamar://auth/callback';
 
   static bool get isInitialized => _isInitialized;
 
   static SupabaseClient get client => Supabase.instance.client;
+
+  static AccountIdentity? get currentIdentity {
+    final user = client.auth.currentUser;
+    return user == null ? null : AccountIdentity.fromUser(user);
+  }
 
   static Future<void> initialize() async {
     await Supabase.initialize(url: projectUrl, publishableKey: publishableKey);
@@ -36,7 +71,10 @@ class SupabaseService {
     }
 
     final currentUser = client.auth.currentUser;
-    if (currentUser != null) return currentUser;
+    if (currentUser != null) {
+      await _ensureProfile();
+      return currentUser;
+    }
 
     final pending = _pendingAnonymousSignIn;
     if (pending != null) return pending;
@@ -47,6 +85,7 @@ class SupabaseService {
       if (user == null) {
         throw StateError('Sesi anonim Supabase gagal dibuat.');
       }
+      await _ensureProfile();
       return user;
     }();
     _pendingAnonymousSignIn = request;
@@ -54,6 +93,36 @@ class SupabaseService {
       return await request;
     } finally {
       _pendingAnonymousSignIn = null;
+    }
+  }
+
+  /// Links the current anonymous identity to Google whenever possible. This
+  /// preserves the existing UID, entitlement PRO, and cloud files.
+  static Future<bool> connectGoogle() async {
+    final user = await ensureAuthenticated();
+    final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
+    if (user.isAnonymous) {
+      return client.auth.linkIdentity(
+        OAuthProvider.google,
+        redirectTo: redirectTo,
+      );
+    }
+    return client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: redirectTo,
+    );
+  }
+
+  static Future<void> signOutToAnonymous() async {
+    await client.auth.signOut();
+    await ensureAuthenticated();
+  }
+
+  static Future<void> _ensureProfile() async {
+    try {
+      await client.rpc('ensure_my_profile');
+    } catch (_) {
+      // The cloud migration may not have been run yet. Do not block the app.
     }
   }
 

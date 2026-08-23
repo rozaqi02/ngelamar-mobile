@@ -1,0 +1,5 @@
+[functions.weekly-digest]
+verify_jwt = false
+
+[functions.career-ai]
+verify_jwt = true

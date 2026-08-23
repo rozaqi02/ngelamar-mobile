@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -13,8 +14,11 @@ import 'package:intl/intl.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/backup_service.dart';
+import '../../services/cloud_sync_service.dart';
+import '../../services/feedback_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
+import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_dialog.dart';
@@ -47,13 +51,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _aboutController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.1.0';
-  static const String _buildNumber = '210';
+  static const String _appVersion = '2.21.0';
+  static const String _buildNumber = '221';
 
   List<String> _userInterests = [];
   bool? _notificationsEnabled;
   String _about = '';
   String? _cvPdfPath;
+  AccountIdentity? _accountIdentity;
+  bool _isAccountBusy = false;
+  late final StreamSubscription<dynamic> _authSubscription;
 
   static const Map<String, List<String>> _categorizedInterests = {
     '💻 Lulusan IT & Software': [
@@ -99,6 +106,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _loadUserInterests();
     _loadAboutAndCv();
     _refreshNotificationStatus();
+    _authSubscription = SupabaseService.client.auth.onAuthStateChange.listen((
+      _,
+    ) {
+      _refreshCloudAccount();
+    });
+    _refreshCloudAccount();
   }
 
   Future<void> _loadAboutAndCv() async {
@@ -109,6 +122,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _about = about ?? '';
       _cvPdfPath = cvPath;
     });
+  }
+
+  Future<void> _refreshCloudAccount() async {
+    try {
+      await SupabaseService.ensureAuthenticated();
+      if (mounted) {
+        setState(() => _accountIdentity = SupabaseService.currentIdentity);
+      }
+    } catch (_) {
+      // Local profile remains available when the device is offline.
+    }
   }
 
   Future<void> _refreshNotificationStatus() async {
@@ -140,6 +164,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   void dispose() {
+    _authSubscription.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _aboutController.dispose();
@@ -235,6 +260,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           await ref.read(jobProvider.notifier).setUserName(newName);
         }
         await ref.read(jobProvider.notifier).setUserEmail(newEmail);
+        await _syncPreferencesToCloud();
         if (mounted) {
           Navigator.pop(context);
           DelightCelebration.show(
@@ -377,6 +403,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       setState(() {
                         _userInterests = tempInterests;
                       });
+                      await _syncPreferencesToCloud();
+                      if (!mounted) return;
                       nav.pop();
                       AppleToast.success(
                         context,
@@ -446,6 +474,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await PrefsService.setUserAbout(value);
         if (!mounted) return;
         setState(() => _about = value);
+        await _syncPreferencesToCloud();
+        if (!mounted) return;
         Navigator.pop(context);
         AppleToast.success(context, 'Tentang saya berhasil diperbarui');
       },
@@ -474,6 +504,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         throw const FileSystemException('Berkas CV tidak dapat dibaca');
       }
       await PrefsService.setCvPdf(destination.path);
+      var uploadedToCloud = false;
+      if (_accountIdentity != null && !_accountIdentity!.isAnonymous) {
+        try {
+          await CloudSyncService.uploadCv(destination);
+          uploadedToCloud = true;
+        } catch (_) {
+          // Salinan lokal tetap sah; pengguna tidak boleh kehilangan CV hanya
+          // karena jaringan atau Storage cloud sedang tidak tersedia.
+        }
+      }
       if (!mounted) return;
       setState(() => _cvPdfPath = destination.path);
       DelightCelebration.show(
@@ -483,7 +523,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.picture_as_pdf_rounded,
         preset: DelightPreset.cv,
       );
-      AppleToast.success(context, 'CV PDF berhasil disimpan di profil');
+      AppleToast.success(
+        context,
+        uploadedToCloud
+            ? 'CV tersimpan di perangkat dan cloud.'
+            : 'CV PDF berhasil disimpan di profil.',
+      );
     } catch (_) {
       if (mounted) AppleToast.error(context, 'CV PDF belum dapat disimpan.');
     }
@@ -505,6 +550,223 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
       await Share.shareXFiles([XFile(path)], subject: 'CV Saya');
     }
+  }
+
+  bool get _hasCloudAccount =>
+      _accountIdentity != null && !_accountIdentity!.isAnonymous;
+
+  Future<void> _connectGoogleAccount() async {
+    if (_isAccountBusy) return;
+    setState(() => _isAccountBusy = true);
+    try {
+      final launched = await SupabaseService.connectGoogle();
+      if (mounted) {
+        AppToast.info(
+          context,
+          launched
+              ? 'Lanjutkan masuk dengan Google di browser, lalu kembali ke aplikasi.'
+              : 'Browser login Google belum dapat dibuka.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          'Login Google belum tersedia. Periksa konfigurasi OAuth.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAccountBusy = false);
+    }
+  }
+
+  Future<void> _syncPreferencesToCloud() async {
+    if (!_hasCloudAccount) return;
+    try {
+      await CloudSyncService.syncPreferences({
+        'name': ref.read(jobProvider).userName,
+        'email': ref.read(jobProvider).userEmail,
+        'about': _about,
+        'interests': _userInterests,
+      });
+    } catch (_) {
+      // Preferences stay local and will be retried on a later edit.
+    }
+  }
+
+  Future<void> _uploadCloudBackup() async {
+    if (!_hasCloudAccount) {
+      await _connectGoogleAccount();
+      return;
+    }
+    final state = ref.read(jobProvider);
+    if (state.jobs.isEmpty) {
+      AppToast.info(context, 'Belum ada data lamaran untuk dicadangkan.');
+      return;
+    }
+    final password = await _requestBackupPassword(isRestoring: false);
+    if (password == null || !mounted) return;
+
+    File? temporaryBackup;
+    try {
+      final temporaryDirectory = await getTemporaryDirectory();
+      temporaryBackup = await BackupService.createBackup(
+        state.jobs,
+        password: password,
+        outputDirectory: temporaryDirectory,
+      );
+      await CloudSyncService.uploadEncryptedBackup(
+        temporaryBackup,
+        appVersion: _appVersion,
+      );
+      if (mounted) {
+        AppToast.success(
+          context,
+          'Backup terenkripsi berhasil disimpan ke cloud.',
+        );
+      }
+    } on BackupException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Backup cloud belum dapat disimpan.');
+      }
+    } finally {
+      if (temporaryBackup != null && await temporaryBackup.exists()) {
+        await temporaryBackup.delete();
+      }
+    }
+  }
+
+  Future<void> _restoreCloudBackup() async {
+    if (!_hasCloudAccount) {
+      await _connectGoogleAccount();
+      return;
+    }
+    try {
+      final backups = await CloudSyncService.listBackups();
+      if (!mounted) return;
+      if (backups.isEmpty) {
+        AppToast.info(context, 'Belum ada backup cloud pada akun ini.');
+        return;
+      }
+      final selected = await showModalBottomSheet<CloudBackupInfo>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) => Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 30),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD7D1C7),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Pilih Backup Cloud',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              ...backups.map(
+                (backup) => ListTile(
+                  leading: const Icon(CupertinoIcons.cloud_download_fill),
+                  title: Text(
+                    DateFormat(
+                      'd MMM y • HH:mm',
+                      'id_ID',
+                    ).format(backup.createdAt.toLocal()),
+                  ),
+                  subtitle: Text(
+                    '${(backup.bytes / 1024 / 1024).toStringAsFixed(1)} MB • v${backup.appVersion}',
+                  ),
+                  trailing: const Icon(CupertinoIcons.chevron_right),
+                  onTap: () => Navigator.pop(sheetContext, backup),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (selected == null || !mounted) return;
+      final password = await _requestBackupPassword(isRestoring: true);
+      if (password == null || !mounted) return;
+      final bytes = await CloudSyncService.downloadBackup(selected);
+      final payload = await BackupService.restoreFromBytes(
+        bytes,
+        password: password,
+      );
+      final importResult = await ref
+          .read(jobProvider.notifier)
+          .importJobs(payload.jobs);
+      await ref
+          .read(jobProvider.notifier)
+          .discardUnreferencedAttachments(payload.extractedAttachmentPaths);
+      if (mounted) {
+        AppToast.success(
+          context,
+          '${importResult.importedCount} lamaran dipulihkan dari cloud.',
+        );
+      }
+    } on BackupException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Backup cloud belum dapat dipulihkan.');
+      }
+    }
+  }
+
+  Future<void> _showFeedbackDialog() async {
+    final controller = TextEditingController();
+    await AppDialog.show<void>(
+      context: context,
+      icon: CupertinoIcons.chat_bubble_2_fill,
+      iconColor: const Color(0xFF5C44E4),
+      title: 'Kirim Masukan',
+      content:
+          'Ceritakan bug, ide fitur, atau pengalaman yang ingin Anda perbaiki.',
+      secondaryLabel: 'Batal',
+      primaryLabel: 'Kirim',
+      customBody: TextField(
+        controller: controller,
+        minLines: 4,
+        maxLines: 7,
+        maxLength: 3000,
+        decoration: InputDecoration(
+          hintText: 'Tulis masukan Anda...',
+          filled: true,
+          fillColor: const Color(0xFFF9F7F2),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      ),
+      onPrimary: () async {
+        try {
+          await FeedbackService.submit(
+            category: 'feedback',
+            message: controller.text,
+            appVersion: _appVersion,
+          );
+          if (mounted) {
+            AppToast.success(
+              context,
+              'Masukan berhasil dikirim. Terima kasih!',
+            );
+          }
+        } catch (_) {
+          if (mounted) AppToast.error(context, 'Masukan belum dapat dikirim.');
+        }
+      },
+    );
+    controller.dispose();
   }
 
   Future<void> _exportApplicationsData() async {
@@ -1924,6 +2186,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   child: Column(
                     children: [
+                      _buildSettingTile(
+                        icon: CupertinoIcons.person_crop_circle_badge_checkmark,
+                        color: const Color(0xFF4285F4),
+                        title: _hasCloudAccount
+                            ? 'Akun Google Terhubung'
+                            : 'Hubungkan Akun Google',
+                        subtitle: _hasCloudAccount
+                            ? (_accountIdentity!.email ??
+                                  'Cloud backup dan sinkronisasi aktif')
+                            : 'Amankan backup dan pulihkan data saat ganti perangkat',
+                        trailing: _isAccountBusy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : null,
+                        onTap: _connectGoogleAccount,
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: isDark
+                            ? const Color(0xFF2E2E38)
+                            : const Color(0xFFE6E0D5),
+                      ),
                       // Mode Gelap (Dark Mode OLED)
                       _buildSettingTile(
                         icon: state.isDarkMode
@@ -2008,6 +2299,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             : const Color(0xFFE6E0D5),
                       ),
 
+                      _buildSettingTile(
+                        icon: CupertinoIcons.cloud_upload_fill,
+                        color: const Color(0xFF1E8E3E),
+                        title: 'Backup Cloud Terenkripsi',
+                        subtitle: _hasCloudAccount
+                            ? 'Simpan ZIP terenkripsi ke akun Google Anda'
+                            : 'Hubungkan Google untuk mengaktifkan backup cloud',
+                        onTap: _uploadCloudBackup,
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: isDark
+                            ? const Color(0xFF2E2E38)
+                            : const Color(0xFFE6E0D5),
+                      ),
+
+                      _buildSettingTile(
+                        icon: CupertinoIcons.cloud_download_fill,
+                        color: const Color(0xFF5C44E4),
+                        title: 'Pulihkan dari Cloud',
+                        subtitle: 'Ambil backup terenkripsi dari akun Anda',
+                        onTap: _restoreCloudBackup,
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: isDark
+                            ? const Color(0xFF2E2E38)
+                            : const Color(0xFFE6E0D5),
+                      ),
+
                       // Notifikasi Interview
                       _buildNotificationStatusCard(state, isDark),
                       Divider(
@@ -2027,6 +2352,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Data terenkripsi di perangkat • koneksi opsional',
                         onTap: _showPrivacyPolicyModal,
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: isDark
+                            ? const Color(0xFF2E2E38)
+                            : const Color(0xFFE6E0D5),
+                      ),
+
+                      _buildSettingTile(
+                        icon: CupertinoIcons.chat_bubble_2_fill,
+                        color: const Color(0xFF5C44E4),
+                        title: 'Kirim Masukan',
+                        subtitle:
+                            'Laporkan bug atau usulkan fitur langsung ke tim',
+                        onTap: _showFeedbackDialog,
                       ),
                       Divider(
                         height: 1,

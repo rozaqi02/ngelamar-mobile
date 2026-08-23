@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../services/analytics_service.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_search_field.dart';
@@ -240,6 +241,10 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     if (confirmed != true || !mounted) return;
 
     HapticFeedback.mediumImpact();
+    AnalyticsService.track(
+      'portal_opened',
+      properties: {'portal': portal['name']?.toString() ?? 'unknown'},
+    );
 
     final url = portal['getUrl'](keyword) as String;
     try {

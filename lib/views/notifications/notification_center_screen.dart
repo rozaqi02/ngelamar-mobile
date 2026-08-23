@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/notification_service.dart';
+import '../../services/inbox_service.dart';
+import '../../services/remote_config_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/confused_envelope_mascot.dart';
@@ -25,11 +27,13 @@ class NotificationCenterScreen extends ConsumerStatefulWidget {
 class _NotificationCenterScreenState
     extends ConsumerState<NotificationCenterScreen> {
   late Future<bool> _permissionFuture;
+  late Future<List<InboxMessage>> _inboxFuture;
 
   @override
   void initState() {
     super.initState();
     _permissionFuture = NotificationService.areNotificationsEnabled();
+    _inboxFuture = InboxService.fetch();
   }
 
   @override
@@ -47,222 +51,260 @@ class _NotificationCenterScreenState
       backgroundColor: background,
       body: SafeArea(
         bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'KABAR\nUNTUKMU',
-                        style: TextStyle(
-                          color: txtPri,
-                          fontSize: 31,
-                          height: 0.98,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1.25,
-                        ),
-                      ),
-                    ),
-                    FluidBounceButton(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        Navigator.push(
-                          context,
-                          WelcomeScreenRoute(
-                            child: const NotificationWelcomeScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF252327)
-                              : Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF3B383E)
-                                : const Color(0xFFE7DAD4),
-                          ),
-                        ),
-                        child: const Icon(
-                          CupertinoIcons.question_circle_fill,
-                          color: Color(0xFFFF6B5F),
-                          size: 19,
-                        ),
-                      ),
-                    ),
-                  ],
+        child: FutureBuilder<List<InboxMessage>>(
+          future: _inboxFuture,
+          builder: (context, snapshot) {
+            final remoteAnnouncement = RemoteConfigService.announcement;
+            final inboxMessages = [
+              if (remoteAnnouncement != null)
+                InboxMessage(
+                  id: 'remote_announcement',
+                  title: remoteAnnouncement.title,
+                  body: remoteAnnouncement.message,
+                  type: 'announcement',
+                  actionUrl: remoteAnnouncement.actionUrl,
+                  createdAt: DateTime.now(),
                 ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 2, 20, 18),
-                child: FutureBuilder<bool>(
-                  future: _permissionFuture,
-                  builder: (context, snapshot) {
-                    final enabled = snapshot.data ?? false;
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: enabled
-                            ? const Color(0xFFCDF0D2)
-                            : const Color(0xFFFFD2CB),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 42,
-                            height: 42,
+              ...(snapshot.data ?? const <InboxMessage>[]),
+            ];
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'KABAR\nUNTUKMU',
+                            style: TextStyle(
+                              color: txtPri,
+                              fontSize: 31,
+                              height: 0.98,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.25,
+                            ),
+                          ),
+                        ),
+                        FluidBounceButton(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              WelcomeScreenRoute(
+                                child: const NotificationWelcomeScreen(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.72),
+                              color: isDark
+                                  ? const Color(0xFF252327)
+                                  : Colors.white,
                               shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              enabled
-                                  ? Icons.notifications_active_rounded
-                                  : Icons.notifications_off_outlined,
-                              color: enabled
-                                  ? const Color(0xFF1E7C36)
-                                  : const Color(0xFFC43A31),
-                              size: 21,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  enabled
-                                      ? 'Pengingat aktif'
-                                      : 'Izin belum aktif',
-                                  style: const TextStyle(
-                                    color: Color(0xFF1D1B1B),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  enabled
-                                      ? _nextReminderText(notices)
-                                      : 'Aktifkan agar jadwal seleksi tidak terlewat.',
-                                  style: const TextStyle(
-                                    color: Color(0xFF575052),
-                                    fontSize: 11.5,
-                                    height: 1.3,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (!enabled)
-                            TextButton(
-                              onPressed: _requestPermission,
-                              child: const Text(
-                                'Perbaiki',
-                                style: TextStyle(
-                                  color: Color(0xFFC43A31),
-                                  fontWeight: FontWeight.w900,
-                                ),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF3B383E)
+                                    : const Color(0xFFE7DAD4),
                               ),
                             ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            if (notices.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 10, 28, 130),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const ConfusedEnvelopeMascot(width: 185, height: 145),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Belum ada kabar baru',
-                        style: TextStyle(
-                          color: txtPri,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
+                            child: const Icon(
+                              CupertinoIcons.question_circle_fill,
+                              color: Color(0xFFFF6B5F),
+                              size: 19,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Jadwal seleksi dan waktu follow-up lamaranmu akan muncul di sini.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: txtSec,
-                          fontSize: 12.5,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
-                  child: Text(
-                    '${notices.length} HAL PERLU PERHATIAN',
-                    style: TextStyle(
-                      color: txtSec,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
+                      ],
                     ),
                   ),
                 ),
-              ),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  125 + MediaQuery.paddingOf(context).bottom,
-                ),
-                sliver: SliverList.separated(
-                  itemCount: notices.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final notice = notices[index];
-                    return _NoticeCard(
-                      notice: notice,
-                      isDark: isDark,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                            builder: (_) => JobDetailScreen(job: notice.job),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 2, 20, 18),
+                    child: FutureBuilder<bool>(
+                      future: _permissionFuture,
+                      builder: (context, snapshot) {
+                        final enabled = snapshot.data ?? false;
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: enabled
+                                ? const Color(0xFFCDF0D2)
+                                : const Color(0xFFFFD2CB),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  enabled
+                                      ? Icons.notifications_active_rounded
+                                      : Icons.notifications_off_outlined,
+                                  color: enabled
+                                      ? const Color(0xFF1E7C36)
+                                      : const Color(0xFFC43A31),
+                                  size: 21,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      enabled
+                                          ? 'Pengingat aktif'
+                                          : 'Izin belum aktif',
+                                      style: const TextStyle(
+                                        color: Color(0xFF1D1B1B),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      enabled
+                                          ? _nextReminderText(notices)
+                                          : 'Aktifkan agar jadwal seleksi tidak terlewat.',
+                                      style: const TextStyle(
+                                        color: Color(0xFF575052),
+                                        fontSize: 11.5,
+                                        height: 1.3,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!enabled)
+                                TextButton(
+                                  onPressed: _requestPermission,
+                                  child: const Text(
+                                    'Perbaiki',
+                                    style: TextStyle(
+                                      color: Color(0xFFC43A31),
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         );
                       },
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ],
+                if (inboxMessages.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                      child: Column(
+                        children: inboxMessages
+                            .map(
+                              (message) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _InboxMessageCard(
+                                  message: message,
+                                  isDark: isDark,
+                                ),
+                              ),
+                            )
+                            .toList(growable: false),
+                      ),
+                    ),
+                  ),
+                if (notices.isEmpty && inboxMessages.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 10, 28, 130),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const ConfusedEnvelopeMascot(width: 185, height: 145),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Belum ada kabar baru',
+                            style: TextStyle(
+                              color: txtPri,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Jadwal seleksi dan waktu follow-up lamaranmu akan muncul di sini.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: txtSec,
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (notices.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+                      child: Text(
+                        '${notices.length} HAL PERLU PERHATIAN',
+                        style: TextStyle(
+                          color: txtSec,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      0,
+                      16,
+                      125 + MediaQuery.paddingOf(context).bottom,
+                    ),
+                    sliver: SliverList.separated(
+                      itemCount: notices.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final notice = notices[index];
+                        return _NoticeCard(
+                          notice: notice,
+                          isDark: isDark,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (_) =>
+                                    JobDetailScreen(job: notice.job),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -356,6 +398,92 @@ class _CareerNotice {
     required this.color,
     this.date,
   });
+}
+
+class _InboxMessageCard extends StatelessWidget {
+  final InboxMessage message;
+  final bool isDark;
+
+  const _InboxMessageCard({required this.message, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (message.type) {
+      'pro' => const Color(0xFF7257D9),
+      'reminder' => const Color(0xFFF2A62B),
+      'system' => const Color(0xFF3884F5),
+      _ => const Color(0xFFFF6B5F),
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242126) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.13),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.campaign_rounded, color: color, size: 19),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.title,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF181719),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message.body,
+                  style: TextStyle(
+                    color: isDark
+                        ? const Color(0xFFA9A6AD)
+                        : const Color(0xFF67636B),
+                    fontSize: 12,
+                    height: 1.38,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  DateFormat(
+                    'd MMM, HH:mm',
+                    'id_ID',
+                  ).format(message.createdAt.toLocal()),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _NoticeCard extends StatelessWidget {

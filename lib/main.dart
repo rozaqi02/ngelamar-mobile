@@ -9,6 +9,8 @@ import 'theme/app_theme.dart';
 import 'views/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
+import 'services/analytics_service.dart';
+import 'services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +40,8 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(SupabaseService.markUserActive(force: true));
+    unawaited(RemoteConfigService.refresh());
+    unawaited(AnalyticsService.track('app_open'));
   }
 
   @override
@@ -50,6 +54,7 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(SupabaseService.markUserActive());
+      unawaited(RemoteConfigService.refresh());
     }
   }
 
