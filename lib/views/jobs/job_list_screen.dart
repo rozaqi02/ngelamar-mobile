@@ -41,7 +41,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   int _lastTabIndex = 0;
 
   String _sortBy = 'Terbaru';
-  String _viewMode = 'grid';
+  String _viewMode = 'list';
 
   final List<String> _tabs = const [
     'Semua',
@@ -850,9 +850,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                             job.companyName,
                             job.status,
                           );
-                          final isDarkText =
-                              cardColor == AppTheme.cardYellow ||
-                              cardColor == AppTheme.cardGreen;
+                          final isDarkText = !AppTheme.isDarkCard(cardColor);
                           return _buildJobGridCard(
                             context: context,
                             job: job,
@@ -879,9 +877,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           job.companyName,
                           job.status,
                         );
-                        final isDarkText =
-                            cardColor == AppTheme.cardYellow ||
-                            cardColor == AppTheme.cardGreen;
+                        final isDarkText = !AppTheme.isDarkCard(cardColor);
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),

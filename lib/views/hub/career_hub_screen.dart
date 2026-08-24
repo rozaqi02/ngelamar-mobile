@@ -41,36 +41,36 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
     final isDark = AppTheme.isDark(context);
     final surface = isDark ? const Color(0xFF1D1D22) : Colors.white;
 
+    final topInset = MediaQuery.of(context).padding.top;
+    final greenBackground = isDark
+        ? const Color(0xFF0F1B14)
+        : const Color(0xFFE8F5E9);
+
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF121214)
-          : AppTheme.warmBackground,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-              child: _buildSwitcher(isDark, surface),
+      backgroundColor: greenBackground,
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, topInset + 8, 16, 8),
+            child: _buildSwitcher(isDark, surface),
+          ),
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (value) {
+                if (_section == value) return;
+                HapticFeedback.selectionClick();
+                setState(() => _section = value);
+                unawaited(_showWelcomeIfNeeded(value));
+              },
+              children: const [
+                JobDiscoveryScreen(embedded: true),
+                FreshGradPrepScreen(embedded: true),
+              ],
             ),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (value) {
-                  if (_section == value) return;
-                  HapticFeedback.selectionClick();
-                  setState(() => _section = value);
-                  unawaited(_showWelcomeIfNeeded(value));
-                },
-                children: const [
-                  JobDiscoveryScreen(embedded: true),
-                  FreshGradPrepScreen(embedded: true),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

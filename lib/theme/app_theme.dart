@@ -22,20 +22,14 @@ class AppTheme {
   static const Color warmSurfaceAlt = Color(0xFFEDE7DC);
   static const Color warmBorder = Color(0xFFDCD8CE);
 
-  // Saturated Vibrant Palette (Pixel-matched with Reference Image)
-  static const Color cardPurple = Color(0xFF5C44E4); // Uber card & Stage 1
-  static const Color cardYellow = Color(
-    0xFFF8BA38,
-  ); // Amazon card, Hero Header & Stage 3
-  static const Color cardCoral = Color(0xFFE55444); // Stage 2 card
-  static const Color cardGreen = Color(
-    0xFFC1DE98,
-  ); // Google expanded card & Stage 4
-  static const Color cardDark = Color(
-    0xFF1C1C1E,
-  ); // Microsoft card & Action Buttons
-  static const Color cardBlue = Color(0xFF3884F5);
-  static const Color cardTeal = Color(0xFF32B0B8);
+  // Saturated Vibrant Palette - Bright, Luminous, High Energy
+  static const Color cardPurple = Color(0xFF8B5CF6); // Bright Violet
+  static const Color cardYellow = Color(0xFFFBBF24); // Bright Sunny Amber
+  static const Color cardCoral = Color(0xFFFB923C); // Bright Energetic Orange
+  static const Color cardGreen = Color(0xFF34D399); // Bright Fresh Emerald Mint
+  static const Color cardDark = Color(0xFFFB7185); // Bright Coral Rose
+  static const Color cardBlue = Color(0xFF38BDF8); // Bright Sky Blue
+  static const Color cardTeal = Color(0xFF22D3EE); // Bright Cyan Teal
 
   // Typography Colors
   static const Color textDark = Color(0xFF121214);
@@ -43,13 +37,13 @@ class AppTheme {
   static const Color textLight = Color(0xFFFFFFFF);
   static const Color textLightMuted = Color(0xD9FFFFFF);
 
-  // Status System Colors
-  static const Color systemBlue = Color(0xFF3884F5);
-  static const Color systemGreen = Color(0xFF2E7D32);
-  static const Color systemOrange = Color(0xFFE65100);
-  static const Color systemRed = Color(0xFFD32F2F);
-  static const Color systemPurple = Color(0xFF5C44E4);
-  static const Color systemTeal = Color(0xFF00838F);
+  // Status System Colors - Bright & Vibrant
+  static const Color systemBlue = Color(0xFF0284C7);
+  static const Color systemGreen = Color(0xFF10B981);
+  static const Color systemOrange = Color(0xFFF97316);
+  static const Color systemRed = Color(0xFFF43F5E);
+  static const Color systemPurple = Color(0xFF8B5CF6);
+  static const Color systemTeal = Color(0xFF06B6D4);
 
   // ─────────────────────────────────────────────────
   // Context-Aware Colors
@@ -86,10 +80,10 @@ class AppTheme {
     const colors = [
       cardPurple,
       cardYellow,
-      cardDark,
+      cardBlue,
       cardGreen,
       cardCoral,
-      cardBlue,
+      cardTeal,
     ];
     return colors[index % colors.length];
   }
@@ -97,25 +91,25 @@ class AppTheme {
   static Color getJobCardColor(String status) {
     switch (status) {
       case 'Contoh':
-        return cardPurple;
+        return const Color(0xFF8B5CF6);
       case 'Dikirim':
-        return cardBlue; // Biru: Tahap Baru Terkirim
+        return const Color(0xFF38BDF8); // Bright Sky Blue
       case 'HR Screening':
-        return const Color(0xFF00838F); // Toska: Seleksi Dokumen HR
+        return const Color(0xFF22D3EE); // Bright Cyan
       case 'Tes / Psikotes':
-        return cardCoral; // Oranye Merah: Ujian / Tes Kemampuan
+        return const Color(0xFFFB923C); // Bright Energetic Orange
       case 'Interview HR':
-        return cardYellow; // Kuning Mustard: Wawancara HR
+        return const Color(0xFFFBBF24); // Bright Sunny Amber
       case 'Interview User':
-        return cardPurple; // Ungu Elektrik: Wawancara User / Manager
+        return const Color(0xFFA78BFA); // Bright Violet
       case 'Offering':
-        return const Color(0xFF9C27B0); // Magenta: Offering & Kontrak
+        return const Color(0xFFF472B6); // Bright Fuchsia Pink
       case 'Diterima':
-        return cardGreen; // Hijau Zaitun Muda: Diterima Kerja
+        return const Color(0xFF34D399); // Bright Fresh Mint Green
       case 'Ditolak':
-        return cardDark; // Hitam Arang: Ditolak / Closed
+        return const Color(0xFFFB7185); // Bright Coral Rose
       default:
-        return cardBlue;
+        return const Color(0xFF38BDF8);
     }
   }
 
@@ -127,39 +121,34 @@ class AppTheme {
   }
 
   static bool isDarkCard(Color color) {
-    return color == cardPurple ||
-        color == cardDark ||
-        color == cardCoral ||
-        color == cardBlue ||
-        color == const Color(0xFF00838F) ||
-        color == const Color(0xFF9C27B0);
+    return color.computeLuminance() < 0.45;
   }
 
   // ─────────────────────────────────────────────────
-  // Status Color Mapping
+  // Status Color Mapping - Bright Dominant Palette
   // ─────────────────────────────────────────────────
   static Color getStatusColor(String status, {bool isDark = false}) {
     switch (status) {
       case 'Contoh':
-        return isDark ? const Color(0xFFB8A7FF) : const Color(0xFF7257D9);
+        return isDark ? const Color(0xFFC4B5FD) : const Color(0xFF8B5CF6);
       case 'Dikirim':
-        return systemBlue;
+        return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
       case 'HR Screening':
-        return systemTeal;
+        return isDark ? const Color(0xFF22D3EE) : const Color(0xFF06B6D4);
       case 'Tes / Psikotes':
-        return cardCoral;
+        return isDark ? const Color(0xFFFB923C) : const Color(0xFFF97316);
       case 'Interview HR':
-        return cardYellow;
+        return isDark ? const Color(0xFFFBBF24) : const Color(0xFFF59E0B);
       case 'Interview User':
-        return cardPurple;
+        return isDark ? const Color(0xFFA78BFA) : const Color(0xFF8B5CF6);
       case 'Offering':
-        return const Color(0xFF9C27B0);
+        return isDark ? const Color(0xFFF472B6) : const Color(0xFFD946EF);
       case 'Diterima':
-        return const Color(0xFF2E7D32);
+        return isDark ? const Color(0xFF4ADE80) : const Color(0xFF10B981);
       case 'Ditolak':
-        return systemRed;
+        return isDark ? const Color(0xFFFB7185) : const Color(0xFFF43F5E);
       default:
-        return systemBlue;
+        return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
     }
   }
 

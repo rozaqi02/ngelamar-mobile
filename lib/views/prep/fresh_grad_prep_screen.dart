@@ -378,8 +378,8 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final bgGradient = isDark
-        ? const [Color(0xFF2A2111), Color(0xFF181622), Color(0xFF121214)]
-        : const [Color(0xFFFDECC6), Color(0xFFFFF8E8), Color(0xFFFAF8F5)];
+        ? const [Color(0xFF0F1B14), Color(0xFF132219), Color(0xFF0D1410)]
+        : const [Color(0xFFE8F5E9), Color(0xFFF1F8F1), Color(0xFFFAFDF9)];
 
     final cardConfigs = [
       {

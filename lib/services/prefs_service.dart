@@ -109,18 +109,18 @@ class PrefsService {
     await _writeSensitiveString(_keyCvPdf, path);
   }
 
-  /// Preferred tracker layout. Grid is the first-use default.
+  /// Preferred tracker layout. List is the default view mode.
   static Future<String> getJobListViewMode() async {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString(_keyJobListViewMode);
-    return value == 'list' ? 'list' : 'grid';
+    return value == 'grid' ? 'grid' : 'list';
   }
 
   static Future<void> setJobListViewMode(String mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _keyJobListViewMode,
-      mode == 'list' ? 'list' : 'grid',
+      mode == 'grid' ? 'grid' : 'list',
     );
   }
 

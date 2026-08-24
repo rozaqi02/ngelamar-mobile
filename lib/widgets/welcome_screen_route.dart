@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Floating bottom dock used by all contextual welcome screens.
+/// Features smooth full-slide entrance/exit and real-time swipe-down dismissal.
 class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
   final Widget child;
 
@@ -25,56 +27,128 @@ class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: FractionallySizedBox(
                   widthFactor: 1,
-                  heightFactor: 0.82,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(32),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        child,
-                        Positioned(
-                          top: 10,
-                          left: 0,
-                          right: 0,
-                          child: IgnorePointer(
-                            child: Center(
-                              child: Container(
-                                width: 38,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  heightFactor: 0.84,
+                  child: _WelcomeDismissibleSheet(child: child),
                 ),
               ),
             ),
           );
         },
-        transitionDuration: const Duration(milliseconds: 300),
-        reverseTransitionDuration: const Duration(milliseconds: 250),
+        transitionDuration: const Duration(milliseconds: 380),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
             return child;
           }
           final curvedAnim = CurvedAnimation(
             parent: animation,
-            curve: Curves.easeOutCubic,
+            curve: Curves.easeOutQuart,
             reverseCurve: Curves.easeInCubic,
           );
           return SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0, 0.22),
+              begin: const Offset(0, 1.0),
               end: Offset.zero,
             ).animate(curvedAnim),
             child: child,
           );
         },
       );
+}
+
+class _WelcomeDismissibleSheet extends StatefulWidget {
+  final Widget child;
+
+  const _WelcomeDismissibleSheet({required this.child});
+
+  @override
+  State<_WelcomeDismissibleSheet> createState() =>
+      _WelcomeDismissibleSheetState();
+}
+
+class _WelcomeDismissibleSheetState extends State<_WelcomeDismissibleSheet>
+    with SingleTickerProviderStateMixin {
+  double _dragOffset = 0.0;
+  late final AnimationController _springController;
+  late Animation<double> _springAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _springController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    _springController.addListener(() {
+      setState(() {
+        _dragOffset = _springAnimation.value;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _springController.dispose();
+    super.dispose();
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    if (details.primaryDelta == null) return;
+    setState(() {
+      _dragOffset = (_dragOffset + details.primaryDelta!).clamp(0.0, 400.0);
+    });
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0.0;
+    if (_dragOffset > 90 || velocity > 700) {
+      HapticFeedback.lightImpact();
+      Navigator.of(context).pop();
+    } else {
+      _springAnimation = Tween<double>(
+        begin: _dragOffset,
+        end: 0.0,
+      ).animate(CurvedAnimation(
+        parent: _springController,
+        curve: Curves.easeOutCubic,
+      ));
+      _springController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onVerticalDragUpdate: _onVerticalDragUpdate,
+      onVerticalDragEnd: _onVerticalDragEnd,
+      behavior: HitTestBehavior.translucent,
+      child: Transform.translate(
+        offset: Offset(0, _dragOffset),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              widget.child,
+              Positioned(
+                top: 10,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.30),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

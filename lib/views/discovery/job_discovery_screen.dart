@@ -295,8 +295,8 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     final isDark = AppTheme.isDark(context);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final gradientColors = isDark
-        ? const [Color(0xFF0F1E14), Color(0xFF14241B), Color(0xFF121214)]
-        : const [Color(0xFFD8F3DC), Color(0xFFEEF8EE), Color(0xFFF5EFE6)];
+        ? const [Color(0xFF0F1B14), Color(0xFF132219), Color(0xFF0D1410)]
+        : const [Color(0xFFE8F5E9), Color(0xFFF1F8F1), Color(0xFFFAFDF9)];
 
     final content = Container(
       decoration: BoxDecoration(

@@ -71,10 +71,10 @@ class _NotificationCenterScreenState
     final isDark = AppTheme.isDark(context);
     final notices = _createNotices(state.jobs);
     final txtPri = isDark ? Colors.white : const Color(0xFF151517);
-    final txtSec = isDark ? const Color(0xFFA4A4AB) : const Color(0xFF3D3A3B);
+    final txtSec = isDark ? const Color(0xFFA4A4AB) : const Color(0xFF707074);
     final background = isDark
-        ? const Color(0xFF151315)
-        : const Color(0xFFF8EEE9);
+        ? const Color(0xFF111113)
+        : const Color(0xFFFAF8F5);
 
     return Scaffold(
       backgroundColor: background,
@@ -136,18 +136,27 @@ class _NotificationCenterScreenState
                               height: 40,
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? const Color(0xFF252327)
+                                    ? const Color(0xFF1E1E24)
                                     : Colors.white,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: isDark
-                                      ? const Color(0xFF3B383E)
-                                      : const Color(0xFFE7DAD4),
+                                      ? const Color(0xFF2C2C36)
+                                      : const Color(0xFFEBE7DF),
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.04,
+                                    ),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: const Icon(
                                 CupertinoIcons.question_circle_fill,
-                                color: Color(0xFFFF6B5F),
+                                color: Color(0xFF7257D9),
                                 size: 19,
                               ),
                             ),
@@ -158,7 +167,7 @@ class _NotificationCenterScreenState
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 2, 20, 18),
+                      padding: const EdgeInsets.fromLTRB(20, 2, 20, 16),
                       child: FutureBuilder<bool>(
                         future: _permissionFuture,
                         builder: (context, snapshot) {
@@ -166,49 +175,42 @@ class _NotificationCenterScreenState
                               snapshot.connectionState ==
                               ConnectionState.waiting;
                           final enabled = snapshot.data == true;
-                          final bannerBg = loading
-                              ? (isDark
-                                    ? const Color(0xFF28262B)
-                                    : const Color(0xFFECE8DF))
-                              : enabled
-                              ? (isDark
-                                    ? const Color(0xFF132E1D)
-                                    : const Color(0xFFCDF0D2))
-                              : (isDark
-                                    ? const Color(0xFF2E1413)
-                                    : const Color(0xFFFFD2CB));
-                          final bannerTitleColor = isDark
-                              ? Colors.white
-                              : const Color(0xFF1D1B1B);
-                          final bannerSubColor = isDark
-                              ? const Color(0xFFC7BFC2)
-                              : const Color(0xFF575052);
-                          final bannerIconBg = isDark
-                              ? (enabled
-                                    ? const Color(0xFF1B4D29)
-                                    : const Color(0xFF4D1E1B))
-                              : Colors.white.withValues(alpha: 0.72);
-                          final bannerIconColor = enabled
-                              ? (isDark
-                                    ? const Color(0xFF4ADE80)
-                                    : const Color(0xFF1E7C36))
-                              : (isDark
-                                    ? const Color(0xFFF87171)
-                                    : const Color(0xFFC43A31));
+                          final cardBg = isDark
+                              ? const Color(0xFF1E1E24)
+                              : Colors.white;
+                          final cardBorder = isDark
+                              ? const Color(0xFF2C2C36)
+                              : const Color(0xFFEBE7DF);
+                          final statusColor = enabled
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFF59E0B);
 
                           return Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                             decoration: BoxDecoration(
-                              color: bannerBg,
-                              borderRadius: BorderRadius.circular(24),
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: cardBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.16 : 0.03,
+                                  ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  width: 42,
-                                  height: 42,
+                                  width: 40,
+                                  height: 40,
                                   decoration: BoxDecoration(
-                                    color: bannerIconBg,
+                                    color: statusColor.withValues(alpha: 0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: loading
@@ -223,9 +225,9 @@ class _NotificationCenterScreenState
                                               ? Icons
                                                     .notifications_active_rounded
                                               : Icons
-                                                    .notifications_off_outlined,
-                                          color: bannerIconColor,
-                                          size: 21,
+                                                    .notifications_none_rounded,
+                                          color: statusColor,
+                                          size: 20,
                                         ),
                                 ),
                                 const SizedBox(width: 12),
@@ -239,11 +241,11 @@ class _NotificationCenterScreenState
                                             ? 'Memeriksa izin notifikasi…'
                                             : enabled
                                             ? 'Pengingat aktif'
-                                            : 'Izin belum aktif',
+                                            : 'Izin notifikasi nonaktif',
                                         style: TextStyle(
-                                          color: bannerTitleColor,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
+                                          color: txtPri,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -254,10 +256,10 @@ class _NotificationCenterScreenState
                                             ? _nextReminderText(notices)
                                             : 'Aktifkan agar jadwal seleksi tidak terlewat.',
                                         style: TextStyle(
-                                          color: bannerSubColor,
+                                          color: txtSec,
                                           fontSize: 11.5,
                                           height: 1.3,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
@@ -266,13 +268,21 @@ class _NotificationCenterScreenState
                                 if (!loading && !enabled)
                                   TextButton(
                                     onPressed: _requestPermission,
-                                    child: Text(
-                                      'Perbaiki',
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Aktifkan',
                                       style: TextStyle(
-                                        color: isDark
-                                            ? const Color(0xFFF87171)
-                                            : const Color(0xFFC43A31),
-                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF7257D9),
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ),
@@ -514,80 +524,111 @@ class _InboxMessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (message.type) {
-      'pro' => const Color(0xFF7257D9),
-      'reminder' => const Color(0xFFF2A62B),
-      'system' => const Color(0xFF3884F5),
-      _ => const Color(0xFFFF6B5F),
+      'pro' => const Color(0xFF8B5CF6),
+      'reminder' => const Color(0xFFF59E0B),
+      'system' => const Color(0xFF0284C7),
+      _ => const Color(0xFFEF4444),
     };
+    final typeLabel = switch (message.type) {
+      'pro' => 'Info PRO',
+      'reminder' => 'Pengingat',
+      'system' => 'Sistem',
+      _ => 'Pengumuman',
+    };
+
+    final cardBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF2C2C36) : const Color(0xFFEBE7DF);
+
     final card = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF242126) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.13),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.campaign_rounded, color: color, size: 19),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message.title,
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF181719),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  message.body,
-                  style: TextStyle(
-                    color: isDark
-                        ? const Color(0xFFA9A6AD)
-                        : const Color(0xFF67636B),
-                    fontSize: 12,
-                    height: 1.38,
-                  ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  DateFormat(
-                    'd MMM, HH:mm',
-                    'id_ID',
-                  ).format(message.createdAt.toLocal()),
+                child: Text(
+                  typeLabel,
                   style: TextStyle(
                     color: color,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
                   ),
                 ),
-              ],
+              ),
+              const Spacer(),
+              Text(
+                DateFormat(
+                  'd MMM, HH:mm',
+                  'id_ID',
+                ).format(message.createdAt.toLocal()),
+                style: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.black38,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message.title,
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF151517),
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message.body,
+            style: TextStyle(
+              color: isDark
+                  ? const Color(0xFFA4A4AB)
+                  : const Color(0xFF6B6B75),
+              fontSize: 12.5,
+              height: 1.4,
             ),
           ),
           if (onTap != null) ...[
-            const SizedBox(width: 8),
-            Icon(Icons.open_in_new_rounded, size: 17, color: color),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Buka Tautan',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_outward_rounded, size: 14, color: color),
+              ],
+            ),
           ],
         ],
       ),
@@ -612,24 +653,24 @@ class _InboxErrorCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF282126) : const Color(0xFFFFECE9),
-        borderRadius: BorderRadius.circular(22),
+        color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFFF6B5F).withValues(alpha: 0.32),
+          color: isDark ? const Color(0xFF2C2C36) : const Color(0xFFEBE7DF),
         ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.cloud_off_rounded, color: Color(0xFFFF6B5F)),
+          const Icon(Icons.cloud_off_rounded, color: Color(0xFFEF4444)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Kotak masuk belum dapat dimuat. Periksa koneksi lalu coba lagi.',
               style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF3A3032),
+                color: isDark ? Colors.white : const Color(0xFF151517),
                 fontSize: 12.5,
                 height: 1.35,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -653,34 +694,35 @@ class _NoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF2C2C36) : const Color(0xFFEBE7DF);
+
     return AppleBouncyCard(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF222024) : Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isDark ? const Color(0xFF37343A) : const Color(0xFFE8DDD8),
-          ),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 46,
-              height: 46,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: notice.color.withValues(alpha: 0.14),
+                color: notice.color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(notice.icon, color: notice.color, size: 22),
+              child: Icon(notice.icon, color: notice.color, size: 20),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -692,21 +734,21 @@ class _NoticeCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF19191B),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF151517),
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     notice.subtitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: isDark ? Colors.white60 : const Color(0xFF66666B),
+                      color: isDark ? const Color(0xFFA4A4AB) : const Color(0xFF707074),
                       fontSize: 11.5,
                       height: 1.35,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -714,9 +756,9 @@ class _NoticeCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Icon(
-              Icons.arrow_outward_rounded,
-              color: isDark ? Colors.white54 : const Color(0xFF777178),
-              size: 18,
+              Icons.chevron_right_rounded,
+              color: isDark ? Colors.white38 : Colors.black26,
+              size: 20,
             ),
           ],
         ),
