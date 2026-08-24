@@ -13,7 +13,6 @@ import '../../widgets/app_search_field.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/confused_envelope_mascot.dart';
-import '../../widgets/container_morph_route.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/welcome_screen_route.dart';
@@ -249,10 +248,27 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   }
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
-    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
-      context: ctx,
-      buttonKey: key ?? _addBtnKey,
-      child: const AddEditJobScreen(startQuickMode: true),
+    final result = await Navigator.of(ctx).push<JobApplication>(
+      PageRouteBuilder<JobApplication>(
+        transitionDuration: const Duration(milliseconds: 380),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AddEditJobScreen(startQuickMode: true),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnim = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutQuart,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(curvedAnim),
+            child: child,
+          );
+        },
+      ),
     );
 
     if (result != null && mounted) {
@@ -437,43 +453,58 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           key: _addBtnKey,
                           onTap: () => _openAddJob(context, _addBtnKey),
                           semanticLabel: 'Tambah lamaran',
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF5C44E4)
-                                  : const Color(0xFF1C1C1E),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.add_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Tambah',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    letterSpacing: -0.2,
+                          child: Hero(
+                            tag: 'add_job_action_button',
+                            flightShuttleBuilder: (
+                              flightContext,
+                              animation,
+                              flightDirection,
+                              fromHeroContext,
+                              toHeroContext,
+                            ) {
+                              return Material(
+                                type: MaterialType.transparency,
+                                child: toHeroContext.widget,
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF5C44E4)
+                                    : const Color(0xFF1C1C1E),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.add_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Tambah',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

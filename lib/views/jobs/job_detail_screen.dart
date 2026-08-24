@@ -549,7 +549,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                       : (isDark
                                             ? const Color(0xFF261E3E)
                                             : const Color(0xFFF3EEFF)),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   tpl.type == FollowupType.whatsapp
@@ -573,7 +573,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               color: isDark
                                   ? const Color(0xFF29292F)
                                   : const Color(0xFFF9F7F2),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
                               tpl.body,
@@ -1189,7 +1189,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               color: badgeColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
               value,
@@ -2594,7 +2594,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     ),
                     decoration: BoxDecoration(
                       color: badgeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
                       trailingBadge,
@@ -2614,7 +2614,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   ),
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
                     trailingBadge,

@@ -33,10 +33,25 @@ class NotificationService {
 
     try {
       tz_data.initializeTimeZones();
-      // DateTime values from the form use the device's local clock. Keeping
-      // tz.local at its default prevents a schedule entered while travelling
-      // from being reinterpreted as Asia/Jakarta time.
       await _notificationsPlugin.initialize(initSettings);
+
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (androidPlugin != null) {
+        const channel = AndroidNotificationChannel(
+          _channelId,
+          'Pengingat & Kabar Loker',
+          description:
+              'Notifikasi jadwal interview, tes, pengumuman dan kabar lamaran',
+          importance: Importance.max,
+          enableVibration: true,
+          playSound: true,
+        );
+        await androidPlugin.createNotificationChannel(channel);
+      }
+
       _initialized = true;
     } catch (error) {
       debugPrint('Inisialisasi notifikasi gagal: $error');

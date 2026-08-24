@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'providers/job_provider.dart';
 import 'theme/app_theme.dart';
 import 'views/splash_screen.dart';
+import 'services/inbox_service.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
 import 'services/analytics_service.dart';
@@ -42,6 +43,8 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
     unawaited(SupabaseService.markUserActive(force: true));
     unawaited(RemoteConfigService.refresh());
     unawaited(AnalyticsService.track('app_open'));
+    unawaited(InboxService.fetch());
+    InboxService.initRealtimeListener();
   }
 
   @override
@@ -55,6 +58,7 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
     if (state == AppLifecycleState.resumed) {
       unawaited(SupabaseService.markUserActive());
       unawaited(RemoteConfigService.refresh());
+      unawaited(InboxService.fetch());
     }
   }
 

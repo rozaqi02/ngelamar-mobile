@@ -11,7 +11,6 @@ import '../../widgets/app_search_field.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
-import '../../widgets/container_morph_route.dart';
 import '../../widgets/crying_envelope_mascot.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
@@ -67,10 +66,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
-    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
-      context: ctx,
-      buttonKey: key ?? _addBtnKey,
-      child: const AddEditJobScreen(startQuickMode: true),
+    final result = await Navigator.of(ctx).push<JobApplication>(
+      PageRouteBuilder<JobApplication>(
+        transitionDuration: const Duration(milliseconds: 380),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AddEditJobScreen(startQuickMode: true),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnim = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutQuart,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(curvedAnim),
+            child: child,
+          );
+        },
+      ),
     );
     if (result != null && mounted) {
       FlyToTrackerAnimator.runFlyAnimation(

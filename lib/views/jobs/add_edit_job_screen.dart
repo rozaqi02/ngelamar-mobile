@@ -51,6 +51,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   late TextEditingController _linkOrTextController;
   late TextEditingController _companyController;
   late TextEditingController _positionController;
+  late TextEditingController _urlController;
   late TextEditingController _salaryController;
   late TextEditingController _locationController;
   late TextEditingController _descriptionController;
@@ -104,6 +105,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _linkOrTextController = TextEditingController();
     _companyController = TextEditingController(text: j?.companyName ?? '');
     _positionController = TextEditingController(text: j?.position ?? '');
+    _urlController = TextEditingController(text: j?.jobUrl ?? '');
     _salaryController = TextEditingController(text: j?.salaryOffered ?? '');
     _locationController = TextEditingController(text: j?.location ?? '');
     _descriptionController = TextEditingController(
@@ -133,6 +135,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _linkOrTextController.dispose();
     _companyController.dispose();
     _positionController.dispose();
+    _urlController.dispose();
     _salaryController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
@@ -238,8 +241,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         if (result.hrContact != null) {
           _hrContactController.text = result.hrContact!;
         }
-        if (result.jobUrl != null) {
+        if (result.jobUrl != null && result.jobUrl!.isNotEmpty) {
           _jobUrl = result.jobUrl;
+          _urlController.text = result.jobUrl!;
+        } else if (text.startsWith('http://') || text.startsWith('https://')) {
+          _urlController.text = text;
         }
         _workType = result.workType;
         _sourcePlatform = result.sourcePlatform;
@@ -774,6 +780,44 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           ),
           const SizedBox(height: 12),
           Text(
+            'URL / Tautan Lowongan (Opsional)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: txtSec,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _urlController,
+            maxLength: 500,
+            keyboardType: TextInputType.url,
+            onChanged: (_) => setState(() {}),
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: txtPri,
+            ),
+            decoration: _buildInputDeco(
+              hint: 'Contoh: https://linkedin.com/jobs/...',
+              icon: Icons.link_rounded,
+              isDark: isDark,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.paste_rounded, size: 18),
+                tooltip: 'Tempel URL',
+                onPressed: () async {
+                  final data = await Clipboard.getData('text/plain');
+                  if (data?.text != null && data!.text!.trim().isNotEmpty) {
+                    setState(() {
+                      _urlController.text = data.text!.trim();
+                    });
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
             'Tanggal Melamar *',
             style: TextStyle(
               fontSize: 12,
@@ -957,7 +1001,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           : _locationController.text.trim(),
       jobSource: _jobSource,
       sourcePlatform: _sourcePlatform,
-      jobUrl: _jobUrl,
+      jobUrl: _urlController.text.trim().isNotEmpty
+          ? _urlController.text.trim()
+          : null,
       jobDescription: _descriptionController.text.trim(),
       hrContact: _hrContactController.text.trim().isEmpty
           ? null
@@ -1993,6 +2039,56 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                                     const SizedBox(height: 14),
 
+                                    // Form Input: URL Lowongan
+                                    Text(
+                                      'URL / Tautan Lowongan (Opsional)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: txtSec,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextFormField(
+                                      controller: _urlController,
+                                      maxLength: 500,
+                                      keyboardType: TextInputType.url,
+                                      onChanged: (_) => setState(() {}),
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: txtPri,
+                                      ),
+                                      decoration: _buildInputDeco(
+                                        hint:
+                                            'Contoh: https://linkedin.com/jobs/...',
+                                        icon: Icons.link_rounded,
+                                        isDark: isDark,
+                                        suffixIcon: IconButton(
+                                          icon: const Icon(
+                                            Icons.paste_rounded,
+                                            size: 18,
+                                          ),
+                                          tooltip: 'Tempel URL',
+                                          onPressed: () async {
+                                            final data =
+                                                await Clipboard.getData(
+                                                  'text/plain',
+                                                );
+                                            if (data?.text != null &&
+                                                data!.text!.trim().isNotEmpty) {
+                                              setState(() {
+                                                _urlController.text =
+                                                    data.text!.trim();
+                                              });
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 14),
+
                                     // Form Input: Gaji Penawaran
                                     Text(
                                       'Gaji Penawaran (Bulan)',
@@ -2559,47 +2655,62 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             child: SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveJob,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark
-                      ? const Color(0xFF5C44E4)
-                      : const Color(0xFF19191B),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
+              child: Hero(
+                tag: 'add_job_action_button',
+                flightShuttleBuilder: (
+                  flightContext,
+                  animation,
+                  flightDirection,
+                  fromHeroContext,
+                  toHeroContext,
+                ) {
+                  return Material(
+                    type: MaterialType.transparency,
+                    child: toHeroContext.widget,
+                  );
+                },
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveJob,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark
+                        ? const Color(0xFF5C44E4)
+                        : const Color(0xFF19191B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                   ),
-                ),
-                child: _isSaving
-                    ? const CupertinoActivityIndicator(color: Colors.white)
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              _quickMode
-                                  ? 'Catat Lamaran Cepat'
-                                  : isEdit
-                                  ? 'Simpan Perubahan Lamaran'
-                                  : 'Catat Lamaran Sekarang',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.2,
+                  child: _isSaving
+                      ? const CupertinoActivityIndicator(color: Colors.white)
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _quickMode
+                                    ? 'Catat Lamaran Cepat'
+                                    : isEdit
+                                    ? 'Simpan Perubahan Lamaran'
+                                    : 'Catat Lamaran Sekarang',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.2,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ),
@@ -2612,6 +2723,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     required String hint,
     required IconData icon,
     bool isDark = false,
+    Widget? suffixIcon,
   }) {
     final inputBg = isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2);
     final inputBorder = isDark
@@ -2628,6 +2740,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         fontWeight: FontWeight.w500,
       ),
       prefixIcon: Icon(icon, size: 18, color: iconColor),
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: inputBg,
       counterText: '',
