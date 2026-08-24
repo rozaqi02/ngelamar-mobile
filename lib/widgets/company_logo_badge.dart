@@ -92,6 +92,18 @@ class CompanyLogoBadge extends StatelessWidget {
       return _buildKalibrrLogo();
     } else if (lower.contains('kitalulus')) {
       return _buildKitaLulusLogo();
+    } else if (lower.contains('nusa') || lower.contains('nawa')) {
+      return _buildNusaTechLogo();
+    } else if (lower.contains('karsa')) {
+      return _buildKarsaLabsLogo();
+    } else if (lower.contains('bumi')) {
+      return _buildBumiDataLogo();
+    } else if (lower.contains('aruna')) {
+      return _buildArunaMartLogo();
+    } else if (lower.contains('sora')) {
+      return _buildSoraBankLogo();
+    } else if (lower.contains('tera')) {
+      return _buildTeraMediaLogo();
     }
 
     // Default stylized monogram
@@ -381,6 +393,114 @@ class CompanyLogoBadge extends StatelessWidget {
             letterSpacing: -0.5,
             height: 1.0,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNusaTechLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF2563EB), // Electric Royal Blue
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.code_rounded,
+          size: size * 0.54,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKarsaLabsLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF8B5CF6), // Vibrant Violet
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.auto_awesome_rounded,
+          size: size * 0.52,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBumiDataLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF10B981), // Emerald Mint
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.insights_rounded,
+          size: size * 0.52,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildArunaMartLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF97316), // Sunset Orange
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.shopping_bag_rounded,
+          size: size * 0.52,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSoraBankLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0284C7), // Sky Blue
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.account_balance_rounded,
+          size: size * 0.50,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTeraMediaLogo() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEC4899), // Vivid Pink
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Icon(
+          Icons.campaign_rounded,
+          size: size * 0.54,
+          color: Colors.white,
         ),
       ),
     );

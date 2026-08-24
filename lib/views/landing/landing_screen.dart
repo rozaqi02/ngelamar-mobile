@@ -7,6 +7,7 @@ import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/company_logo_badge.dart';
 import '../../widgets/running_envelope_mascot.dart';
 import '../main_navigation.dart';
 
@@ -1704,13 +1705,9 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: statusColor,
-              shape: BoxShape.circle,
-            ),
+          CompanyLogoBadge(
+            companyName: company,
+            size: 32,
           ),
           const SizedBox(width: 10),
           Expanded(
