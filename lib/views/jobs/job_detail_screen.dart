@@ -103,22 +103,22 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   void _shareJob(JobApplication currentJob) {
     HapticFeedback.selectionClick();
     final salary = currentJob.salaryOffered != null
-        ? '\n💰 Gaji: ${currentJob.salaryOffered}'
+        ? '\nGaji: ${currentJob.salaryOffered}'
         : '';
     final loc = currentJob.location != null
-        ? '\n📍 Lokasi: ${currentJob.location}'
+        ? '\nLokasi: ${currentJob.location}'
         : '';
     final url = currentJob.jobUrl != null
-        ? '\n🔗 Link: ${currentJob.jobUrl}'
+        ? '\nLink: ${currentJob.jobUrl}'
         : '';
     final date =
-        '📅 Dilamar: ${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}';
-    final status = '📊 Status: ${currentJob.status} (${currentJob.workType})';
+        'Dilamar: ${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}';
+    final status = 'Status: ${currentJob.status} (${currentJob.workType})';
 
     final text =
-        '📄 *Lowongan Kerja - Ngelamar App*\n'
-        '🏢 *${currentJob.companyName}*\n'
-        '💼 Posisi: ${currentJob.position}'
+        '*Lowongan Kerja - Ngelamar App*\n'
+        '*${currentJob.companyName}*\n'
+        'Posisi: ${currentJob.position}'
         '$loc'
         '$salary\n'
         '$status\n'
@@ -711,6 +711,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   void _showFullDetailsSheet(BuildContext context, JobApplication currentJob) {
     HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : const Color(0xFFFBF8F2);
+    final cardBg = isDark ? const Color(0xFF282830) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
+    final dividerColor = isDark ? const Color(0xFF383842) : const Color(0xFFF0ECE3);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final bodyText = isDark ? const Color(0xFFD1D1D6) : const Color(0xFF333336);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -720,9 +728,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFFBF8F2),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
           child: Column(
             children: [
@@ -733,7 +741,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD5CEBF),
+                      color: isDark ? const Color(0xFF383842) : const Color(0xFFD5CEBF),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -750,10 +758,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         children: [
                           Text(
                             currentJob.companyName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF121214),
+                              color: txtPri,
                               letterSpacing: -0.4,
                             ),
                             maxLines: 1,
@@ -773,17 +781,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         size: 22,
-                        color: Color(0xFF121214),
+                        color: txtPri,
                       ),
                       onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFE6E0D5)),
+              Divider(
+                height: 1,
+                color: isDark ? const Color(0xFF383842) : const Color(0xFFE6E0D5),
+              ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
@@ -792,9 +803,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE5E0D5)),
+                        border: Border.all(color: cardBorder),
                       ),
                       child: Column(
                         children: [
@@ -805,21 +816,24 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                             badgeColor: AppTheme.getStatusColor(
                               currentJob.status,
                             ),
+                            isDark: isDark,
                           ),
-                          const Divider(height: 20, color: Color(0xFFF0ECE3)),
+                          Divider(height: 20, color: dividerColor),
                           _buildDetailRow(
                             icon: Icons.payments_rounded,
                             label: 'Tawaran Gaji',
                             value:
                                 currentJob.salaryOffered ?? 'Tidak dicantumkan',
+                            isDark: isDark,
                           ),
-                          const Divider(height: 20, color: Color(0xFFF0ECE3)),
+                          Divider(height: 20, color: dividerColor),
                           _buildDetailRow(
                             icon: Icons.work_outline_rounded,
                             label: 'Tipe Kerja',
                             value: currentJob.workType,
+                            isDark: isDark,
                           ),
-                          const Divider(height: 20, color: Color(0xFFF0ECE3)),
+                          Divider(height: 20, color: dividerColor),
                           _buildDetailRow(
                             icon: Icons.location_on_outlined,
                             label: 'Lokasi Kantor',
@@ -827,13 +841,15 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                 currentJob.location?.trim().isNotEmpty == true
                                 ? currentJob.location!.trim()
                                 : 'Belum dicantumkan',
+                            isDark: isDark,
                           ),
-                          const Divider(height: 20, color: Color(0xFFF0ECE3)),
+                          Divider(height: 20, color: dividerColor),
                           _buildDetailRow(
                             icon: Icons.calendar_today_rounded,
                             label: 'Tanggal Melamar',
                             value:
                                 '${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}',
+                            isDark: isDark,
                           ),
                         ],
                       ),
@@ -842,27 +858,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE5E0D5)),
+                        border: Border.all(color: cardBorder),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.contact_phone_rounded,
                                 size: 18,
                                 color: Color(0xFF5C44E4),
                               ),
-                              SizedBox(width: 8),
+                              const SizedBox(width: 8),
                               Text(
                                 'Kontak HRD / Rekruter',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF121214),
+                                  color: txtPri,
                                 ),
                               ),
                             ],
@@ -873,9 +889,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                     currentJob.hrContact!.isNotEmpty
                                 ? currentJob.hrContact!
                                 : 'Belum ada kontak HR yang disimpan.',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF333336),
+                              color: bodyText,
                             ),
                           ),
                           if (currentJob.hrContact != null &&
@@ -919,14 +935,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                       if (context.mounted) {
                                         AppleToast.info(
                                           context,
-                                          'Kontak disalin (Aplikasi tidak ditemukan)',
+                                          'Kontak HR disalin ke clipboard',
                                         );
                                       }
                                     }
                                   },
-                                  icon: const Icon(
-                                    Icons.send_rounded,
-                                    size: 14,
+                                  icon: Icon(
+                                    currentJob.hrContact!.contains('@')
+                                        ? Icons.email_rounded
+                                        : Icons.chat_rounded,
+                                    size: 16,
                                   ),
                                   label: Text(
                                     currentJob.hrContact!.contains('@')
@@ -934,7 +952,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                         : 'Hubungi via WhatsApp',
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF25D366),
+                                    backgroundColor: currentJob.hrContact!.contains('@')
+                                        ? const Color(0xFF5C44E4)
+                                        : const Color(0xFF25D366),
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
@@ -963,9 +983,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                   ),
                                   label: const Text('Salin Kontak'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF121214),
-                                    side: const BorderSide(
-                                      color: Color(0xFFDCD8CE),
+                                    foregroundColor: txtPri,
+                                    side: BorderSide(
+                                      color: cardBorder,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
@@ -984,9 +1004,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cardBg,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFE5E0D5)),
+                          border: Border.all(color: cardBorder),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -994,20 +1014,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Row(
+                                Row(
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.photo_library_rounded,
                                       size: 18,
                                       color: Color(0xFF5C44E4),
                                     ),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Screenshot Bukti Loker',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
-                                        color: Color(0xFF121214),
+                                        color: txtPri,
                                       ),
                                     ),
                                   ],
@@ -1050,27 +1070,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cardBg,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFE5E0D5)),
+                          border: Border.all(color: cardBorder),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.note_alt_rounded,
                                   size: 18,
                                   color: Color(0xFF5C44E4),
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
-                                  'Catatan Pribadi',
+                                  'Catatan Lamaran',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
-                                    color: Color(0xFF121214),
+                                    color: txtPri,
                                   ),
                                 ),
                               ],
@@ -1078,16 +1098,59 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                             const SizedBox(height: 8),
                             Text(
                               currentJob.notes!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF333336),
+                                color: bodyText,
                                 height: 1.4,
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
                     ],
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.checklist_rounded,
+                                size: 18,
+                                color: Color(0xFF5C44E4),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Kualifikasi & Deskripsi',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: txtPri,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            currentJob.jobDescription.isNotEmpty
+                                ? currentJob.jobDescription
+                                : 'Tidak ada deskripsi yang dicatat.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: bodyText,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1103,16 +1166,20 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     required String label,
     required String value,
     Color? badgeColor,
+    bool isDark = false,
   }) {
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF707074)),
+        Icon(icon, size: 18, color: txtSec),
         const SizedBox(width: 12),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF707074),
+            color: txtSec,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1136,10 +1203,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         else
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF121214),
+              color: txtPri,
             ),
           ),
       ],
@@ -1633,10 +1700,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                 _buildInteractiveInfoChip(
                                   index: 0,
                                   availableWidth: constraints.maxWidth,
-                                  iconWidget: const Text(
+                                  iconWidget: Text(
                                     'Rp',
                                     style: TextStyle(
-                                      color: Color(0xFF19191B),
+                                      color: isDark ? Colors.white : const Color(0xFF19191B),
                                       fontWeight: FontWeight.w900,
                                       fontSize: 12,
                                     ),

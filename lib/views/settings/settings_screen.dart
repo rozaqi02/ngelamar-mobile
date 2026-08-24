@@ -52,8 +52,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _aboutController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.21.1';
-  static const String _buildNumber = '221';
+  static const String _appVersion = '2.22.0';
+  static const String _buildNumber = '223';
 
   List<String> _userInterests = [];
   bool? _notificationsEnabled;
@@ -64,7 +64,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final StreamSubscription<dynamic> _authSubscription;
 
   static const Map<String, List<String>> _categorizedInterests = {
-    '💻 Lulusan IT & Software': [
+    'Teknologi & Software': [
       'Frontend Developer',
       'Mobile Developer (Flutter)',
       'Backend Engineer',
@@ -74,26 +74,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'DevOps & Cloud',
       'Data Analyst / Scientist',
     ],
-    '📊 Lulusan Manajemen & Bisnis': [
+    'Bisnis & Manajemen': [
       'Product Manager',
       'Business Development (BD)',
       'Project Management',
       'Operations & Supply Chain',
       'Account Executive',
     ],
-    '💰 Lulusan Keuangan & Akuntansi': [
+    'Keuangan & Akuntansi': [
       'Finance & Accounting',
       'Tax & Perpajakan',
       'Financial Analyst',
       'Internal Auditor',
     ],
-    '📣 Lulusan Pemasaran & Media': [
+    'Pemasaran & Media': [
       'Digital Marketing & SEO',
       'Social Media Specialist',
       'Content Creator / Writer',
       'Graphic Designer',
     ],
-    '👥 Lulusan SDM & Psikologi': [
+    'SDM & Psikologi': [
       'Human Resources (HR)',
       'Talent Acquisition / Recruiter',
       'Admin & General Affair',
@@ -195,6 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showEditProfileDialog() {
+    final isDark = AppTheme.isDark(context);
     _nameController.text = ref.read(jobProvider).userName;
     _emailController.text = ref.read(jobProvider).userEmail;
 
@@ -210,22 +211,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           TextField(
             controller: _nameController,
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF121214),
+            ),
             decoration: InputDecoration(
               hintText: 'Nama Lengkap...',
-              prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+              hintStyle: TextStyle(
+                color: isDark ? const Color(0xFF8E8E93) : Colors.grey,
+              ),
+              prefixIcon: Icon(
+                Icons.badge_outlined,
+                size: 20,
+                color: isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074),
+              ),
               filled: true,
-              fillColor: const Color(0xFFF9F7F2),
+              fillColor: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 12,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                ),
               ),
             ),
           ),
@@ -233,22 +248,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF121214),
+            ),
             decoration: InputDecoration(
               hintText: 'Alamat Email (opsional)...',
-              prefixIcon: const Icon(Icons.mail_outline_rounded, size: 20),
+              hintStyle: TextStyle(
+                color: isDark ? const Color(0xFF8E8E93) : Colors.grey,
+              ),
+              prefixIcon: Icon(
+                Icons.mail_outline_rounded,
+                size: 20,
+                color: isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074),
+              ),
               filled: true,
-              fillColor: const Color(0xFFF9F7F2),
+              fillColor: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 12,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE5E0D5)),
+                borderSide: BorderSide(
+                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                ),
               ),
             ),
           ),
@@ -615,7 +644,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _uploadCloudBackup() async {
     if (!_hasCloudAccount) {
-      await _connectGoogleAccount();
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Hubungkan Akun Google', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Untuk mencadangkan data lamaran ke cloud secara aman, silakan hubungkan akun Google Anda terlebih dahulu.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4285F4),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Masuk Google'),
+            ),
+          ],
+        ),
+      );
+      if (proceed == true) {
+        await _connectGoogleAccount();
+      }
       return;
     }
     final state = ref.read(jobProvider);
@@ -646,9 +702,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     } on BackupException catch (error) {
       if (mounted) AppToast.error(context, error.message);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Upload cloud backup error: $e');
       if (mounted) {
-        AppToast.error(context, 'Backup cloud belum dapat disimpan.');
+        AppToast.error(context, 'Backup cloud belum dapat disimpan. Periksa koneksi internet.');
       }
     } finally {
       if (temporaryBackup != null && await temporaryBackup.exists()) {
@@ -659,7 +716,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _restoreCloudBackup() async {
     if (!_hasCloudAccount) {
-      await _connectGoogleAccount();
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Hubungkan Akun Google', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Untuk memulihkan data backup dari cloud, silakan hubungkan akun Google yang Anda gunakan untuk mencadangkan sebelumnya.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4285F4),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Masuk Google'),
+            ),
+          ],
+        ),
+      );
+      if (proceed == true) {
+        await _connectGoogleAccount();
+      }
       return;
     }
     try {
@@ -669,14 +753,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         AppToast.info(context, 'Belum ada backup cloud pada akun ini.');
         return;
       }
+      final isDark = AppTheme.isDark(context);
+      final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+      final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+      final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+
       final selected = await showModalBottomSheet<CloudBackupInfo>(
         context: context,
         backgroundColor: Colors.transparent,
         builder: (sheetContext) => Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 30),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: sheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -685,29 +774,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 width: 38,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD7D1C7),
+                  color: isDark ? const Color(0xFF383842) : const Color(0xFFD7D1C7),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
+              Text(
                 'Pilih Backup Cloud',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: txtPri,
+                ),
               ),
               const SizedBox(height: 8),
               ...backups.map(
                 (backup) => ListTile(
-                  leading: const Icon(CupertinoIcons.cloud_download_fill),
+                  leading: const Icon(
+                    CupertinoIcons.cloud_download_fill,
+                    color: Color(0xFF5C44E4),
+                  ),
                   title: Text(
                     DateFormat(
                       'd MMM y • HH:mm',
                       'id_ID',
                     ).format(backup.createdAt.toLocal()),
+                    style: TextStyle(
+                      color: txtPri,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   subtitle: Text(
                     '${(backup.bytes / 1024 / 1024).toStringAsFixed(1)} MB • v${backup.appVersion}',
+                    style: TextStyle(color: txtSec),
                   ),
-                  trailing: const Icon(CupertinoIcons.chevron_right),
+                  trailing: Icon(
+                    CupertinoIcons.chevron_right,
+                    size: 14,
+                    color: txtSec,
+                  ),
                   onTap: () => Navigator.pop(sheetContext, backup),
                 ),
               ),
@@ -957,6 +1062,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showPrivacyPolicyModal() {
     HapticFeedback.selectionClick();
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFFBF8F2);
+    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF555558);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -968,22 +1080,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           24,
           bottomInset > 0 ? bottomInset + 16 : 24,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF383842) : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             const SizedBox(height: 18),
@@ -1002,7 +1112,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1011,21 +1121,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF121214),
+                          color: txtPri,
                         ),
                       ),
                       Text(
                         'Offline-First & Keamanan Data Pengguna',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(fontSize: 12, color: txtSec),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 20,
-                    color: Color(0xFF121214),
+                    color: txtPri,
                   ),
                   onPressed: () => Navigator.pop(ctx),
                 ),
@@ -1035,63 +1145,99 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFFBF8F2),
+                color: cardBg,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE5E0D5)),
+                border: Border.all(color: cardBorder),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '🔒 Data Lamaran Tersimpan di Perangkat',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      color: Color(0xFF121214),
-                    ),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.lock_shield,
+                        size: 16,
+                        color: Color(0xFF5C44E4),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Data Lamaran Tersimpan di Perangkat',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: txtPri,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Catatan lamaran, besaran gaji, jadwal seleksi, dan foto lampiran disimpan terenkripsi di perangkat. Menghapus seluruh data juga menghapus lampiran yang tersimpan oleh aplikasi.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF555558),
+                      color: txtSec,
                       height: 1.4,
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    '🛡️ Tanpa Tracking & Tanpa Iklan Pihak Ketiga',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      color: Color(0xFF121214),
-                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.shield_lefthalf_fill,
+                        size: 16,
+                        color: Color(0xFF1E8E3E),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tanpa Tracking & Tanpa Iklan Pihak Ketiga',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: txtPri,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Ngelamar tidak mengumpulkan, menjual, atau mentransfer data pribadi Anda ke server analitik pihak ketiga manapun.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF555558),
+                      color: txtSec,
                       height: 1.4,
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    '🌐 Koneksi Opsional untuk Pencarian',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
-                      color: Color(0xFF121214),
-                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.globe,
+                        size: 16,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Koneksi Opsional untuk Pencarian',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: txtPri,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Koneksi hanya terjadi saat Anda membuka portal loker atau meminta isi otomatis dari tautan HTTPS portal yang didukung. Data lamaran Anda tidak dikirim untuk fitur tersebut.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF555558),
+                      color: txtSec,
                       height: 1.4,
                     ),
                   ),
@@ -1105,7 +1251,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF19191B),
+                  backgroundColor: isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -1126,6 +1272,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showAboutAppModal() {
     HapticFeedback.selectionClick();
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2);
+    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF555558);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1137,9 +1290,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           24,
           bottomInset > 0 ? bottomInset + 16 : 24,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1149,7 +1302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: isDark ? const Color(0xFF383842) : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -1189,29 +1342,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Ngelamar Mobile',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF121214),
+                color: txtPri,
               ),
             ),
-            const Text(
-              'Versi 2.1.0 (Build 210) • Production Ready',
-              style: TextStyle(
+            Text(
+              'Versi $_appVersion (Build $_buildNumber) • Production Ready',
+              style: const TextStyle(
                 fontSize: 12,
                 color: Color(0xFF5C44E4),
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Teman personal untuk mencatat lamaran dan menyiapkan karirmu dari satu tempat.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12.5,
-                color: Color(0xFF555558),
+                color: txtSec,
                 height: 1.45,
               ),
             ),
@@ -1219,9 +1372,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF9F7F2),
+                color: cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E0D5)),
+                border: Border.all(color: cardBorder),
               ),
               child: Column(
                 children: [
@@ -1233,12 +1386,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: Color(0xFF5C44E4),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Email Bantuan:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF121214),
+                          color: txtPri,
                         ),
                       ),
                       const Spacer(),
@@ -1247,7 +1400,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
+                          color: txtSec,
                         ),
                       ),
                     ],
@@ -1261,12 +1414,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         color: Color(0xFF25D366),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'WhatsApp Resmi:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF121214),
+                          color: txtPri,
                         ),
                       ),
                       const Spacer(),
@@ -1275,7 +1428,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
+                          color: txtSec,
                         ),
                       ),
                     ],
@@ -1290,7 +1443,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF19191B),
+                  backgroundColor: isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -2039,7 +2192,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Member PRO Aktif ✨',
+                                'Member PRO Aktif',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
@@ -2137,7 +2290,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Upgrade ke Ngelamar PRO ✨',
+                                  'Upgrade ke Ngelamar PRO',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900,
@@ -2224,8 +2377,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle: !state.isProUser
                             ? 'Fitur PRO • aktifkan untuk memakai tema gelap'
                             : (state.isDarkMode
-                                  ? 'Tema gelap aktif 🌙'
-                                  : 'Tema terang aktif ☀️'),
+                                  ? 'Tema gelap aktif'
+                                  : 'Tema terang aktif'),
                         trailing: CupertinoSwitch(
                           value: state.isDarkMode,
                           activeTrackColor: const Color(0xFF1E3A8A),

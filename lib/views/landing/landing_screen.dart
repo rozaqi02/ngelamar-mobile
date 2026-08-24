@@ -168,12 +168,12 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                       // 2. FINANCE & ACCOUNTING (Finance - Top Right)
                       Positioned(
                         top: 24 - dy * 0.4,
-                        right: -10,
+                        right: 8,
                         child: _buildCategoryPill(
                           text: 'FINANCE &\nACCOUNTING',
                           bgColor: const Color(0xFFDED2F9),
                           textColor: const Color(0xFF281E48),
-                          rotation: 68,
+                          rotation: 18,
                           isMultiLine: true,
                         ),
                       ),
@@ -194,7 +194,7 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                       // 4. HR SPECIALIST (HR/Operations - Upper Right)
                       Positioned(
                         top: 100 - dy * 0.6,
-                        right: -14,
+                        right: 4,
                         child: _buildCategoryPill(
                           text: 'HR SPECIALIST',
                           bgColor: const Color(0xFFFDE4C8),
@@ -206,12 +206,12 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                       // 5. DIGITAL MARKETING (Marketing - Left Middle)
                       Positioned(
                         top: 125 - dy * 0.5,
-                        left: -6,
+                        left: 6,
                         child: _buildCategoryPill(
                           text: 'DIGITAL\nMARKETING',
                           bgColor: const Color(0xFFDED2F9),
                           textColor: const Color(0xFF281E48),
-                          rotation: -68,
+                          rotation: -16,
                           isMultiLine: true,
                         ),
                       ),
@@ -916,7 +916,52 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 10),
+                        FluidBounceButton(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedInterests.addAll([
+                                'Flutter Developer',
+                                'UI/UX Designer',
+                                'Product Manager',
+                              ]);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5C44E4).withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF5C44E4).withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 14,
+                                  color: Color(0xFF5C44E4),
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Pilih Cepat 3 Rekomendasi Terpopuler',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF5C44E4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
 
                         // Categorized Interest Groups with Modern Structured Layout
                         ..._categorizedInterests.entries.map((category) {
@@ -1387,6 +1432,16 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     required String? badgeText,
     required VoidCallback onTap,
   }) {
+    final iconData = isPrimary
+        ? Icons.auto_stories_rounded
+        : Icons.edit_note_rounded;
+    final iconBg = isPrimary
+        ? Colors.white.withValues(alpha: 0.14)
+        : const Color(0xFFF0EBE1);
+    final iconColor = isPrimary
+        ? const Color(0xFFFFD54F)
+        : const Color(0xFF5C44E4);
+
     return FluidBounceButton(
       onTap: onTap,
       scaleFactor: 0.985,
@@ -1410,50 +1465,71 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
           ],
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isPrimary ? Colors.white : const Color(0xFF121214),
-                    ),
-                  ),
-                ),
-                if (badgeText != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD54F),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      badgeText,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF121214),
-                      ),
-                    ),
-                  ),
-              ],
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(iconData, color: iconColor, size: 22),
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: isPrimary ? Colors.white70 : const Color(0xFF555558),
-                height: 1.4,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: isPrimary
+                                ? Colors.white
+                                : const Color(0xFF121214),
+                          ),
+                        ),
+                      ),
+                      if (badgeText != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFD54F),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF121214),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: isPrimary
+                          ? Colors.white70
+                          : const Color(0xFF555558),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1519,44 +1595,44 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                   _buildSamplePreviewItem(
                     company: 'Nusa Tech',
                     role: 'Flutter Dev',
-                    status: 'Contoh',
+                    status: 'Interview HR',
                     salary: 'Rp 8–11 jt / bln',
                     statusColor: const Color(0xFF7257D9),
                   ),
                   _buildSamplePreviewItem(
                     company: 'Karsa Labs',
                     role: 'UI Designer',
-                    status: 'Contoh',
+                    status: 'Offering',
                     salary: 'Rp 7–10 jt / bln',
-                    statusColor: const Color(0xFF7257D9),
+                    statusColor: const Color(0xFF2E7D32),
                   ),
                   _buildSamplePreviewItem(
                     company: 'Bumi Data',
                     role: 'Data Analis',
-                    status: 'Contoh',
+                    status: 'Tes / Psikotes',
                     salary: 'Rp 7–9 jt / bln',
-                    statusColor: const Color(0xFF7257D9),
+                    statusColor: const Color(0xFFE65100),
                   ),
                   _buildSamplePreviewItem(
                     company: 'Aruna Mart',
                     role: 'QA Engineer',
-                    status: 'Contoh',
+                    status: 'Dikirim',
                     salary: 'Rp 6–9 jt / bln',
-                    statusColor: const Color(0xFF7257D9),
+                    statusColor: const Color(0xFF1565C0),
                   ),
                   _buildSamplePreviewItem(
                     company: 'Sora Bank',
                     role: 'HR Officer',
-                    status: 'Contoh',
+                    status: 'Interview User',
                     salary: 'Rp 6–8 jt / bln',
-                    statusColor: const Color(0xFF7257D9),
+                    statusColor: const Color(0xFF6A1B9A),
                   ),
                   _buildSamplePreviewItem(
                     company: 'Tera Media',
                     role: 'Copywriter',
-                    status: 'Contoh',
+                    status: 'Dikirim',
                     salary: 'Rp 5–7 jt / bln',
-                    statusColor: const Color(0xFF7257D9),
+                    statusColor: const Color(0xFF1565C0),
                   ),
                 ],
               ),

@@ -45,7 +45,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
   final List<String> _tabs = const [
     'Semua',
-    'Contoh',
     'Dikirim',
     'Tes / Psikotes',
     'Interview HR',
@@ -1311,7 +1310,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 Expanded(
                   child: Row(
                     children: [
-                      if (job.salaryOffered != null) ...[
+                      if (job.salaryOffered != null &&
+                          job.salaryOffered!.isNotEmpty) ...[
                         Flexible(
                           child: Text(
                             job.salaryOffered!,
@@ -1325,11 +1325,16 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           ),
                         ),
                         const SizedBox(width: 6),
+                        Text(
+                          '• ${job.workType}',
+                          style: TextStyle(fontSize: 12, color: subColor),
+                        ),
+                      ] else ...[
+                        Text(
+                          job.workType,
+                          style: TextStyle(fontSize: 12, color: subColor),
+                        ),
                       ],
-                      Text(
-                        '• ${job.workType}',
-                        style: TextStyle(fontSize: 12, color: subColor),
-                      ),
                     ],
                   ),
                 ),

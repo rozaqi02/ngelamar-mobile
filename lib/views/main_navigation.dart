@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/job_provider.dart';
 import '../services/prefs_service.dart';
 import '../widgets/apple_toast.dart';
 import '../widgets/welcome_screen_route.dart';
@@ -243,6 +244,12 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                     children: List.generate(_items.length, (index) {
                       final item = _items[index];
                       final isSelected = _currentIndex == index;
+                      final hasNotices = index == 3 &&
+                          ref.watch(jobProvider).jobs.any((j) =>
+                              j.interviewDate != null ||
+                              j.status == 'Offering' ||
+                              j.status == 'Tes / Psikotes' ||
+                              j.status.startsWith('Interview'));
 
                       return Semantics(
                         button: true,
@@ -280,18 +287,37 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                                         : null,
                                   ),
                                   child: Center(
-                                    child: Icon(
-                                      isSelected
-                                          ? item.activeIcon
-                                          : item.inactiveIcon,
-                                      color: isSelected
-                                          ? (isDark
-                                                ? const Color(0xFF1C1C1E)
-                                                : Colors.white)
-                                          : (isDark
-                                                ? const Color(0xFFAEAEB2)
-                                                : const Color(0xFF8E8E93)),
-                                      size: isSelected ? 22 : 21,
+                                    child: Stack(
+                                      clipBehavior: Clip.none,
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Icon(
+                                          isSelected
+                                              ? item.activeIcon
+                                              : item.inactiveIcon,
+                                          color: isSelected
+                                              ? (isDark
+                                                    ? const Color(0xFF1C1C1E)
+                                                    : Colors.white)
+                                              : (isDark
+                                                    ? const Color(0xFFAEAEB2)
+                                                    : const Color(0xFF8E8E93)),
+                                          size: isSelected ? 22 : 21,
+                                        ),
+                                        if (hasNotices && !isSelected)
+                                          Positioned(
+                                            top: -2,
+                                            right: -2,
+                                            child: Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFFFF453A),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ),

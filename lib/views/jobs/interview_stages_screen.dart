@@ -72,14 +72,19 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
 
   void _showStageOptions(BuildContext context, JobApplication currentJob) {
     HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -88,17 +93,17 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: isDark ? const Color(0xFF383842) : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             const SizedBox(height: 16),
             Text(
               'Opsi Seleksi: ${currentJob.companyName}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF121214),
+                color: txtPri,
               ),
             ),
             const SizedBox(height: 14),
@@ -107,14 +112,18 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                 Icons.notifications_active_rounded,
                 color: Color(0xFF5C44E4),
               ),
-              title: const Text(
+              title: Text(
                 'Aktifkan Notifikasi H-1',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: txtPri,
+                ),
               ),
-              trailing: const Icon(
+              trailing: Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
-                color: Colors.grey,
+                color: txtSec,
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -128,15 +137,22 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.copy_rounded, color: Color(0xFF19191B)),
-              title: const Text(
-                'Salin Panduan Tahapan',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              leading: Icon(
+                Icons.copy_rounded,
+                color: isDark ? Colors.white : const Color(0xFF19191B),
               ),
-              trailing: const Icon(
+              title: Text(
+                'Salin Panduan Tahapan',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  color: txtPri,
+                ),
+              ),
+              trailing: Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
-                color: Colors.grey,
+                color: txtSec,
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -162,6 +178,13 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
         .watch(jobProvider)
         .jobs
         .firstWhere((j) => j.id == widget.job.id, orElse: () => widget.job);
+    final isDark = AppTheme.isDark(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+    final btnBg = isDark ? const Color(0xFF242428) : Colors.white;
+    final btnBorder = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFDCD8CE);
 
     const cardColors = [
       AppTheme.cardPurple,
@@ -171,7 +194,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
       AppTheme.cardDark,
     ];
 
-    const bg = AppTheme.warmBackground;
+    final bg = isDark ? const Color(0xFF121214) : AppTheme.warmBackground;
 
     return Scaffold(
       backgroundColor: bg,
@@ -197,35 +220,37 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: btnBg,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFDCD8CE),
+                            color: btnBorder,
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.chevron_back,
                           size: 20,
-                          color: Color(0xFF121214),
+                          color: txtPri,
                         ),
                       ),
                     ),
 
                     // Middle Title "Tahapan Seleksi"
-                    const Text(
+                    Text(
                       'Tahapan Seleksi',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF121214),
+                        color: txtPri,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -237,24 +262,26 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: btnBg,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFDCD8CE),
+                            color: btnBorder,
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.ellipsis_vertical,
                           size: 18,
-                          color: Color(0xFF121214),
+                          color: txtPri,
                         ),
                       ),
                     ),
@@ -270,73 +297,57 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Hero(
-                      tag: 'job_status_pill_${currentJob.id}',
-                      flightShuttleBuilder:
-                          (
-                            flightContext,
-                            animation,
-                            flightDirection,
-                            fromHeroContext,
-                            toHeroContext,
-                          ) {
-                            return Material(
-                              type: MaterialType.transparency,
-                              child: toHeroContext.widget,
-                            );
-                          },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.getStatusColor(
+                          currentJob.status,
+                        ).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
                           color: AppTheme.getStatusColor(
                             currentJob.status,
-                          ).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppTheme.getStatusColor(
-                              currentJob.status,
-                            ).withValues(alpha: 0.4),
-                            width: 1.2,
+                          ).withValues(alpha: 0.4),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: AppTheme.getStatusColor(
+                                currentJob.status,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: AppTheme.getStatusColor(
-                                  currentJob.status,
-                                ),
-                                shape: BoxShape.circle,
+                          const SizedBox(width: 6),
+                          Text(
+                            'Status Saat Ini: ${currentJob.status}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.getStatusColor(
+                                currentJob.status,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Status Saat Ini: ${currentJob.status}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.getStatusColor(
-                                  currentJob.status,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       currentJob.companyName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF121214),
+                        color: txtPri,
                         letterSpacing: -0.8,
                         height: 1.15,
                       ),
@@ -344,10 +355,10 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Panduan & cheat sheet 5 tahapan seleksi ${currentJob.position}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF707074),
+                        color: txtSec,
                       ),
                     ),
                   ],
@@ -514,15 +525,27 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        '💡 Tips Lolos & Checklist Tahapan:',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w900,
-                                          color: isDarkText
-                                              ? const Color(0xFF121214)
-                                              : Colors.white,
-                                        ),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.tips_and_updates_outlined,
+                                            size: 14,
+                                            color: isDarkText
+                                                ? const Color(0xFF121214)
+                                                : Colors.white,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Tips Lolos & Checklist Tahapan:',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w900,
+                                              color: isDarkText
+                                                  ? const Color(0xFF121214)
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(height: 6),
                                       Text(

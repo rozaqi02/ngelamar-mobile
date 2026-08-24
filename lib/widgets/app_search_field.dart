@@ -86,32 +86,41 @@ class AppSearchField extends StatelessWidget {
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,
             builder: (context, val, _) {
-              if (val.text.isEmpty) return const SizedBox.shrink();
-              return Semantics(
-                button: true,
-                label: 'Hapus pencarian',
-                child: IconButton(
-                  tooltip: 'Hapus pencarian',
-                  onPressed: () {
-                    controller.clear();
-                    if (onClear != null) onClear!();
-                    if (onChanged != null) onChanged!('');
-                  },
-                  padding: const EdgeInsets.only(right: 10),
-                  icon: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 13,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(scale: anim, child: child),
                 ),
+                child: val.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : Semantics(
+                        key: const ValueKey('search_clear_btn'),
+                        button: true,
+                        label: 'Hapus pencarian',
+                        child: IconButton(
+                          tooltip: 'Hapus pencarian',
+                          onPressed: () {
+                            controller.clear();
+                            if (onClear != null) onClear!();
+                            if (onChanged != null) onChanged!('');
+                          },
+                          padding: const EdgeInsets.only(right: 10),
+                          icon: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white24 : Colors.black12,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 13,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
               );
             },
           ),

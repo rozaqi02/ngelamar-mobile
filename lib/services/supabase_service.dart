@@ -99,18 +99,39 @@ class SupabaseService {
   /// Links the current anonymous identity to Google whenever possible. This
   /// preserves the existing UID, entitlement PRO, and cloud files.
   static Future<bool> connectGoogle() async {
-    final user = await ensureAuthenticated();
-    final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
-    if (user.isAnonymous) {
-      return client.auth.linkIdentity(
+    try {
+      final user = await ensureAuthenticated();
+      final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
+      if (user.isAnonymous) {
+        try {
+          return await client.auth.linkIdentity(
+            OAuthProvider.google,
+            redirectTo: redirectTo,
+            authScreenLaunchMode: LaunchMode.externalApplication,
+          );
+        } catch (e) {
+          debugPrint('linkIdentity failed, falling back to signInWithOAuth: $e');
+          return await client.auth.signInWithOAuth(
+            OAuthProvider.google,
+            redirectTo: redirectTo,
+            authScreenLaunchMode: LaunchMode.externalApplication,
+          );
+        }
+      }
+      return await client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: redirectTo,
+        authScreenLaunchMode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      debugPrint('connectGoogle error: $e');
+      final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
+      return await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: redirectTo,
+        authScreenLaunchMode: LaunchMode.externalApplication,
       );
     }
-    return client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: redirectTo,
-    );
   }
 
   static Future<void> signOutToAnonymous() async {

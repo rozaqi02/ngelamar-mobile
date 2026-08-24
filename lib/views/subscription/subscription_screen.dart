@@ -97,7 +97,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           context: context,
           icon: Icons.stars_rounded,
           iconColor: const Color(0xFFF59E0B),
-          title: '🎉 Selamat! PRO Aktif',
+          title: 'Selamat! PRO Aktif',
           content:
               'Langganan Anda telah diverifikasi. Seluruh fitur Ngelamar PRO yang tersedia kini terbuka penuh.',
           primaryLabel: 'Mulai Gunakan',
@@ -163,15 +163,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       'isProOnly': false,
     },
     {
-      'feature': 'Mode Gelap',
-      'free': 'Tersedia',
-      'pro': 'Tersedia',
-      'isProOnly': false,
+      'feature': 'Mode Gelap (Dark Mode)',
+      'free': 'Khusus Member PRO',
+      'pro': 'Tersedia Lengkap',
+      'isProOnly': true,
     },
     {
       'feature': 'Badge Profil & Status Eksklusif',
       'free': 'Standar',
-      'pro': 'Badge Mahkota Emas King 👑',
+      'pro': 'Badge Mahkota Emas King',
       'isProOnly': true,
     },
     {
@@ -622,16 +622,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFDCFCE7),
+                                        color: isDark
+                                            ? const Color(0xFF132E1D)
+                                            : const Color(0xFFDCFCE7),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         row['pro'] as String,
                                         textAlign: TextAlign.center,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF15803D),
+                                          color: isDark
+                                              ? const Color(0xFF4ADE80)
+                                              : const Color(0xFF15803D),
                                         ),
                                       ),
                                     ),

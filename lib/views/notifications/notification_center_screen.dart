@@ -71,7 +71,7 @@ class _NotificationCenterScreenState
     final isDark = AppTheme.isDark(context);
     final notices = _createNotices(state.jobs);
     final txtPri = isDark ? Colors.white : const Color(0xFF151517);
-    final txtSec = isDark ? const Color(0xFFA4A4AB) : const Color(0xFF66666B);
+    final txtSec = isDark ? const Color(0xFFA4A4AB) : const Color(0xFF3D3A3B);
     final background = isDark
         ? const Color(0xFF151315)
         : const Color(0xFFF8EEE9);
@@ -166,16 +166,40 @@ class _NotificationCenterScreenState
                               snapshot.connectionState ==
                               ConnectionState.waiting;
                           final enabled = snapshot.data == true;
+                          final bannerBg = loading
+                              ? (isDark
+                                    ? const Color(0xFF28262B)
+                                    : const Color(0xFFECE8DF))
+                              : enabled
+                              ? (isDark
+                                    ? const Color(0xFF132E1D)
+                                    : const Color(0xFFCDF0D2))
+                              : (isDark
+                                    ? const Color(0xFF2E1413)
+                                    : const Color(0xFFFFD2CB));
+                          final bannerTitleColor = isDark
+                              ? Colors.white
+                              : const Color(0xFF1D1B1B);
+                          final bannerSubColor = isDark
+                              ? const Color(0xFFC7BFC2)
+                              : const Color(0xFF575052);
+                          final bannerIconBg = isDark
+                              ? (enabled
+                                    ? const Color(0xFF1B4D29)
+                                    : const Color(0xFF4D1E1B))
+                              : Colors.white.withValues(alpha: 0.72);
+                          final bannerIconColor = enabled
+                              ? (isDark
+                                    ? const Color(0xFF4ADE80)
+                                    : const Color(0xFF1E7C36))
+                              : (isDark
+                                    ? const Color(0xFFF87171)
+                                    : const Color(0xFFC43A31));
+
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: loading
-                                  ? (isDark
-                                        ? const Color(0xFF28262B)
-                                        : const Color(0xFFECE8DF))
-                                  : enabled
-                                  ? const Color(0xFFCDF0D2)
-                                  : const Color(0xFFFFD2CB),
+                              color: bannerBg,
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Row(
@@ -184,7 +208,7 @@ class _NotificationCenterScreenState
                                   width: 42,
                                   height: 42,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.72),
+                                    color: bannerIconBg,
                                     shape: BoxShape.circle,
                                   ),
                                   child: loading
@@ -200,9 +224,7 @@ class _NotificationCenterScreenState
                                                     .notifications_active_rounded
                                               : Icons
                                                     .notifications_off_outlined,
-                                          color: enabled
-                                              ? const Color(0xFF1E7C36)
-                                              : const Color(0xFFC43A31),
+                                          color: bannerIconColor,
                                           size: 21,
                                         ),
                                 ),
@@ -218,8 +240,8 @@ class _NotificationCenterScreenState
                                             : enabled
                                             ? 'Pengingat aktif'
                                             : 'Izin belum aktif',
-                                        style: const TextStyle(
-                                          color: Color(0xFF1D1B1B),
+                                        style: TextStyle(
+                                          color: bannerTitleColor,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
                                         ),
@@ -231,8 +253,8 @@ class _NotificationCenterScreenState
                                             : enabled
                                             ? _nextReminderText(notices)
                                             : 'Aktifkan agar jadwal seleksi tidak terlewat.',
-                                        style: const TextStyle(
-                                          color: Color(0xFF575052),
+                                        style: TextStyle(
+                                          color: bannerSubColor,
                                           fontSize: 11.5,
                                           height: 1.3,
                                           fontWeight: FontWeight.w600,
@@ -244,10 +266,12 @@ class _NotificationCenterScreenState
                                 if (!loading && !enabled)
                                   TextButton(
                                     onPressed: _requestPermission,
-                                    child: const Text(
+                                    child: Text(
                                       'Perbaiki',
                                       style: TextStyle(
-                                        color: Color(0xFFC43A31),
+                                        color: isDark
+                                            ? const Color(0xFFF87171)
+                                            : const Color(0xFFC43A31),
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),

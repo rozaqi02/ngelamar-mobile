@@ -263,7 +263,7 @@ class NotificationService {
       // 1. Notifikasi Tepat Waktu
       await _notificationsPlugin.zonedSchedule(
         id,
-        '⏰ Wawancara ${job.position}',
+        'Wawancara ${job.position}',
         'Jadwal seleksi dengan ${job.companyName} dimulai sekarang. Semoga sukses!',
         tz.TZDateTime.from(interviewDate, tz.local),
         details,
@@ -279,7 +279,7 @@ class NotificationService {
       if (h1Morning.isAfter(DateTime.now())) {
         await _notificationsPlugin.zonedSchedule(
           idH1,
-          '🔔 H-1 Interview ${job.companyName}',
+          'H-1 Interview ${job.companyName}',
           'Besok ada jadwal ${job.status} untuk posisi ${job.position}. Siapkan berkas dan istirahat yang cukup!',
           tz.TZDateTime.from(h1Morning, tz.local),
           details,

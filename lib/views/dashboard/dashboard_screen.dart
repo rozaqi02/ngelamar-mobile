@@ -377,7 +377,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     onPressed: () async {
                       HapticFeedback.heavyImpact();
                       await NotificationService.showInstantNotification(
-                        title: '⏰ Pengingat Seleksi Loker',
+                        title: 'Pengingat Seleksi Loker',
                         body:
                             'Notifikasi lokal di HP Android Anda berfungsi dengan lancar! Persiapkan tahapan wawancara berikutnya.',
                       );
@@ -399,12 +399,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
-                      'Tes 🔔',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_active_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 5),
+                        Text(
+                          'Tes Notifikasi',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

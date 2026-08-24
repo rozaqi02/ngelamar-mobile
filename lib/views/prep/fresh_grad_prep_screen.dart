@@ -117,10 +117,10 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   void _shareChecklist() {
     HapticFeedback.selectionClick();
     final items = _docs
-        .map((d) => '${(d['checked'] as bool) ? '✅' : '⬜'} ${d['title']}')
+        .map((d) => '${(d['checked'] as bool) ? '[V]' : '[ ]'} ${d['title']}')
         .join('\n');
     final text =
-        '📋 *Kesiapan Berkas Lamaran Saya - Ngelamar App*\n'
+        '*Kesiapan Berkas Lamaran Saya - Ngelamar App*\n'
         'Progress: $_checkedCount/${_docs.length} (${(_readinessPercent * 100).toInt()}%)\n\n'
         '$items\n\n'
         'Dicatat via Ngelamar App';
@@ -1344,35 +1344,57 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 eval.estimatedNetSavings >= 0
                     ? 'Gaji Cukup untuk Hidup Mandiri'
                     : 'Gaji Berpotensi Defisit',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF19191B),
+                  color: eval.estimatedNetSavings >= 0
+                      ? const Color(0xFF19191B)
+                      : Colors.white,
                 ),
               ),
               const SizedBox(height: 12),
               _buildEvalRow(
                 'Gaji Kotor',
                 SalaryEvaluatorService.formatRupiah(eval.grossSalary),
+                textColor: eval.estimatedNetSavings >= 0
+                    ? const Color(0xFF19191B)
+                    : Colors.white,
               ),
               _buildEvalRow(
                 'Standar UMR Daerah',
                 SalaryEvaluatorService.formatRupiah(targetUmr),
+                textColor: eval.estimatedNetSavings >= 0
+                    ? const Color(0xFF19191B)
+                    : Colors.white,
               ),
               _buildEvalRow(
                 'BPJS Ketenagakerjaan (4%)',
                 '- ${SalaryEvaluatorService.formatRupiah(eval.estimatedBpjsDeduction)}',
+                textColor: eval.estimatedNetSavings >= 0
+                    ? const Color(0xFF19191B)
+                    : Colors.white.withValues(alpha: 0.9),
               ),
               if (_needsKos)
                 _buildEvalRow(
                   'Biaya Sewa Kos (Input User)',
                   '- ${SalaryEvaluatorService.formatRupiah(_customRentCost)}',
+                  textColor: eval.estimatedNetSavings >= 0
+                      ? const Color(0xFF19191B)
+                      : Colors.white.withValues(alpha: 0.9),
                 ),
-              const Divider(height: 16, color: Colors.black26),
+              Divider(
+                height: 16,
+                color: eval.estimatedNetSavings >= 0
+                    ? Colors.black26
+                    : Colors.white38,
+              ),
               _buildEvalRow(
                 'Estimasi Tabungan Bersih',
                 SalaryEvaluatorService.formatRupiah(eval.estimatedNetSavings),
                 isBold: true,
+                textColor: eval.estimatedNetSavings >= 0
+                    ? const Color(0xFF19191B)
+                    : Colors.white,
               ),
             ],
           ),
@@ -1381,7 +1403,12 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     );
   }
 
-  Widget _buildEvalRow(String label, String value, {bool isBold = false}) {
+  Widget _buildEvalRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color textColor = const Color(0xFF19191B),
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -1392,6 +1419,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: textColor,
             ),
           ),
           Text(
@@ -1399,6 +1427,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
+              color: textColor,
             ),
           ),
         ],
@@ -1546,14 +1575,14 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
                   Text(
                     '5 Pertanyaan Wawancara',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF121214),
+                      color: isDark ? Colors.white : const Color(0xFF121214),
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -1567,7 +1596,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF19191B),
+                    color: isDark ? const Color(0xFF282830) : const Color(0xFF19191B),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(
@@ -1625,7 +1654,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.fastOutSlowIn,
                 width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),

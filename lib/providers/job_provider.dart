@@ -144,7 +144,7 @@ class JobState {
   }
 
   /// Mengembalikan maksimal 4 lamaran prioritas untuk tumpukan kartu Beranda.
-  /// Urutan prioritas: Offering / Interview / Tes ➔ Favorit ➔ Terbaru.
+  /// Urutan prioritas: Offering / Interview / Tes -> Favorit -> Terbaru.
   List<JobApplication> get priorityJobs {
     final baseList =
         (selectedStatusFilter != 'Semua' ||
@@ -623,7 +623,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_nusa',
         companyName: 'Nusa Tech',
         position: 'Flutter Dev',
-        status: 'Contoh',
+        status: 'Interview HR',
         appliedDate: now.subtract(const Duration(days: 1)),
         salaryOffered: 'Rp 8–11 jt / bln',
         minSalary: 8000000,
@@ -641,7 +641,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_karsa',
         companyName: 'Karsa Labs',
         position: 'UI Designer',
-        status: 'Contoh',
+        status: 'Offering',
         appliedDate: now.subtract(const Duration(days: 2)),
         salaryOffered: 'Rp 7–10 jt / bln',
         minSalary: 7000000,
@@ -659,7 +659,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_bumi',
         companyName: 'Bumi Data',
         position: 'Data Analis',
-        status: 'Contoh',
+        status: 'Tes / Psikotes',
         appliedDate: now.subtract(const Duration(days: 3)),
         salaryOffered: 'Rp 7–9 jt / bln',
         minSalary: 7000000,
@@ -677,7 +677,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_aruna',
         companyName: 'Aruna Mart',
         position: 'QA Engineer',
-        status: 'Contoh',
+        status: 'Dikirim',
         appliedDate: now.subtract(const Duration(days: 4)),
         salaryOffered: 'Rp 6–9 jt / bln',
         minSalary: 6000000,
@@ -695,7 +695,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_sora',
         companyName: 'Sora Bank',
         position: 'HR Officer',
-        status: 'Contoh',
+        status: 'Interview User',
         appliedDate: now.subtract(const Duration(days: 5)),
         salaryOffered: 'Rp 6–8 jt / bln',
         minSalary: 6000000,
@@ -713,7 +713,7 @@ class JobNotifier extends StateNotifier<JobState> {
         id: 'sample_tera',
         companyName: 'Tera Media',
         position: 'Copywriter',
-        status: 'Contoh',
+        status: 'Dikirim',
         appliedDate: now.subtract(const Duration(days: 6)),
         salaryOffered: 'Rp 5–7 jt / bln',
         minSalary: 5000000,

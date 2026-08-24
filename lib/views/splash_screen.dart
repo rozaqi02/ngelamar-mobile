@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../theme/app_theme.dart';
 import '../services/prefs_service.dart';
 import 'landing/landing_screen.dart';
 import 'main_navigation.dart';
@@ -95,7 +94,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppTheme.getBackground(context);
+    const bg = Color(0xFF0D0D0E);
+    const txtPri = Colors.white;
+    const txtSec = Color(0xFFA1A1AA);
 
     return Scaffold(
       backgroundColor: bg,
@@ -116,7 +117,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
+                        color: Colors.black.withValues(alpha: 0.35),
                         blurRadius: 28,
                         offset: const Offset(0, 10),
                       ),
@@ -142,7 +143,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     style: TextStyle(
                       fontSize: 34,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111113),
+                      color: txtPri,
                       letterSpacing: -1.0,
                     ),
                   ),
@@ -151,7 +152,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     'Personal Career CRM',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF71717A),
+                      color: txtSec,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

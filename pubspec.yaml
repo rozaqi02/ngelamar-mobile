@@ -2,7 +2,7 @@ name: ngelamar
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 2.21.1+222
+version: 2.22.0+223
 
 environment:
   sdk: ^3.11.5

@@ -13,6 +13,7 @@ import '../../services/notification_service.dart';
 import '../../services/salary_evaluator_service.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/delight_celebration.dart';
@@ -517,6 +518,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   /// Pilih tanggal lamaran tanpa membuat pengingat seleksi.
   Future<void> _pickAppliedDate() async {
     HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
 
     final picked = await showDatePicker(
       context: context,
@@ -526,12 +528,19 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF19191B),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Color(0xFF121214),
-            ),
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF5C44E4),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E24),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF19191B),
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Color(0xFF121214),
+                  ),
           ),
           child: child!,
         );
@@ -546,6 +555,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   /// Jadwal seleksi harus berisi tanggal dan jam agar alarm tidak jatuh pukul 00.00.
   Future<void> _pickSelectionSchedule() async {
     HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
     final initial =
         _interviewDate ?? DateTime.now().add(const Duration(days: 3));
     final date = await showDatePicker(
@@ -553,6 +563,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       initialDate: initial,
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: Color(0xFF5C44E4),
+                    onPrimary: Colors.white,
+                    surface: Color(0xFF1E1E24),
+                    onSurface: Colors.white,
+                  )
+                : const ColorScheme.light(
+                    primary: Color(0xFF19191B),
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Color(0xFF121214),
+                  ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (date == null || !mounted) return;
 
@@ -848,89 +878,32 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   Future<bool> _confirmDiscard() async {
     if (!_hasUnsavedChanges()) return true;
     HapticFeedback.warningNotification();
-    final discard = await showDialog<bool>(
+    final discard = await AppDialog.show<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Buang Perubahan?',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
+      title: 'Buang Perubahan?',
+      content:
           'Informasi yang sudah Anda ketik belum tersimpan. Yakin ingin menutup form ini?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Lanjut Mengisi',
-              style: TextStyle(
-                color: Color(0xFF5C44E4),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Text(
-              'Buang',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      primaryLabel: 'Buang',
+      isDestructive: true,
+      secondaryLabel: 'Lanjut Mengisi',
+      icon: Icons.delete_sweep_rounded,
+      iconColor: const Color(0xFFE53935),
     );
     return discard ?? false;
   }
 
   void _deleteCurrentJob() async {
     HapticFeedback.heavyImpact();
-    final confirm = await showDialog<bool>(
+    final confirm = await AppDialog.show<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          'Hapus Lamaran Ini?',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
+      title: 'Hapus Lamaran Ini?',
+      content:
           'Lamaran di ${widget.jobToEdit!.companyName} (${widget.jobToEdit!.position}) akan dihapus permanen.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'Batal',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: const Text(
-              'Hapus',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+      primaryLabel: 'Hapus',
+      isDestructive: true,
+      secondaryLabel: 'Batal',
+      icon: Icons.delete_outline_rounded,
+      iconColor: const Color(0xFFE53935),
     );
 
     if (confirm == true && mounted) {
@@ -973,7 +946,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       id: id,
       companyName: _companyController.text.trim(),
       position: _positionController.text.trim(),
-      status: isSampleData ? 'Contoh' : _status,
+      status: isSampleData ? (widget.jobToEdit?.status ?? _status) : _status,
       appliedDate: _appliedDate,
       salaryOffered: salaryText.isEmpty ? null : salaryText,
       minSalary: salaryRange.min > 0 ? salaryRange.min.toInt() : null,
@@ -2328,7 +2301,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     const SizedBox(height: 6),
                                     TextFormField(
                                       controller: _descriptionController,
-                                      maxLength: 600,
+                                      maxLength: 3000,
                                       maxLines: 4,
                                       style: TextStyle(
                                         fontSize: 13,
