@@ -3,3 +3,8 @@ verify_jwt = false
 
 [functions.career-ai]
 verify_jwt = true
+
+[functions.push-notification]
+# Database Webhooks authenticate with a Supabase secret API key, not a user
+# JWT. The function itself enforces that secret with `auth: 'secret'`.
+verify_jwt = false

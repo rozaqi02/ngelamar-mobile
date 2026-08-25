@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_search_field.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/welcome_screen_route.dart';
 import 'discovery_welcome_screen.dart';
@@ -341,7 +342,7 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                         ),
                         FluidBounceButton(
                           onTap: _openWelcomeModal,
-                          semanticLabel: 'Buka panduan Cari Lokerku',
+                          semanticLabel: 'Buka panduan Portal Loker Resmi',
                           child: Container(
                             padding: const EdgeInsets.all(9),
                             decoration: BoxDecoration(
@@ -526,7 +527,12 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
             // ── BIG COLORFUL NEO-MODERN CARDS (100% PERSIS MOCKUP) ──
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                AppLayoutMetrics.contentBottomClearance(context),
+              ),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, idx) {
                   final portal = _portals[idx];

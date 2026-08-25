@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -57,18 +58,25 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   late TextEditingController _descriptionController;
   late TextEditingController _hrContactController;
   late TextEditingController _notesController;
+  late TextEditingController _nextActionNoteController;
+  late TextEditingController _labelsController;
 
   String _status = 'Dikirim';
   String _workType = 'WFO';
   String _jobSource = 'LinkedIn';
   String _sourcePlatform = 'Manual';
+  String _priority = 'Normal';
+  String _nextActionType = 'Tindak lanjut';
   String? _jobUrl;
   String? _screenshotPath;
   String? _companyLogoPath;
+  String? _pdfCvPath;
   final Set<String> _draftAttachmentPaths = <String>{};
   DateTime _appliedDate = DateTime.now();
   DateTime? _interviewDate;
+  DateTime? _nextActionAt;
   bool _isSaving = false;
+  bool _isSaveComplete = false;
   bool _isExtracting = false;
   bool _showSmartImport = false;
   bool _quickMode = false;
@@ -113,6 +121,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
     _hrContactController = TextEditingController(text: j?.hrContact ?? '');
     _notesController = TextEditingController(text: j?.notes ?? '');
+    _nextActionNoteController = TextEditingController(
+      text: j?.nextActionNote ?? '',
+    );
+    _labelsController = TextEditingController(text: j?.labels.join(', ') ?? '');
 
     if (j != null) {
       _status = j.status == 'HR Screening' ? 'Interview HR' : j.status;
@@ -122,8 +134,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _jobUrl = j.jobUrl;
       _screenshotPath = j.screenshotPath;
       _companyLogoPath = j.companyLogoPath;
+      _pdfCvPath = j.pdfCvPath;
       _appliedDate = j.appliedDate;
       _interviewDate = j.interviewDate ?? j.testDate;
+      _priority = j.priority;
+      _nextActionType = j.nextActionType ?? 'Tindak lanjut';
+      _nextActionAt = j.nextActionAt;
     }
   }
 
@@ -141,6 +157,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     _descriptionController.dispose();
     _hrContactController.dispose();
     _notesController.dispose();
+    _nextActionNoteController.dispose();
+    _labelsController.dispose();
     super.dispose();
   }
 
@@ -521,6 +539,42 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     }
   }
 
+  /// Lampirkan Dokumen PDF CV yang Dikirimkan
+  Future<void> _pickPdfCv() async {
+    HapticFeedback.selectionClick();
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (result != null && result.files.single.path != null) {
+        final src = File(result.files.single.path!);
+        final appDocDir = await getApplicationDocumentsDirectory();
+        final cvDir = Directory('${appDocDir.path}/cv_docs');
+        if (!await cvDir.exists()) {
+          await cvDir.create(recursive: true);
+        }
+        final fileName = 'cv_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        final savedFile = await src.copy('${cvDir.path}/$fileName');
+        final previousPath = _pdfCvPath;
+        if (previousPath != null &&
+            _draftAttachmentPaths.remove(previousPath)) {
+          final previousFile = File(previousPath);
+          if (await previousFile.exists()) await previousFile.delete();
+        }
+        _draftAttachmentPaths.add(savedFile.path);
+        setState(() {
+          _pdfCvPath = savedFile.path;
+        });
+        if (mounted) {
+          AppleToast.success(context, 'Dokumen PDF CV berhasil dilampirkan!');
+        }
+      }
+    } catch (e) {
+      if (mounted) AppleToast.warning(context, 'Gagal memilih dokumen PDF: $e');
+    }
+  }
+
   /// Pilih tanggal lamaran tanpa membuat pengingat seleksi.
   Future<void> _pickAppliedDate() async {
     HapticFeedback.selectionClick();
@@ -610,12 +664,41 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     });
   }
 
+  Future<void> _pickNextActionSchedule() async {
+    HapticFeedback.selectionClick();
+    final initial =
+        _nextActionAt ?? DateTime.now().add(const Duration(days: 3));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      helpText: 'Pilih waktu tindakan berikutnya',
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _nextActionAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
   bool get _hasSelectionStatus =>
       _status == 'Tes / Psikotes' || _status.startsWith('Interview');
 
   void _releaseDraftAttachmentsAfterSave() {
     _draftAttachmentPaths.remove(_screenshotPath);
     _draftAttachmentPaths.remove(_companyLogoPath);
+    _draftAttachmentPaths.remove(_pdfCvPath);
   }
 
   String _formatSelectionSchedule(DateTime schedule) {
@@ -866,6 +949,95 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'Dokumen PDF CV (Opsional)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: txtSec,
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (_pdfCvPath != null && _pdfCvPath!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF282830)
+                    : const Color(0xFFF9F7F2),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFE5E0D5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Color(0xFFE53935),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _pdfCvPath!.split(Platform.pathSeparator).last,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: txtPri,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _pdfCvPath = null),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: _pickPdfCv,
+              icon: const Icon(
+                Icons.picture_as_pdf_rounded,
+                size: 16,
+                color: Color(0xFFE53935),
+              ),
+              label: Text(
+                _pdfCvPath != null
+                    ? 'Ganti File PDF CV'
+                    : 'Lampirkan Dokumen PDF CV',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFDCD8CE),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                foregroundColor: txtPri,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -888,6 +1060,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           _descriptionController.text != j.jobDescription ||
           _hrContactController.text != (j.hrContact ?? '') ||
           _notesController.text != (j.notes ?? '') ||
+          _nextActionNoteController.text != (j.nextActionNote ?? '') ||
+          _labelsController.text != j.labels.join(', ') ||
           _status != j.status ||
           _workType != j.workType ||
           _jobSource != (j.jobSource ?? 'LinkedIn') ||
@@ -895,8 +1069,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           _jobUrl != j.jobUrl ||
           !_isSameCalendarDate(_appliedDate, j.appliedDate) ||
           _interviewDate != (j.interviewDate ?? j.testDate) ||
+          _nextActionAt != j.nextActionAt ||
+          _nextActionType != (j.nextActionType ?? 'Tindak lanjut') ||
+          _priority != j.priority ||
           _screenshotPath != j.screenshotPath ||
-          _companyLogoPath != j.companyLogoPath;
+          _companyLogoPath != j.companyLogoPath ||
+          _pdfCvPath != j.pdfCvPath;
     }
     return _companyController.text.isNotEmpty ||
         _positionController.text.isNotEmpty ||
@@ -905,13 +1083,18 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         _descriptionController.text.isNotEmpty ||
         _hrContactController.text.isNotEmpty ||
         _notesController.text.isNotEmpty ||
+        _nextActionNoteController.text.isNotEmpty ||
+        _labelsController.text.isNotEmpty ||
         _status != 'Dikirim' ||
         _workType != 'WFO' ||
         _jobSource != 'LinkedIn' ||
         _jobUrl != null ||
         _interviewDate != null ||
+        _nextActionAt != null ||
+        _priority != 'Normal' ||
         _screenshotPath != null ||
-        _companyLogoPath != null;
+        _companyLogoPath != null ||
+        _pdfCvPath != null;
   }
 
   bool _isSameCalendarDate(DateTime first, DateTime second) =>
@@ -974,7 +1157,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _isSaveComplete = false;
+    });
 
     final isEdit = widget.jobToEdit != null;
     final id = isEdit
@@ -983,6 +1169,21 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
     final salaryText = _salaryController.text.trim();
     final salaryRange = SalaryEvaluatorService.parseSalaryRange(salaryText);
+    final hrContact = _hrContactController.text.trim();
+    final existingContact = widget.jobToEdit?.hrContact?.trim() ?? '';
+    final recruiterContacts = isEdit && hrContact == existingContact
+        ? widget.jobToEdit!.recruiterContacts
+        : (hrContact.isEmpty
+              ? const <RecruiterContact>[]
+              : [
+                  RecruiterContact(
+                    id: 'contact_${DateTime.now().microsecondsSinceEpoch}',
+                    name: 'Kontak rekrutmen',
+                    role: 'Recruiter',
+                    channel: hrContact.contains('@') ? 'Email' : 'WhatsApp',
+                    value: hrContact,
+                  ),
+                ]);
 
     final selectionSchedule = _hasSelectionStatus ? _interviewDate : null;
     final isSampleData = widget.jobToEdit?.isSampleData ?? false;
@@ -1005,9 +1206,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           ? _urlController.text.trim()
           : null,
       jobDescription: _descriptionController.text.trim(),
-      hrContact: _hrContactController.text.trim().isEmpty
-          ? null
-          : _hrContactController.text.trim(),
+      hrContact: hrContact.isEmpty ? null : hrContact,
       interviewDate: _status.startsWith('Interview') ? selectionSchedule : null,
       testDate: _status == 'Tes / Psikotes' ? selectionSchedule : null,
       notes: _notesController.text.trim().isEmpty
@@ -1016,7 +1215,26 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       isFavorite: widget.jobToEdit?.isFavorite ?? false,
       screenshotPath: _screenshotPath,
       companyLogoPath: _companyLogoPath,
+      pdfCvPath: _pdfCvPath,
       isSampleData: isSampleData,
+      createdAt: widget.jobToEdit?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+      nextActionAt: _nextActionAt,
+      nextActionType: _nextActionAt == null ? null : _nextActionType,
+      nextActionNote: _nextActionNoteController.text.trim().isEmpty
+          ? null
+          : _nextActionNoteController.text.trim(),
+      priority: _priority,
+      labels: _labelsController.text
+          .split(',')
+          .map((label) => label.trim())
+          .where((label) => label.isNotEmpty)
+          .toSet()
+          .toList(),
+      recruitmentEvents: widget.jobToEdit?.recruitmentEvents,
+      recruiterContacts: recruiterContacts,
+      attachments: widget.jobToEdit?.attachments,
+      offerDetails: widget.jobToEdit?.offerDetails,
     );
 
     try {
@@ -1027,7 +1245,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       }
 
       _releaseDraftAttachmentsAfterSave();
-      if (newJob.interviewDate != null && _hasSelectionStatus && mounted) {
+      if (((newJob.interviewDate != null && _hasSelectionStatus) ||
+              newJob.nextActionAt != null) &&
+          mounted) {
         NotificationService.promptPermissionIfNeeded(context).catchError((
           Object error,
         ) {
@@ -1036,6 +1256,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         });
       }
 
+      if (!mounted) return;
+      setState(() => _isSaveComplete = true);
+      await Future<void>.delayed(const Duration(milliseconds: 320));
       if (!mounted) return;
       Navigator.pop(context, newJob);
     } catch (error) {
@@ -2078,8 +2301,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                             if (data?.text != null &&
                                                 data!.text!.trim().isNotEmpty) {
                                               setState(() {
-                                                _urlController.text =
-                                                    data.text!.trim();
+                                                _urlController.text = data.text!
+                                                    .trim();
                                               });
                                             }
                                           },
@@ -2357,6 +2580,219 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                                     const SizedBox(height: 14),
 
+                                    // Actionability data: every active
+                                    // application can carry one explicit next
+                                    // move, rather than relying on a vague
+                                    // note that is easy to forget.
+                                    Text(
+                                      'Tindakan Berikutnya (opsional)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: txtSec,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child:
+                                              DropdownButtonFormField<String>(
+                                                initialValue: _nextActionType,
+                                                isExpanded: true,
+                                                decoration: _buildInputDeco(
+                                                  hint: 'Jenis tindakan',
+                                                  icon: Icons.task_alt_rounded,
+                                                  isDark: isDark,
+                                                ),
+                                                items:
+                                                    const [
+                                                          'Tindak lanjut',
+                                                          'Kirim dokumen',
+                                                          'Siapkan tes',
+                                                          'Jadwal interview',
+                                                          'Ambil keputusan',
+                                                        ]
+                                                        .map(
+                                                          (item) =>
+                                                              DropdownMenuItem(
+                                                                value: item,
+                                                                child: Text(
+                                                                  item,
+                                                                ),
+                                                              ),
+                                                        )
+                                                        .toList(),
+                                                onChanged: (value) => setState(
+                                                  () => _nextActionType =
+                                                      value ?? 'Tindak lanjut',
+                                                ),
+                                              ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: FluidBounceButton(
+                                            onTap: _pickNextActionSchedule,
+                                            hapticEnabled: false,
+                                            scaleFactor: 0.98,
+                                            child: Container(
+                                              height: 56,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0xFF282830)
+                                                    : const Color(0xFFF9F7F2),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? const Color(0xFF383842)
+                                                      : const Color(0xFFE5E0D5),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.alarm_rounded,
+                                                    color: Color(0xFF5C44E4),
+                                                    size: 17,
+                                                  ),
+                                                  const SizedBox(width: 7),
+                                                  Expanded(
+                                                    child: Text(
+                                                      _nextActionAt == null
+                                                          ? 'Pilih waktu'
+                                                          : _formatSelectionSchedule(
+                                                              _nextActionAt!,
+                                                            ),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 11.5,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color:
+                                                            _nextActionAt ==
+                                                                null
+                                                            ? txtSec
+                                                            : txtPri,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (_nextActionAt != null)
+                                                    GestureDetector(
+                                                      onTap: () => setState(
+                                                        () => _nextActionAt =
+                                                            null,
+                                                      ),
+                                                      child: const Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                              left: 3,
+                                                            ),
+                                                        child: Icon(
+                                                          Icons.close_rounded,
+                                                          size: 15,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: _nextActionNoteController,
+                                      maxLength: 240,
+                                      onChanged: (_) => setState(() {}),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: txtPri,
+                                      ),
+                                      decoration: _buildInputDeco(
+                                        hint:
+                                            'Contoh: Kirim portofolio versi terbaru',
+                                        icon: Icons.notes_rounded,
+                                        isDark: isDark,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    Text(
+                                      'Prioritas & Label (opsional)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: txtSec,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child:
+                                              DropdownButtonFormField<String>(
+                                                initialValue: _priority,
+                                                decoration: _buildInputDeco(
+                                                  hint: 'Prioritas',
+                                                  icon: Icons.flag_outlined,
+                                                  isDark: isDark,
+                                                ),
+                                                items:
+                                                    const [
+                                                          'Rendah',
+                                                          'Normal',
+                                                          'Tinggi',
+                                                        ]
+                                                        .map(
+                                                          (item) =>
+                                                              DropdownMenuItem(
+                                                                value: item,
+                                                                child: Text(
+                                                                  item,
+                                                                ),
+                                                              ),
+                                                        )
+                                                        .toList(),
+                                                onChanged: (value) => setState(
+                                                  () => _priority =
+                                                      value ?? 'Normal',
+                                                ),
+                                              ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _labelsController,
+                                            maxLength: 120,
+                                            onChanged: (_) => setState(() {}),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: txtPri,
+                                            ),
+                                            decoration: _buildInputDeco(
+                                              hint: 'Label, pisahkan koma',
+                                              icon: Icons.sell_outlined,
+                                              isDark: isDark,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 14),
+
                                     // Form Input: Kontak HR
                                     Text(
                                       'Kontak HR (WhatsApp / Email)',
@@ -2545,6 +2981,135 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                         ),
                                       ),
                                     ),
+
+                                    const SizedBox(height: 12),
+
+                                    // Dokumen PDF CV Picker & Preview
+                                    if (_pdfCvPath != null &&
+                                        _pdfCvPath!.isNotEmpty) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? const Color(0xFF282830)
+                                              : const Color(0xFFF9F7F2),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: isDark
+                                                ? const Color(0xFF383842)
+                                                : const Color(0xFFE5E0D5),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: const Color(
+                                                  0xFFE53935,
+                                                ).withValues(alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(
+                                                Icons.picture_as_pdf_rounded,
+                                                color: Color(0xFFE53935),
+                                                size: 20,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    _pdfCvPath!
+                                                        .split(
+                                                          Platform
+                                                              .pathSeparator,
+                                                        )
+                                                        .last,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 12.5,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: txtPri,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    'Dokumen PDF CV Terlampir',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      color: txtSec,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () => setState(
+                                                () => _pdfCvPath = null,
+                                              ),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 18,
+                                                color: Colors.grey,
+                                              ),
+                                              tooltip: 'Hapus CV',
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 46,
+                                      child: OutlinedButton.icon(
+                                        onPressed: _pickPdfCv,
+                                        icon: const Icon(
+                                          Icons.picture_as_pdf_rounded,
+                                          size: 18,
+                                          color: Color(0xFFE53935),
+                                        ),
+                                        label: Text(
+                                          _pdfCvPath != null
+                                              ? 'Ganti Dokumen PDF CV'
+                                              : 'Lampirkan Dokumen PDF CV (Opsional)',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          side: BorderSide(
+                                            color: isDark
+                                                ? const Color(0xFF383842)
+                                                : const Color(0xFFDCD8CE),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          foregroundColor: txtPri,
+                                          backgroundColor: isDark
+                                              ? const Color(0xFF282830)
+                                              : const Color(0xFFF9F7F2),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -2657,18 +3222,19 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               height: 56,
               child: Hero(
                 tag: 'add_job_action_button',
-                flightShuttleBuilder: (
-                  flightContext,
-                  animation,
-                  flightDirection,
-                  fromHeroContext,
-                  toHeroContext,
-                ) {
-                  return Material(
-                    type: MaterialType.transparency,
-                    child: toHeroContext.widget,
-                  );
-                },
+                flightShuttleBuilder:
+                    (
+                      flightContext,
+                      animation,
+                      flightDirection,
+                      fromHeroContext,
+                      toHeroContext,
+                    ) {
+                      return Material(
+                        type: MaterialType.transparency,
+                        child: toHeroContext.widget,
+                      );
+                    },
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveJob,
                   style: ElevatedButton.styleFrom(
@@ -2681,35 +3247,61 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       borderRadius: BorderRadius.circular(28),
                     ),
                   ),
-                  child: _isSaving
-                      ? const CupertinoActivityIndicator(color: Colors.white)
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _quickMode
-                                    ? 'Catat Lamaran Cepat'
-                                    : isEdit
-                                    ? 'Simpan Perubahan Lamaran'
-                                    : 'Catat Lamaran Sekarang',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: _isSaving
+                        ? Row(
+                            key: ValueKey(_isSaveComplete),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isSaveComplete)
+                                const Icon(Icons.check_rounded, size: 20)
+                              else
+                                const SizedBox.square(
+                                  dimension: 18,
+                                  child: CupertinoActivityIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isSaveComplete ? 'Tersimpan' : 'Menyimpan…',
                                 style: const TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.2,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ],
-                        ),
+                            ],
+                          )
+                        : Row(
+                            key: const ValueKey('ready'),
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _quickMode
+                                      ? 'Catat Lamaran Cepat'
+                                      : isEdit
+                                      ? 'Simpan Perubahan Lamaran'
+                                      : 'Catat Lamaran Sekarang',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ),

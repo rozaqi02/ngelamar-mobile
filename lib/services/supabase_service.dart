@@ -110,12 +110,10 @@ class SupabaseService {
             authScreenLaunchMode: LaunchMode.externalApplication,
           );
         } catch (e) {
-          debugPrint('linkIdentity failed, falling back to signInWithOAuth: $e');
-          return await client.auth.signInWithOAuth(
-            OAuthProvider.google,
-            redirectTo: redirectTo,
-            authScreenLaunchMode: LaunchMode.externalApplication,
-          );
+          // Signing in is not an equivalent fallback: it can replace the
+          // anonymous UID and orphan its PRO entitlement and cloud files.
+          debugPrint('linkIdentity failed: $e');
+          return false;
         }
       }
       return await client.auth.signInWithOAuth(
@@ -125,12 +123,7 @@ class SupabaseService {
       );
     } catch (e) {
       debugPrint('connectGoogle error: $e');
-      final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
-      return await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: redirectTo,
-        authScreenLaunchMode: LaunchMode.externalApplication,
-      );
+      return false;
     }
   }
 

@@ -34,6 +34,14 @@ class _CryingEnvelopeMascotState extends State<CryingEnvelopeMascot>
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) {
+      return CustomPaint(
+        size: Size(widget.width, widget.height),
+        painter: _CryingMascotPainter(progress: 0),
+      );
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {

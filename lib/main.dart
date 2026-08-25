@@ -12,12 +12,14 @@ import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
 import 'services/analytics_service.dart';
 import 'services/remote_config_service.dart';
+import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await SupabaseService.initialize();
   await NotificationService.init();
+  await PushNotificationService.initialize();
   try {
     await initializeDateFormatting('id_ID', null);
   } catch (e) {

@@ -222,10 +222,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                         decoration: BoxDecoration(
                           color: btnBg,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: btnBorder,
-                            width: 1.2,
-                          ),
+                          border: Border.all(color: btnBorder, width: 1.2),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(
@@ -264,10 +261,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                         decoration: BoxDecoration(
                           color: btnBg,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: btnBorder,
-                            width: 1.2,
-                          ),
+                          border: Border.all(color: btnBorder, width: 1.2),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(
@@ -321,9 +315,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                             width: 7,
                             height: 7,
                             decoration: BoxDecoration(
-                              color: AppTheme.getStatusColor(
-                                currentJob.status,
-                              ),
+                              color: AppTheme.getStatusColor(currentJob.status),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -333,9 +325,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.getStatusColor(
-                                currentJob.status,
-                              ),
+                              color: AppTheme.getStatusColor(currentJob.status),
                             ),
                           ),
                         ],
@@ -365,6 +355,99 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                 ),
               ),
             ),
+
+            // Actual, user-owned history. The guides below remain useful, but
+            // this section is the source of truth for this particular
+            // application and survives status changes or restores.
+            if (currentJob.recruitmentEvents.isNotEmpty ||
+                currentJob.labels.isNotEmpty ||
+                currentJob.hasNextAction)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: btnBg,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: btnBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.history_rounded,
+                              color: Color(0xFF5C44E4),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Riwayat Lamaran Ini',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: txtPri,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (currentJob.hasNextAction) ...[
+                          const SizedBox(height: 12),
+                          _buildActualEventRow(
+                            icon: Icons.task_alt_rounded,
+                            title: currentJob.nextActionType!,
+                            detail:
+                                'Berikutnya: ${_formatEventDate(currentJob.nextActionAt!)}${currentJob.nextActionNote?.trim().isNotEmpty == true ? ' — ${currentJob.nextActionNote}' : ''}',
+                            color: const Color(0xFF22A06B),
+                            textColor: txtPri,
+                            secondaryColor: txtSec,
+                          ),
+                        ],
+                        ...currentJob.recruitmentEvents.reversed.map(
+                          (event) => Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: _buildActualEventRow(
+                              icon: Icons.circle,
+                              title: event.title,
+                              detail:
+                                  '${_formatEventDate(event.occurredAt)}${event.notes?.trim().isNotEmpty == true ? ' — ${event.notes}' : ''}',
+                              color: const Color(0xFF5C44E4),
+                              textColor: txtPri,
+                              secondaryColor: txtSec,
+                            ),
+                          ),
+                        ),
+                        if (currentJob.labels.isNotEmpty) ...[
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: currentJob.labels
+                                .map(
+                                  (label) => Chip(
+                                    label: Text(label),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: const Color(
+                                      0xFF5C44E4,
+                                    ).withValues(alpha: 0.10),
+                                    side: BorderSide.none,
+                                    labelStyle: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF5C44E4),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // 5 STAGE CARDS (STYLING PERSIS SAMA DENGAN PERSIAPAN KARIR INTERVIEW)
             SliverPadding(
@@ -577,6 +660,67 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  String _formatEventDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final time = date.hour == 0 && date.minute == 0
+        ? ''
+        : ', ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    return '${date.day} ${months[date.month - 1]} ${date.year}$time';
+  }
+
+  Widget _buildActualEventRow({
+    required IconData icon,
+    required String title,
+    required String detail,
+    required Color color,
+    required Color textColor,
+    required Color secondaryColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Icon(icon, size: icon == Icons.circle ? 8 : 18, color: color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                detail,
+                style: TextStyle(fontSize: 11.5, color: secondaryColor),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

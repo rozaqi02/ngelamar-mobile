@@ -40,11 +40,14 @@ Deno.serve(async (request) => {
     title: 'Ringkasan mingguan Ngelamar',
     body: 'Luangkan waktu sebentar untuk meninjau progres lamaranmu minggu ini.',
     type: 'reminder',
+    delivery_key: `weekly-digest-${new Date().toISOString().slice(0, 10)}`,
     expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   }))
 
   if (rows.length > 0) {
-    const { error: insertError } = await admin.from('notification_inbox').insert(rows)
+    const { error: insertError } = await admin
+      .from('notification_inbox')
+      .upsert(rows, { onConflict: 'user_id,delivery_key', ignoreDuplicates: true })
     if (insertError) {
       return new Response(JSON.stringify({ error: insertError.message }), {
         status: 500,

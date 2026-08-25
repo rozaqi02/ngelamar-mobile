@@ -30,6 +30,19 @@ export async function requireAdmin(request: Request): Promise<User> {
   return userData.user
 }
 
+export async function requireOwner(request: Request): Promise<User> {
+  const user = await requireAdmin(request)
+  const { data: role, error } = await supabaseAdmin()
+    .from('admin_users')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (error || role?.role !== 'owner') {
+    throw new Response('Akses owner diperlukan.', { status: 403 })
+  }
+  return user
+}
+
 export async function audit(
   actorId: string,
   action: string,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "539675000637",
+    "project_id": "ngelamar-push",
+    "storage_bucket": "ngelamar-push.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:539675000637:android:ba7c49f2149294c4c10f54",
+        "android_client_info": {
+          "package_name": "com.ngelamar.app.ngelamar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIa26THKl-TC0HaXPYxjr7JMAqC_BNyiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

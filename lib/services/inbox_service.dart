@@ -60,6 +60,15 @@ class InboxService {
     }
   }
 
+  /// Memeriksa pesan inbox baru secara aman tanpa melempar exception (cocok untuk app lifecycle resume)
+  static Future<void> checkNewMessagesSafe() async {
+    try {
+      await fetch();
+    } catch (e) {
+      debugPrint('Error checking new inbox messages: $e');
+    }
+  }
+
   static Future<void> _notifyNewMessages(List<InboxMessage> messages) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -78,27 +87,63 @@ class InboxService {
         }
       }
 
-      await prefs.setStringList(_notifiedIdsKey, newNotified.toList());
+      // Keep the local de-duplication store bounded even after years of
+      // broadcasts. Order is irrelevant for membership checks.
+      // Keep a small, newest-first local deduplication window.  Sorting UUIDs
+      // would retain arbitrary records instead of the messages the user saw last.
+      final boundedIds = <String>{
+        ...messages.map((message) => message.id),
+        ...newNotified,
+      }.take(300).toList();
+      await prefs.setStringList(_notifiedIdsKey, boundedIds);
     } catch (e) {
       debugPrint('Error triggering inbox device notification: $e');
     }
   }
 
-  /// Inisialisasi listener realtime untuk menerima pesan inbox dari admin secara instan
-  static void initRealtimeListener() {
-    if (kIsWeb || _realtimeSubscription != null) return;
+  /// Called by FCM before displaying a device notification. Inbox fetches use
+  /// the same de-duplication set, so a push cannot be replayed when the user
+  /// opens the in-app notification center afterwards.
+  static Future<void> markAsDeviceNotified(String messageId) async {
+    final cleanId = messageId.trim();
+    if (cleanId.isEmpty) return;
     try {
-      _realtimeSubscription = SupabaseService.client
+      final prefs = await SharedPreferences.getInstance();
+      final ids = (prefs.getStringList(_notifiedIdsKey) ?? []).toSet();
+      ids.add(cleanId);
+      await prefs.setStringList(_notifiedIdsKey, ids.take(300).toList());
+    } catch (error) {
+      debugPrint('Gagal menyimpan status notifikasi push: $error');
+    }
+  }
+
+  static Timer? _backgroundPollTimer;
+
+  /// Inisialisasi listener realtime dan periodic polling untuk menerima pesan inbox secara instan
+  static void initRealtimeListener() {
+    if (kIsWeb) return;
+    try {
+      // 1. Supabase Realtime Stream
+      _realtimeSubscription ??= SupabaseService.client
           .from('notification_inbox')
           .stream(primaryKey: ['id'])
-          .listen((List<Map<String, dynamic>> rows) {
-            final messages = rows
-                .map((r) => InboxMessage.fromMap(r))
-                .toList(growable: false);
-            _notifyNewMessages(messages);
-          }, onError: (err) {
-            debugPrint('Realtime inbox stream error: $err');
-          });
+          .listen(
+            (List<Map<String, dynamic>> rows) {
+              final messages = rows
+                  .map((r) => InboxMessage.fromMap(r))
+                  .toList(growable: false);
+              _notifyNewMessages(messages);
+            },
+            onError: (err) {
+              debugPrint('Realtime inbox stream error: $err');
+            },
+          );
+
+      // 2. Periodic Polling (Fallback saat WebSocket di-suspend oleh OS di background)
+      _backgroundPollTimer ??= Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => checkNewMessagesSafe(),
+      );
     } catch (e) {
       debugPrint('Gagal menginisialisasi realtime inbox listener: $e');
     }

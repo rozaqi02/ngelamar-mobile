@@ -13,6 +13,7 @@ class NotificationService {
   static bool _initialized = false;
   static const _channelId = 'ngelamar_interview_reminders';
   static const _notificationIdPrefix = 100000000;
+  static const _nextActionNotificationIdPrefix = 900000000;
 
   static Future<void> init() async {
     if (kIsWeb || _initialized) return;
@@ -66,6 +67,17 @@ class NotificationService {
     }
     // Reserve two consecutive IDs per job: event time and H-1 reminder.
     return _notificationIdPrefix + ((hash % 400000000) * 2);
+  }
+
+  /// Uses a separate high range so the next-action reminder cannot collide
+  /// with the paired H and H-1 selection reminders above.
+  static int nextActionNotificationIdFor(String jobId) {
+    var hash = 2166136261;
+    for (final codeUnit in jobId.codeUnits) {
+      hash ^= codeUnit;
+      hash = (hash * 16777619) & 0x7fffffff;
+    }
+    return _nextActionNotificationIdPrefix + (hash % 100000000);
   }
 
   static Future<bool> requestPermission() async {
@@ -309,6 +321,59 @@ class NotificationService {
     }
   }
 
+  static Future<void> syncNextActionReminder(JobApplication job) async {
+    if (kIsWeb) return;
+    if (!_initialized) await init();
+    if (!_initialized) return;
+
+    final id = nextActionNotificationIdFor(job.id);
+    try {
+      await _notificationsPlugin.cancel(id);
+      final dueAt = job.nextActionAt;
+      if (dueAt == null ||
+          !dueAt.isAfter(DateTime.now()) ||
+          job.nextActionType == null ||
+          job.status == 'Diterima' ||
+          job.status == 'Ditolak') {
+        return;
+      }
+
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          'Pengingat Interview',
+          channelDescription: 'Pengingat tindakan dan jadwal lamaran kerja',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+        macOS: DarwinNotificationDetails(),
+      );
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        '${job.nextActionType}: ${job.companyName}',
+        job.nextActionNote?.trim().isNotEmpty == true
+            ? job.nextActionNote!.trim()
+            : 'Ada tindakan lanjutan untuk posisi ${job.position}.',
+        tz.TZDateTime.from(dueAt, tz.local),
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: job.id,
+      );
+    } catch (error) {
+      debugPrint('Gagal menjadwalkan tindakan berikutnya ${job.id}: $error');
+    }
+  }
+
+  static Future<void> syncJobReminders(JobApplication job) async {
+    await Future.wait([
+      syncInterviewReminder(job),
+      syncNextActionReminder(job),
+    ]);
+  }
+
   static Future<void> cancelInterviewReminder(String jobId) async {
     if (kIsWeb) return;
     try {
@@ -317,6 +382,7 @@ class NotificationService {
         final id = notificationIdFor(jobId);
         await _notificationsPlugin.cancel(id);
         await _notificationsPlugin.cancel(id + 1);
+        await _notificationsPlugin.cancel(nextActionNotificationIdFor(jobId));
       }
     } catch (e) {
       debugPrint('Gagal membatalkan pengingat $jobId: $e');
@@ -326,7 +392,7 @@ class NotificationService {
   static Future<void> syncAll(Iterable<JobApplication> jobs) async {
     if (kIsWeb) return;
     for (final job in jobs) {
-      await syncInterviewReminder(job);
+      await syncJobReminders(job);
     }
   }
 
@@ -338,7 +404,10 @@ class NotificationService {
     if (kIsWeb) return;
     try {
       if (!_initialized) await init();
-      await requestPermission();
+      // An FCM data message may be handled while Flutter has no foreground
+      // activity. Never try to show Android's permission dialog from that
+      // background isolate; the foreground setup already asks for it.
+      if (!await areNotificationsEnabled()) return;
 
       const androidDetails = AndroidNotificationDetails(
         _channelId,

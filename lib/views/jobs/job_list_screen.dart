@@ -8,6 +8,7 @@ import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_search_field.dart';
 import '../../widgets/app_toast.dart';
@@ -15,6 +16,7 @@ import '../../widgets/company_logo_badge.dart';
 import '../../widgets/confused_envelope_mascot.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
+import '../../widgets/app_motion.dart';
 import '../../widgets/welcome_screen_route.dart';
 import 'job_detail_screen.dart';
 import 'add_edit_job_screen.dart';
@@ -38,6 +40,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
   final GlobalKey _addBtnKey = GlobalKey();
   Timer? _debounce;
   int _lastTabIndex = 0;
+  bool _isHeaderCollapsed = false;
 
   String _sortBy = 'Terbaru';
   String _viewMode = 'list';
@@ -293,7 +296,9 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
           if (mounted) {
             Navigator.push(
               context,
-              CupertinoPageRoute(builder: (_) => JobDetailScreen(job: result)),
+              AppMotion.detailDockRoute(
+                builder: (_) => JobDetailScreen(job: result),
+              ),
             );
           }
         },
@@ -366,356 +371,457 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     final isDark = AppTheme.isDark(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
-    final purpleGradient = isDark
-        ? const [Color(0xFF19142E), Color(0xFF151324), Color(0xFF121214)]
-        : const [Color(0xFFEFEAFF), Color(0xFFF7F4FF), Color(0xFFF5EFE6)];
+    final bg = isDark ? const Color(0xFF121214) : AppTheme.warmBackground;
     final jobsByTab = <String, List<JobApplication>>{
       for (final tab in _tabs) tab: _filterJobs(state.jobs, tab, state),
     };
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: purpleGradient,
-            stops: const [0.0, 0.35, 1.0],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Top Bar: Title + Add Button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'LAMARAN\nSAYA',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          color: txtPri,
-                          letterSpacing: -1.2,
-                          height: 1.0,
+      backgroundColor: bg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Top Bar: Smooth Single-Line Compact Header on Scroll (No Text Clipping)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.fastOutSlowIn,
+              height: _isHeaderCollapsed ? 48 : 74,
+              padding: EdgeInsets.fromLTRB(
+                20,
+                _isHeaderCollapsed ? 6 : 8,
+                20,
+                _isHeaderCollapsed ? 4 : 8,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      layoutBuilder: (currentChild, previousChildren) {
+                        return Stack(
+                          alignment: Alignment.centerLeft,
+                          children: <Widget>[
+                            ...previousChildren,
+                            ?currentChild,
+                          ],
+                        );
+                      },
+                      child: _isHeaderCollapsed
+                          ? Text(
+                              'DAFTAR LAMARANKU',
+                              key: const ValueKey('compact_title'),
+                              style: TextStyle(
+                                fontSize: 18.5,
+                                fontWeight: FontWeight.w900,
+                                color: txtPri,
+                                letterSpacing: -0.6,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : Text(
+                              'DAFTAR\nLAMARANKU',
+                              key: const ValueKey('expanded_title'),
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: txtPri,
+                                letterSpacing: -1.0,
+                                height: 1.04,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FluidBounceButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            WelcomeScreenRoute(
+                              child: const JobListWelcomeScreen(),
+                            ),
+                          );
+                        },
+                        semanticLabel: 'Buka panduan Daftar Lamaranku',
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF242428)
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF383842)
+                                  : const Color(0xFFE5E0D5),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.04,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.question_circle_fill,
+                            size: 17,
+                            color: Color(0xFF5C44E4),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Row(
-                      children: [
-                        FluidBounceButton(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              WelcomeScreenRoute(
-                                child: const JobListWelcomeScreen(),
-                              ),
-                            );
-                          },
-                          semanticLabel: 'Buka panduan Lamaran Saya',
+                      const SizedBox(width: 8),
+                      FluidBounceButton(
+                        key: _addBtnKey,
+                        onTap: () => _openAddJob(context, _addBtnKey),
+                        semanticLabel: 'Tambah lamaran',
+                        child: Hero(
+                          tag: 'add_job_action_button',
+                          flightShuttleBuilder:
+                              (
+                                flightContext,
+                                animation,
+                                flightDirection,
+                                fromHeroContext,
+                                toHeroContext,
+                              ) {
+                                return Material(
+                                  type: MaterialType.transparency,
+                                  child: toHeroContext.widget,
+                                );
+                              },
                           child: Container(
-                            padding: const EdgeInsets.all(9),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 13,
+                              vertical: 7.5,
+                            ),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF242428)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF383842)
-                                    : const Color(0xFFE5E0D5),
-                              ),
+                                  ? const Color(0xFF5C44E4)
+                                  : const Color(0xFF1C1C1E),
+                              borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.04,
-                                  ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              CupertinoIcons.question_circle_fill,
-                              size: 18,
-                              color: Color(0xFF5C44E4),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FluidBounceButton(
-                          key: _addBtnKey,
-                          onTap: () => _openAddJob(context, _addBtnKey),
-                          semanticLabel: 'Tambah lamaran',
-                          child: Hero(
-                            tag: 'add_job_action_button',
-                            flightShuttleBuilder: (
-                              flightContext,
-                              animation,
-                              flightDirection,
-                              fromHeroContext,
-                              toHeroContext,
-                            ) {
-                              return Material(
-                                type: MaterialType.transparency,
-                                child: toHeroContext.widget,
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF5C44E4)
-                                    : const Color(0xFF1C1C1E),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.18),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.add_rounded,
-                                    size: 16,
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Tambah',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
                                     color: Colors.white,
+                                    letterSpacing: -0.2,
                                   ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Tambah',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Search Box & Quick Filter Pills
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
-                child: Column(
-                  children: [
-                    AppSearchField(
-                      controller: _searchController,
-                      hintText: 'Cari posisi, perusahaan, atau kota...',
-                      onClear: () {
-                        ref.read(jobProvider.notifier).setSearchQuery('');
-                      },
-                      onChanged: (v) {
-                        if (_debounce?.isActive ?? false) {
-                          _debounce!.cancel();
-                        }
-                        _debounce = Timer(
-                          const Duration(milliseconds: 400),
-                          () {
-                            if (mounted) {
-                              ref.read(jobProvider.notifier).setSearchQuery(v);
-                            }
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        child: Row(
-                          children: [
-                            _buildCompactControl(
-                              isDark: isDark,
-                              active: state.onlyFavoritesFilter,
-                              icon: state.onlyFavoritesFilter
-                                  ? Icons.bookmark_rounded
-                                  : Icons.bookmark_border_rounded,
-                              count: state.favoriteCount,
-                              tooltip: 'Bookmark',
-                              onTap: () => ref
-                                  .read(jobProvider.notifier)
-                                  .toggleOnlyFavoritesFilter(),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildCompactControl(
-                              isDark: isDark,
-                              active: _sortBy != 'Terbaru',
-                              icon: Icons.sort_rounded,
-                              tooltip: 'Urutan: $_sortBy',
-                              onTap: () => _showSortModal(context),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildCompactControl(
-                              isDark: isDark,
-                              icon: _viewMode == 'grid'
-                                  ? Icons.grid_view_rounded
-                                  : Icons.view_agenda_outlined,
-                              tooltip: _viewMode == 'grid'
-                                  ? 'Ubah ke tampilan list'
-                                  : 'Ubah ke tampilan grid',
-                              onTap: () => _setViewMode(
-                                _viewMode == 'grid' ? 'list' : 'grid',
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
+            ),
 
-              // Horizontal Status Tab Bar
-              SizedBox(
-                height: 44,
-                child: SingleChildScrollView(
-                  controller: _tabScrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: List.generate(_tabs.length, (i) {
-                      final tabName = _tabs[i];
-                      final isSelected = _tabController.index == i;
-                      final count = jobsByTab[tabName]!.length;
-
-                      return Padding(
-                        key: _tabKeys[i],
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FluidBounceButton(
-                          semanticLabel:
-                              'Tampilkan status $tabName, $count lamaran',
-                          selected: isSelected,
-                          onTap: () {
-                            setState(() {
-                              _tabController.animateTo(i);
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
+            // Search Box & Quick Filter Pills
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+              child: Column(
+                children: [
+                  AppSearchField(
+                    controller: _searchController,
+                    hintText: 'Cari posisi, perusahaan, atau kota...',
+                    onClear: () {
+                      ref.read(jobProvider.notifier).setSearchQuery('');
+                    },
+                    onChanged: (v) {
+                      if (_debounce?.isActive ?? false) {
+                        _debounce!.cancel();
+                      }
+                      _debounce = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          ref.read(jobProvider.notifier).setSearchQuery(v);
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _buildCompactControl(
+                            isDark: isDark,
+                            active: state.onlyFavoritesFilter,
+                            icon: state.onlyFavoritesFilter
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            count: state.favoriteCount,
+                            tooltip: 'Bookmark',
+                            onTap: () => ref
+                                .read(jobProvider.notifier)
+                                .toggleOnlyFavoritesFilter(),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildCompactControl(
+                            isDark: isDark,
+                            active: _sortBy != 'Terbaru',
+                            icon: Icons.sort_rounded,
+                            tooltip: 'Urutan: $_sortBy',
+                            onTap: () => _showSortModal(context),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildCompactControl(
+                            isDark: isDark,
+                            icon: _viewMode == 'grid'
+                                ? Icons.grid_view_rounded
+                                : Icons.view_agenda_outlined,
+                            tooltip: _viewMode == 'grid'
+                                ? 'Ubah ke tampilan list'
+                                : 'Ubah ke tampilan grid',
+                            onTap: () => _setViewMode(
+                              _viewMode == 'grid' ? 'list' : 'grid',
                             ),
-                            decoration: BoxDecoration(
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : const Color(0xFFE5E0D5),
+                          ),
+                          const SizedBox(width: 10),
+                          ...['Semua', 'WFH', 'Hybrid', 'WFO'].map((wt) {
+                            final isSelected =
+                                state.selectedWorkTypeFilter == wt;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  ref
+                                      .read(jobProvider.notifier)
+                                      .setWorkTypeFilter(wt);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 7,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? (isDark
+                                              ? const Color(0xFF5C44E4)
+                                              : const Color(0xFF19191B))
+                                        : (isDark
+                                              ? const Color(0xFF24242C)
+                                              : Colors.white),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? Colors.transparent
+                                          : (isDark
+                                                ? const Color(0xFF383842)
+                                                : const Color(0xFFE5E0D5)),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    wt == 'Semua' ? 'Semua Tipe' : wt,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isDark
+                                                ? Colors.white70
+                                                : const Color(0xFF555558)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Horizontal Status Tab Bar
+            SizedBox(
+              height: 44,
+              child: SingleChildScrollView(
+                controller: _tabScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: List.generate(_tabs.length, (i) {
+                    final tabName = _tabs[i];
+                    final isSelected = _tabController.index == i;
+                    final count = jobsByTab[tabName]!.length;
+
+                    return Padding(
+                      key: _tabKeys[i],
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FluidBounceButton(
+                        semanticLabel:
+                            'Tampilkan status $tabName, $count lamaran',
+                        selected: isSelected,
+                        onTap: () {
+                          setState(() {
+                            _tabController.animateTo(i);
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF19191B)
+                                : (isDark
+                                      ? const Color(0xFF242428)
+                                      : Colors.white),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
                               color: isSelected
                                   ? const Color(0xFF19191B)
                                   : (isDark
-                                        ? const Color(0xFF242428)
-                                        : Colors.white),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF19191B)
-                                    : (isDark
-                                          ? const Color(0xFF333338)
-                                          : const Color(0xFFE5E0D5)),
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.12,
-                                        ),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
+                                        ? const Color(0xFF333338)
+                                        : const Color(0xFFE5E0D5)),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (tabName != 'Semua') ...[
-                                  Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.getStatusColor(tabName),
-                                      shape: BoxShape.circle,
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                ],
-                                Text(
-                                  tabName,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF333338)),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (tabName != 'Semua') ...[
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.getStatusColor(tabName),
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
-                                if (count > 0) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                tabName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF333338)),
+                                ),
+                              ),
+                              if (count > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Colors.white.withValues(alpha: 0.25)
+                                        : (isDark
+                                              ? const Color(0xFF333338)
+                                              : const Color(0xFFF0EBE0)),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
                                       color: isSelected
-                                          ? Colors.white.withValues(alpha: 0.25)
+                                          ? Colors.white
                                           : (isDark
-                                                ? const Color(0xFF333338)
-                                                : const Color(0xFFF0EBE0)),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '$count',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : (isDark
-                                                  ? Colors.white70
-                                                  : const Color(0xFF555558)),
-                                      ),
+                                                ? Colors.white70
+                                                : const Color(0xFF555558)),
                                     ),
                                   ),
-                                ],
+                                ),
                               ],
-                            ),
+                            ],
                           ),
                         ),
-                      );
-                    }),
-                  ),
+                      ),
+                    );
+                  }),
                 ),
               ),
+            ),
 
-              const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-              // TabBarView List of Jobs with Swipe-to-Delete
-              Expanded(
+            // TabBarView List of Jobs with Swipe-to-Delete
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification) {
+                    final delta = notification.scrollDelta ?? 0;
+                    if (delta > 8 && !_isHeaderCollapsed) {
+                      setState(() => _isHeaderCollapsed = true);
+                    } else if (delta < -8 && _isHeaderCollapsed) {
+                      setState(() => _isHeaderCollapsed = false);
+                    }
+                  } else if (notification.metrics.pixels <= 0 &&
+                      _isHeaderCollapsed) {
+                    setState(() => _isHeaderCollapsed = false);
+                  }
+                  return false;
+                },
                 child: TabBarView(
                   controller: _tabController,
                   physics: const BouncingScrollPhysics(),
@@ -741,6 +847,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                 const SizedBox(height: 12),
                                 Text(
                                   'Belum ada lamaranmu di "$category"',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 16.5,
                                     fontWeight: FontWeight.w800,
@@ -858,7 +965,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           16,
                           8,
                           16,
-                          120 + MediaQuery.of(context).padding.bottom,
+                          AppLayoutMetrics.contentBottomClearance(context),
                         ),
                         physics: const BouncingScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
@@ -882,11 +989,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                             job.status,
                           );
                           final isDarkText = !AppTheme.isDarkCard(cardColor);
-                          return _buildJobGridCard(
-                            context: context,
-                            job: job,
-                            cardColor: cardColor,
-                            isDarkText: isDarkText,
+                          return StaggeredReveal(
+                            index: i,
+                            child: _buildJobGridCard(
+                              context: context,
+                              job: job,
+                              cardColor: cardColor,
+                              isDarkText: isDarkText,
+                            ),
                           );
                         },
                       );
@@ -898,7 +1008,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         16,
                         8,
                         16,
-                        120 + MediaQuery.of(context).padding.bottom,
+                        AppLayoutMetrics.contentBottomClearance(context),
                       ),
                       physics: const BouncingScrollPhysics(),
                       itemCount: jobs.length,
@@ -912,74 +1022,77 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: Dismissible(
-                            key: Key(job.id),
-                            direction: DismissDirection.endToStart,
-                            confirmDismiss: (direction) async {
-                              HapticFeedback.heavyImpact();
-                              return await AppDialog.show<bool>(
-                                context: context,
-                                icon: Icons.delete_outline_rounded,
-                                iconColor: const Color(0xFFE53935),
-                                title: 'Hapus Lamaran?',
-                                content:
-                                    'Hapus lamaran posisi ${job.position} di ${job.companyName}?',
-                                secondaryLabel: 'Batal',
-                                primaryLabel: 'Hapus',
-                                isDestructive: true,
-                              );
-                            },
-                            onDismissed: (_) {
-                              unawaited(
-                                ref
-                                    .read(jobProvider.notifier)
-                                    .deleteJob(job.id),
-                              );
-                              AppToast.success(
-                                context,
-                                'Lamaran di ${job.companyName} dihapus.',
-                                actionLabel: 'Urungkan',
-                                onAction: () => unawaited(
-                                  ref.read(jobProvider.notifier).addJob(job),
-                                ),
-                              );
-                            },
-                            background: Container(
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE53935),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusCardLarge,
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: Colors.white,
-                                    size: 24,
+                          child: StaggeredReveal(
+                            index: i,
+                            child: Dismissible(
+                              key: Key(job.id),
+                              direction: DismissDirection.endToStart,
+                              confirmDismiss: (direction) async {
+                                HapticFeedback.heavyImpact();
+                                return await AppDialog.show<bool>(
+                                  context: context,
+                                  icon: Icons.delete_outline_rounded,
+                                  iconColor: const Color(0xFFE53935),
+                                  title: 'Hapus Lamaran?',
+                                  content:
+                                      'Hapus lamaran posisi ${job.position} di ${job.companyName}?',
+                                  secondaryLabel: 'Batal',
+                                  primaryLabel: 'Hapus',
+                                  isDestructive: true,
+                                );
+                              },
+                              onDismissed: (_) {
+                                unawaited(
+                                  ref
+                                      .read(jobProvider.notifier)
+                                      .deleteJob(job.id),
+                                );
+                                AppToast.success(
+                                  context,
+                                  'Lamaran di ${job.companyName} dihapus.',
+                                  actionLabel: 'Urungkan',
+                                  onAction: () => unawaited(
+                                    ref.read(jobProvider.notifier).addJob(job),
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Hapus',
-                                    style: TextStyle(
+                                );
+                              },
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE53935),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusCardLarge,
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline_rounded,
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      size: 24,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Hapus',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            child: _buildJobCard(
-                              context: context,
-                              job: job,
-                              cardColor: cardColor,
-                              isDarkText: isDarkText,
+                              child: _buildJobCard(
+                                context: context,
+                                job: job,
+                                cardColor: cardColor,
+                                isDarkText: isDarkText,
+                              ),
                             ),
                           ),
                         );
@@ -988,8 +1101,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   }),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1010,7 +1123,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       onTap: () {
         Navigator.push(
           context,
-          CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+          AppMotion.detailDockRoute(builder: (_) => JobDetailScreen(job: job)),
         );
       },
       child: Container(
@@ -1035,6 +1148,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
               children: [
                 Hero(
                   tag: 'company_logo_${job.id}',
+                  createRectTween: companyLogoRectTween,
+                  flightShuttleBuilder: companyLogoFlightShuttle,
                   child: CompanyLogoBadge(
                     companyName: job.companyName,
                     size: 42,
@@ -1109,13 +1224,44 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     ),
                   ),
                 ),
+                if (job.pdfCvPath != null && job.pdfCvPath!.isNotEmpty) ...[
+                  Icon(
+                    Icons.picture_as_pdf_rounded,
+                    size: 13,
+                    color: titleColor.withValues(alpha: 0.8),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (job.isGhosted) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade900.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${job.daysSinceApplied}h',
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: titleColor.withValues(alpha: 0.12),
+                    color: AppTheme.getStatusColor(
+                      job.status,
+                    ).withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1123,7 +1269,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: titleColor,
+                      color: AppTheme.getStatusColor(job.status),
                       fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1242,7 +1388,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
       onTap: () {
         Navigator.push(
           context,
-          CupertinoPageRoute(builder: (_) => JobDetailScreen(job: job)),
+          AppMotion.detailDockRoute(builder: (_) => JobDetailScreen(job: job)),
         );
       },
       child: Container(
@@ -1265,19 +1411,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
               children: [
                 Hero(
                   tag: 'company_logo_${job.id}',
-                  flightShuttleBuilder:
-                      (
-                        flightContext,
-                        animation,
-                        flightDirection,
-                        fromHeroContext,
-                        toHeroContext,
-                      ) {
-                        return Material(
-                          type: MaterialType.transparency,
-                          child: toHeroContext.widget,
-                        );
-                      },
+                  createRectTween: companyLogoRectTween,
+                  flightShuttleBuilder: companyLogoFlightShuttle,
                   child: CompanyLogoBadge(
                     companyName: job.companyName,
                     size: 40,
@@ -1366,25 +1501,96 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDarkText
-                        ? Colors.black.withValues(alpha: 0.12)
-                        : Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    job.status,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: titleColor,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (job.pdfCvPath != null && job.pdfCvPath!.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: isDarkText
+                              ? Colors.black.withValues(alpha: 0.10)
+                              : Colors.white.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.picture_as_pdf_rounded,
+                              size: 12,
+                              color: titleColor,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              'CV',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (job.isGhosted) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade800.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 12,
+                              color: titleColor,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${job.daysSinceApplied}h tanpa respon',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.getStatusColor(
+                          job.status,
+                        ).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        job.status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.getStatusColor(job.status),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

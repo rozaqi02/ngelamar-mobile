@@ -1,4 +1,4 @@
-import { apiError, audit, requireAdmin, supabaseAdmin } from '@/lib/admin-server'
+import { apiError, audit, requireAdmin, requireOwner, supabaseAdmin } from '@/lib/admin-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const user = await requireAdmin(request)
+    const user = await requireOwner(request)
     const body = await request.json()
     const key = typeof body.key === 'string' ? body.key : ''
     if (!/^[a-z0-9_]{1,80}$/.test(key) || typeof body.value !== 'object' || body.value === null) {

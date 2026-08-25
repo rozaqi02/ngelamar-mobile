@@ -45,16 +45,18 @@ app.*.map.json
 /android/app/release
 /android/.kotlin/
 
-# Abaikan semua artefak Android kecuali APK distribusi di root repository.
+# Android binaries & build artifacts
 *.apk
-!/Ngelamar.apk
 *.aab
+*.jks
+*.keystore
 /build/app/outputs/
 
 # Dashboard admin Next.js: dependensi dan build bersifat lokal.
 /admin-web/node_modules/
 /admin-web/.next/
 /admin-web/.env.local
+*.tsbuildinfo
 
 # Local Scratch & Scripts
 scratch/

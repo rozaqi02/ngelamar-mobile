@@ -22,16 +22,53 @@ class RemoteConfigService {
     final message = raw['message']?.toString().trim() ?? '';
     if (title.isEmpty || message.isEmpty) return null;
     final action = raw['action_url']?.toString().trim();
+    final actionUri = action == null ? null : Uri.tryParse(action);
     return RemoteAnnouncement(
       title: title,
       message: message,
-      actionUrl: action == null || action.isEmpty ? null : action,
+      actionUrl: actionUri != null && actionUri.scheme == 'https'
+          ? actionUri.toString()
+          : null,
     );
   }
 
   static String? get minimumSupportedVersion {
     final raw = _values['minimum_supported_version'];
     return raw is Map ? raw['version']?.toString() : null;
+  }
+
+  static String? get minimumSupportedStoreUrl {
+    final raw = _values['minimum_supported_version'];
+    final url = raw is Map ? raw['store_url']?.toString().trim() : null;
+    final uri = url == null ? null : Uri.tryParse(url);
+    return uri != null && uri.scheme == 'https' ? uri.toString() : null;
+  }
+
+  static bool requiresUpdate(String installedVersion) {
+    final minimum = minimumSupportedVersion?.trim();
+    if (minimum == null ||
+        minimum.isEmpty ||
+        minimumSupportedStoreUrl == null) {
+      return false;
+    }
+    return _compareVersions(installedVersion, minimum) < 0;
+  }
+
+  static int _compareVersions(String first, String second) {
+    List<int> parse(String value) => value
+        .split(RegExp(r'[.+-]'))
+        .take(3)
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
+    final a = parse(first);
+    final b = parse(second);
+    for (var index = 0; index < 3; index++) {
+      final comparison = (index < a.length ? a[index] : 0).compareTo(
+        index < b.length ? b[index] : 0,
+      );
+      if (comparison != 0) return comparison;
+    }
+    return 0;
   }
 
   static Future<void> refresh() async {

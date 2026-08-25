@@ -95,7 +95,20 @@ inbox notifikasi, referral, audit admin, serta bucket Storage privat:
 Setiap objek Storage harus menggunakan folder awal berupa `auth.uid()`. RLS
 memastikan seorang pengguna tidak dapat melihat objek milik UID lain.
 
-## 6. Aktifkan Google Sign-In
+## 6. Terapkan penguatan keamanan & pengiriman notifikasi
+
+Jalankan migration berikut setelah migration cloud platform:
+
+```text
+supabase/migrations/202608250004_security_and_delivery_hardening.sql
+```
+
+Migration ini membuat kuota AI atomik per pengguna/hari, membatasi ukuran
+konteks feedback, dan menambahkan kunci pengiriman unik untuk notifikasi
+mingguan. Pastikan migration ini sudah diterapkan **sebelum** men-deploy ulang
+Edge Function `career-ai` dan `weekly-digest`.
+
+## 7. Aktifkan Google Sign-In
 
 1. Buka **Google Cloud Console → Google Auth Platform → Clients**.
 2. Buat OAuth Client bertipe **Web application**.
@@ -121,13 +134,13 @@ memastikan seorang pengguna tidak dapat melihat objek milik UID lain.
    Pengguna anonim akan *link* ke Google sehingga UID, PRO, dan backupnya
    tetap sama.
 
-## 7. Deploy dashboard admin Vercel
+## 8. Deploy dashboard admin Vercel
 
 Ikuti [panduan dashboard admin](../admin-web/README.md). Environment variable
 `SUPABASE_SERVICE_ROLE_KEY` hanya untuk Vercel server. Jangan menambahkannya ke
 Flutter, GitHub Actions yang tidak terlindungi, atau aplikasi klien.
 
-## 8. Aktifkan tugas server (opsional)
+## 9. Aktifkan tugas server (opsional)
 
 Deploy function berikut melalui Supabase CLI:
 
@@ -144,7 +157,60 @@ jika ingin menggunakan model selain default. Jangan deploy fitur AI sebelum
 Anda siap menanggung biaya API dan menyampaikan persetujuan pengiriman konteks
 karier kepada pengguna.
 
-## 9. Uji alur
+## 10. Aktifkan push notification Android (Supabase + FCM)
+
+Sistem ini memakai Supabase sebagai sumber data notifikasi dan FCM hanya
+sebagai kurir ke Android. File private key Firebase **tidak** disimpan di
+repository maupun APK.
+
+1. Di SQL Editor Supabase, jalankan:
+
+   ```text
+   supabase/migrations/202608250005_push_notifications.sql
+   ```
+
+   Ini membuat tabel aman `device_push_tokens`. Aplikasi otomatis menyimpan
+   token perangkat untuk sesi pengguna yang sedang aktif saat pertama dibuka.
+
+2. Pastikan secret `FCM_SERVICE_ACCOUNT_JSON` sudah berisi keseluruhan JSON
+   service account Firebase. Secret ini hanya dibaca oleh Edge Function.
+
+3. Deploy Edge Function:
+
+   ```bash
+   supabase functions deploy push-notification --no-verify-jwt
+   ```
+
+   Tanpa terminal, buka **Edge Functions → Deploy a new function → Via
+   Editor**, beri nama `push-notification`, lalu salin isi file
+   `supabase/functions/push-notification/index.ts`. Pada pengaturan function,
+   nonaktifkan **Verify JWT** sebelum menekan **Deploy function**. Keamanan
+   tetap ada karena kode function memverifikasi secret key dari webhook.
+
+4. Di **Supabase Dashboard → Database → Webhooks**, buat webhook baru:
+
+   - Table: `public.notification_inbox`
+   - Event: `Insert`
+   - Type: **Supabase Edge Function**
+   - Function: `push-notification`
+   - Method: `POST`
+   - HTTP Headers: pilih **Add auth header with service key** dan biarkan
+     `Content-Type: application/json`.
+
+   Header tersebut mengizinkan webhook internal memanggil function; function
+   tidak menerima panggilan anonim. Setiap baris inbox yang dimasukkan lewat
+   dashboard admin akan langsung dikirim ke perangkat Android yang terdaftar.
+
+5. Pasang atau jalankan aplikasi di Android, buka sekali saat internet aktif,
+   lalu kirim satu notifikasi dari dashboard admin. Token akan ada di
+   `device_push_tokens` dan pesan harus tetap sampai ketika aplikasi berada di
+   background. Android tetap tidak mengizinkan delivery setelah aplikasi di
+   **Force stop**; buka aplikasinya sekali lagi setelah force stop.
+
+Token yang FCM tandai sudah tidak berlaku akan dihapus otomatis. Untuk pesan
+siaran, function mengirim ke maksimal 1.000 perangkat aktif pada satu event.
+
+## 11. Uji alur
 
 1. Buka halaman PRO dan pilih paket yang sesuai dengan kode.
 2. Masukkan kode 10 digit.

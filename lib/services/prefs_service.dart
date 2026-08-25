@@ -258,10 +258,6 @@ class PrefsService {
     await prefs.setBool(_keyCareerPrepIntroSeen, seen);
   }
 
-  static Future<bool> isPrepIntroSeen() => isCareerPrepIntroSeen();
-  static Future<void> setPrepIntroSeen([bool seen = true]) =>
-      setCareerPrepIntroSeen(seen);
-
   static Future<bool> isNotificationIntroSeen() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyNotificationIntroSeen) ?? false;
@@ -270,6 +266,21 @@ class PrefsService {
   static Future<void> setNotificationIntroSeen([bool seen = true]) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyNotificationIntroSeen, seen);
+  }
+
+  // ── APP FEATURE TOUR OVERLAY FLAG ──
+  static const _keyAppTourSeen = 'app_feature_tour_seen_v1';
+
+  /// Returns whether the App Feature Tour has been completed.
+  static Future<bool> isAppTourSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyAppTourSeen) ?? false;
+  }
+
+  /// Marks App Feature Tour as seen or resets it.
+  static Future<void> setAppTourSeen([bool seen = true]) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyAppTourSeen, seen);
   }
 
   // ── INITIAL SEED FLAG ──

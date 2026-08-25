@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../services/prefs_service.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/waving_greeting_mascot.dart';
 
+/// Google Material You (Material 3) Welcome Screen for Kabar & Notifikasi.
 class NotificationWelcomeScreen extends StatelessWidget {
   const NotificationWelcomeScreen({super.key});
 
@@ -18,101 +20,145 @@ class NotificationWelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final isDark = AppTheme.isDark(context);
+
+    final bgColor = isDark ? const Color(0xFF1F1115) : const Color(0xFFFCF2F2);
+    final tonalBtnColor =
+        isDark ? const Color(0xFF381B22) : const Color(0xFFFFDAD6);
+    final tonalIconColor =
+        isDark ? const Color(0xFFFFB3B8) : const Color(0xFF93000A);
+
+    final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
+    final txtSec = isDark ? const Color(0xFFDCC8CA) : const Color(0xFF4B5563);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: Scaffold(
-        backgroundColor: const Color(0xFF111113),
+        backgroundColor: bgColor,
         body: SafeArea(
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 12),
+
+                // Top Bar with Material 3 Tonal Icon Button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     FluidBounceButton(
                       onTap: () => _close(context),
                       child: Container(
-                        width: 42,
-                        height: 42,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E22),
+                          color: tonalBtnColor,
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF303036)),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.chevron_down,
-                          color: Colors.white,
+                          color: tonalIconColor,
                           size: 20,
                         ),
                       ),
                     ),
                   ],
                 ),
+
                 const Spacer(),
-                const WavingGreetingMascot(width: 250, height: 185),
+
+                // Mascot Canvas
+                const Center(
+                  child: WavingGreetingMascot(width: 250, height: 185),
+                ),
+
                 const Spacer(),
-                const Text.rich(
-                  TextSpan(
+
+                // Material You Headline
+                RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
                     children: [
                       TextSpan(
                         text: 'Jangan Lewatkan ',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -1,
-                          height: 1.08,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: txtPri,
+                          letterSpacing: -1.0,
+                          height: 1.12,
                         ),
                       ),
-                      TextSpan(
+                      const TextSpan(
                         text: 'Momennya',
                         style: TextStyle(
-                          color: Color(0xFFFF6B5F),
-                          fontSize: 29,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1,
-                          height: 1.08,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFBA1A1A),
+                          letterSpacing: -1.0,
+                          height: 1.12,
                         ),
                       ),
                     ],
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 9),
-                const Text(
-                  'Jadwal seleksi, follow-up, dan kabar penting lamaranmu terkumpul di sini.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFFD6C5C3),
-                    fontSize: 14,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
+
+                const SizedBox(height: 10),
+
+                // Subtitle
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Jadwal seleksi, follow-up, dan kabar penting lamaranmu terkumpul di sini.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: txtSec,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 26),
+
+                // Material 3 Filled Button
                 FluidBounceButton(
                   onTap: () => _close(context),
                   child: Container(
                     width: double.infinity,
                     height: 54,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B5F),
-                      borderRadius: BorderRadius.circular(18),
+                      color: const Color(0xFFBA1A1A),
+                      borderRadius: BorderRadius.circular(28),
                     ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'Lihat Kabar Lamaranmu',
-                      style: TextStyle(
-                        color: Color(0xFF24100E),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Lihat Kabar Lamaranmu',
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
+
                 SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
               ],
             ),

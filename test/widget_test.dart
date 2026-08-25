@@ -8,6 +8,7 @@ import 'package:ngelamar/services/text_parser_service.dart';
 import 'package:ngelamar/services/salary_evaluator_service.dart';
 import 'package:ngelamar/models/job_application.dart';
 import 'package:ngelamar/services/notification_service.dart';
+import 'package:ngelamar/services/android_home_widget_service.dart';
 import 'package:ngelamar/services/pro_verification_service.dart';
 import 'package:ngelamar/providers/job_provider.dart';
 
@@ -133,6 +134,71 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
       expect(job.workType, equals('WFO'));
       expect(JobApplication.fromJson(job.toJson()).workType, equals('WFO'));
     });
+
+    test('migrates a legacy HR contact without losing the original field', () {
+      final restored = JobApplication.fromMap({
+        'id': 'legacy-contact',
+        'companyName': 'PT Lama',
+        'position': 'Product Designer',
+        'status': 'Dikirim',
+        'appliedDate': '2026-08-01T00:00:00.000',
+        'workType': 'WFH',
+        'jobDescription': '',
+        'hrContact': 'recruiter@contoh.id',
+      });
+
+      expect(restored.hrContact, equals('recruiter@contoh.id'));
+      expect(restored.recruiterContacts, hasLength(1));
+      expect(restored.recruiterContacts.single.channel, equals('Email'));
+    });
+
+    test('JSON round-trip preserves recruitment tracking data', () {
+      final job = JobApplication(
+        id: 'job-tracking',
+        companyName: 'PT Tracking',
+        position: 'Engineer',
+        status: 'Offering',
+        appliedDate: DateTime(2026, 8, 1),
+        workType: 'Hybrid',
+        jobDescription: 'Dart, Flutter, dan komunikasi.',
+        priority: 'Tinggi',
+        labels: const ['Target', 'Remote'],
+        nextActionAt: DateTime(2026, 8, 28, 9),
+        nextActionType: 'Ambil keputusan',
+        nextActionNote: 'Tinjau offering letter',
+        recruitmentEvents: [
+          RecruitmentEvent(
+            id: 'event-1',
+            type: 'status',
+            title: 'Status menjadi Offering',
+            occurredAt: DateTime(2026, 8, 24, 10),
+          ),
+        ],
+        recruiterContacts: const [
+          RecruiterContact(
+            id: 'contact-1',
+            name: 'Nadia',
+            role: 'Talent Acquisition',
+            channel: 'Email',
+            value: 'nadia@contoh.id',
+          ),
+        ],
+        offerDetails: OfferDetails(
+          baseSalary: 15000000,
+          period: 'Bulanan',
+          decisionDeadline: DateTime(2026, 8, 28),
+        ),
+      );
+
+      final restored = JobApplication.fromJson(job.toJson());
+
+      expect(restored.priority, equals('Tinggi'));
+      expect(restored.labels, equals(['Target', 'Remote']));
+      expect(restored.nextActionType, equals('Ambil keputusan'));
+      expect(restored.recruitmentEvents.single.title, contains('Offering'));
+      expect(restored.recruiterContacts.single.name, equals('Nadia'));
+      expect(restored.offerDetails?.baseSalary, equals(15000000));
+    });
   });
 
   group('State integrity', () {
@@ -168,6 +234,100 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
         isNot(NotificationService.notificationIdFor('job-124')),
       );
     });
+
+    test(
+      'next-action reminder ID is stable and isolated from interview IDs',
+      () {
+        final nextAction = NotificationService.nextActionNotificationIdFor(
+          'job-123',
+        );
+
+        expect(
+          nextAction,
+          equals(NotificationService.nextActionNotificationIdFor('job-123')),
+        );
+        expect(
+          nextAction,
+          isNot(NotificationService.notificationIdFor('job-123')),
+        );
+      },
+    );
+  });
+
+  group('Android home widget projection', () {
+    test('prioritizes the nearest interview over a later next action', () {
+      final now = DateTime(2026, 8, 25, 8);
+      final projection = AndroidHomeWidgetService.buildProjection([
+        JobApplication(
+          id: 'later-action',
+          companyName: 'PT Aksi',
+          position: 'UI Designer',
+          status: 'Dikirim',
+          appliedDate: now,
+          workType: 'WFH',
+          jobDescription: '',
+          nextActionAt: now.add(const Duration(days: 2)),
+          nextActionType: 'Kirim dokumen',
+        ),
+        JobApplication(
+          id: 'nearest-interview',
+          companyName: 'PT Interview',
+          position: 'Flutter Developer',
+          status: 'Interview HR',
+          appliedDate: now,
+          workType: 'Hybrid',
+          jobDescription: '',
+          interviewDate: now.add(const Duration(hours: 4)),
+          notes: 'Siapkan portofolio dan CV.',
+        ),
+      ], now: now);
+
+      expect(projection.kind, equals('interview'));
+      expect(projection.jobId, equals('nearest-interview'));
+      expect(projection.label, equals('PENGINGAT INTERVIEW'));
+      expect(projection.activeCount, equals(2));
+    });
+
+    test('uses the latest active note when no reminder is scheduled', () {
+      final now = DateTime(2026, 8, 25, 8);
+      final projection = AndroidHomeWidgetService.buildProjection([
+        JobApplication(
+          id: 'note-job',
+          companyName: 'PT Catatan',
+          position: 'QA Engineer',
+          status: 'Dikirim',
+          appliedDate: now,
+          updatedAt: now,
+          workType: 'WFO',
+          jobDescription: '',
+          notes: 'Tanyakan estimasi waktu kabar lanjutan.',
+        ),
+      ], now: now);
+
+      expect(projection.kind, equals('note'));
+      expect(projection.jobId, equals('note-job'));
+      expect(projection.title, contains('Tanyakan estimasi'));
+    });
+
+    test('does not expose accepted or rejected applications', () {
+      final now = DateTime(2026, 8, 25, 8);
+      final projection = AndroidHomeWidgetService.buildProjection([
+        JobApplication(
+          id: 'finished-job',
+          companyName: 'PT Selesai',
+          position: 'Analyst',
+          status: 'Diterima',
+          appliedDate: now,
+          workType: 'WFH',
+          jobDescription: '',
+          nextActionAt: now.add(const Duration(days: 1)),
+          nextActionType: 'Tindak lanjut',
+        ),
+      ], now: now);
+
+      expect(projection.hasContent, isFalse);
+      expect(projection.kind, equals('empty'));
+    });
   });
 
   group('ProVerificationService', () {
@@ -183,13 +343,17 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
   });
 
   group('BackupService', () {
-    test('ZIP backup restores a job and its managed attachment', () async {
+    test('ZIP backup restores a job and all managed attachments', () async {
       final temporaryRoot = await Directory.systemTemp.createTemp(
         'ngelamar_backup_test_',
       );
       try {
         final screenshot = File('${temporaryRoot.path}/poster.png');
         await screenshot.writeAsBytes([1, 2, 3, 4]);
+        final cv = File('${temporaryRoot.path}/cv.pdf');
+        await cv.writeAsBytes([37, 80, 68, 70, 45, 49, 46, 55]);
+        final offer = File('${temporaryRoot.path}/offer.pdf');
+        await offer.writeAsBytes([37, 80, 68, 70, 45, 49, 46, 56]);
         final job = JobApplication(
           id: 'backup-job-1',
           companyName: 'PT Backup',
@@ -199,6 +363,16 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
           workType: 'WFH',
           jobDescription: 'Data backup',
           screenshotPath: screenshot.path,
+          pdfCvPath: cv.path,
+          attachments: [
+            JobAttachment(
+              id: 'offer-letter',
+              type: 'surat_penawaran',
+              name: 'Offering Letter.pdf',
+              path: offer.path,
+              createdAt: DateTime(2026, 8, 2),
+            ),
+          ],
         );
 
         final backup = await BackupService.createBackup(
@@ -216,6 +390,13 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
         expect(restored.jobs.single.companyName, equals('PT Backup'));
         expect(restored.jobs.single.screenshotPath, isNotNull);
         expect(File(restored.jobs.single.screenshotPath!).existsSync(), isTrue);
+        expect(restored.jobs.single.pdfCvPath, isNotNull);
+        expect(File(restored.jobs.single.pdfCvPath!).existsSync(), isTrue);
+        expect(restored.jobs.single.attachments, hasLength(1));
+        expect(
+          File(restored.jobs.single.attachments.single.path).existsSync(),
+          isTrue,
+        );
         await expectLater(
           BackupService.restoreFromBytes(
             await backup.readAsBytes(),

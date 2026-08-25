@@ -18,6 +18,8 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/container_morph_route.dart';
+import '../../widgets/app_motion.dart';
+import '../../widgets/app_layout_metrics.dart';
 import 'add_edit_job_screen.dart';
 import 'interview_stages_screen.dart';
 
@@ -46,11 +48,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   late AnimationController _bookmarkAnimController;
   late Animation<double> _bookmarkScaleAnim;
 
-  int _selectedTab =
-      0; // 0: Kualifikasi Minimum, 1: Deskripsi Pekerjaan, 2: Benefit & Fasilitas
   double _scrollOffset = 0.0;
-  int? _expandedInfoChipIndex =
-      1; // Mode kerja menjadi fokus awal; chip lain tetap bulat.
+  int? _expandedInfoBubbleIndex;
 
   final List<String> _statusOptions = [
     'Dikirim',
@@ -108,9 +107,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     final loc = currentJob.location != null
         ? '\nLokasi: ${currentJob.location}'
         : '';
-    final url = currentJob.jobUrl != null
-        ? '\nLink: ${currentJob.jobUrl}'
-        : '';
+    final url = currentJob.jobUrl != null ? '\nLink: ${currentJob.jobUrl}' : '';
     final date =
         'Dilamar: ${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}';
     final status = 'Status: ${currentJob.status} (${currentJob.workType})';
@@ -130,6 +127,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       text,
       subject: 'Lowongan: ${currentJob.position} di ${currentJob.companyName}',
     );
+  }
+
+  String _formatTimelineDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final time = date.hour == 0 && date.minute == 0
+        ? ''
+        : ', ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    return '${date.day} ${months[date.month - 1]} ${date.year}$time';
   }
 
   void _openEditJob(JobApplication currentJob) async {
@@ -337,80 +355,85 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: _statusOptions.map((status) {
+              children: _statusOptions.indexed.map((entry) {
+                final index = entry.$1;
+                final status = entry.$2;
                 final isSelected = status == currentJob.status;
                 final statusColor = AppTheme.getStatusColor(status);
 
-                return GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await ref
-                        .read(jobProvider.notifier)
-                        .updateStatus(currentJob.id, status);
-                    if (!context.mounted) return;
-                    DelightCelebration.show(
-                      context,
-                      message: 'Tahap baru: $status',
-                      accent: statusColor,
-                      icon: DelightCelebration.iconForStatus(status),
-                      preset: DelightCelebration.forStatus(status),
-                    );
-                    AppleToast.success(
-                      context,
-                      'Status berhasil diubah ke $status',
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? statusColor : pillUnselBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected ? statusColor : pillBorder,
-                        width: 1.3,
+                return StaggeredReveal(
+                  index: index,
+                  child: GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await ref
+                          .read(jobProvider.notifier)
+                          .updateStatus(currentJob.id, status);
+                      if (!context.mounted) return;
+                      DelightCelebration.show(
+                        context,
+                        message: 'Tahap baru: $status',
+                        accent: statusColor,
+                        icon: DelightCelebration.iconForStatus(status),
+                        preset: DelightCelebration.forStatus(status),
+                      );
+                      AppleToast.success(
+                        context,
+                        'Status berhasil diubah ke $status',
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isSelected ? 0.15 : 0.03,
-                          ),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                      decoration: BoxDecoration(
+                        color: isSelected ? statusColor : pillUnselBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? statusColor : pillBorder,
+                          width: 1.3,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: isSelected ? Colors.white : statusColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          status,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : txtPri,
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.check_rounded,
-                            size: 14,
-                            color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isSelected ? 0.15 : 0.03,
+                            ),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
                         ],
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.white : statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected ? Colors.white : txtPri,
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.check_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -714,8 +737,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1E1E24) : const Color(0xFFFBF8F2);
     final cardBg = isDark ? const Color(0xFF282830) : Colors.white;
-    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
-    final dividerColor = isDark ? const Color(0xFF383842) : const Color(0xFFF0ECE3);
+    final cardBorder = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFE5E0D5);
+    final dividerColor = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFF0ECE3);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final bodyText = isDark ? const Color(0xFFD1D1D6) : const Color(0xFF333336);
 
@@ -741,7 +768,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF383842) : const Color(0xFFD5CEBF),
+                      color: isDark
+                          ? const Color(0xFF383842)
+                          : const Color(0xFFD5CEBF),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -781,11 +810,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       ),
                     ),
                     IconButton(
-                      icon: Icon(
-                        Icons.close_rounded,
-                        size: 22,
-                        color: txtPri,
-                      ),
+                      icon: Icon(Icons.close_rounded, size: 22, color: txtPri),
                       onPressed: () => Navigator.pop(ctx),
                     ),
                   ],
@@ -793,7 +818,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               ),
               Divider(
                 height: 1,
-                color: isDark ? const Color(0xFF383842) : const Color(0xFFE6E0D5),
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFE6E0D5),
               ),
               Expanded(
                 child: ListView(
@@ -889,10 +916,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                     currentJob.hrContact!.isNotEmpty
                                 ? currentJob.hrContact!
                                 : 'Belum ada kontak HR yang disimpan.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: bodyText,
-                            ),
+                            style: TextStyle(fontSize: 13, color: bodyText),
                           ),
                           if (currentJob.hrContact != null &&
                               currentJob.hrContact!.isNotEmpty) ...[
@@ -952,7 +976,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                         : 'Hubungi via WhatsApp',
                                   ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: currentJob.hrContact!.contains('@')
+                                    backgroundColor:
+                                        currentJob.hrContact!.contains('@')
                                         ? const Color(0xFF5C44E4)
                                         : const Color(0xFF25D366),
                                     foregroundColor: Colors.white,
@@ -984,9 +1009,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                   label: const Text('Salin Kontak'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: txtPri,
-                                    side: BorderSide(
-                                      color: cardBorder,
-                                    ),
+                                    side: BorderSide(color: cardBorder),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
@@ -1440,19 +1463,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         // Center Company Logo Badge with scroll shrink animation
                         Hero(
                           tag: 'company_logo_${currentJob.id}',
-                          flightShuttleBuilder:
-                              (
-                                flightContext,
-                                animation,
-                                flightDirection,
-                                fromHeroContext,
-                                toHeroContext,
-                              ) {
-                                return Material(
-                                  type: MaterialType.transparency,
-                                  child: toHeroContext.widget,
-                                );
-                              },
+                          createRectTween: companyLogoRectTween,
+                          flightShuttleBuilder: companyLogoFlightShuttle,
                           child: CompanyLogoBadge(
                             companyName: currentJob.companyName,
                             size: logoSize,
@@ -1690,66 +1702,71 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
                         const SizedBox(height: 18),
 
-                        // ── 3 KEY INFO BUBBLES ──
-                        // Lebar dihitung eksplisit agar dua bubble yang menyusut
-                        // selalu 50×50, bukan oval karena tekanan flex layout.
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Row(
-                              children: [
-                                _buildInteractiveInfoChip(
-                                  index: 0,
-                                  availableWidth: constraints.maxWidth,
-                                  iconWidget: Text(
-                                    'Rp',
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : const Color(0xFF19191B),
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  shortText: salaryText,
-                                  fullText:
-                                      currentJob.salaryOffered != null &&
-                                          currentJob.salaryOffered!.isNotEmpty
-                                      ? currentJob.salaryOffered!
-                                      : 'Gaji belum dicantumkan',
+                        // Three fixed bubbles. Details expand below this row,
+                        // never sideways, so no horizontal scroll or overlay
+                        // can be displaced by an offset.
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: _buildInfoBubble(
+                                icon: const Icon(
+                                  Icons.payments_rounded,
+                                  size: 17,
+                                  color: Color(0xFFB45309),
                                 ),
-                                const SizedBox(width: 8),
-                                _buildInteractiveInfoChip(
-                                  index: 1,
-                                  availableWidth: constraints.maxWidth,
-                                  iconWidget: const Icon(
-                                    Icons.access_time_rounded,
-                                    size: 18,
-                                    color: Color(0xFF5C44E4),
-                                  ),
-                                  shortText: currentJob.workType == 'WFO'
-                                      ? 'On-Site'
-                                      : currentJob.workType,
-                                  fullText: currentJob.workType == 'WFO'
-                                      ? 'Mode: On-Site (WFO)'
-                                      : (currentJob.workType == 'WFH'
-                                            ? 'Mode: Remote (WFH)'
-                                            : 'Mode: Hybrid (Fleksibel)'),
+                                label: salaryText,
+                                index: 0,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: _buildInfoBubble(
+                                icon: const Icon(
+                                  Icons.home_work_rounded,
+                                  size: 17,
+                                  color: Color(0xFF5C44E4),
                                 ),
-                                const SizedBox(width: 8),
-                                _buildInteractiveInfoChip(
-                                  index: 2,
-                                  availableWidth: constraints.maxWidth,
-                                  iconWidget: const Icon(
+                                label: currentJob.workType == 'WFO'
+                                    ? 'On-site'
+                                    : currentJob.workType,
+                                index: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: StatusPulse(
+                                status: currentJob.status,
+                                child: _buildInfoBubble(
+                                  icon: const Icon(
                                     Icons.work_outline_rounded,
-                                    size: 18,
+                                    size: 17,
                                     color: Color(0xFF1E8E3E),
                                   ),
-                                  shortText: experienceText,
-                                  fullText: currentJob.status != 'Tersedia'
-                                      ? 'Tahap: ${currentJob.status}'
-                                      : 'Portal: ${currentJob.sourcePlatform}',
+                                  label: experienceText,
+                                  index: 2,
                                 ),
-                              ],
-                            );
-                          },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: _expandedInfoBubbleIndex == null
+                              ? const SizedBox.shrink()
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: _buildExpandedBubbleDetail(
+                                    currentJob,
+                                    _expandedInfoBubbleIndex!,
+                                    isDark,
+                                  ),
+                                ),
                         ),
 
                         const SizedBox(height: 18),
@@ -1762,70 +1779,24 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   ),
                 ),
 
-                // ── DETAIL PEKERJAAN: SEMUA TAB SELALU TERLIHAT ──
+                // ── MINIMUM QUALIFICATION: matches the reference card and
+                // displays the user's original job description verbatim. ──
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1E1E24)
-                                : const Color(0xFFECE8DF),
-                            borderRadius: BorderRadius.circular(19),
-                            border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF33333A)
-                                  : const Color(0xFFE1DCD2),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildTabItem(
-                                0,
-                                'Kualifikasi',
-                                Icons.verified_outlined,
-                              ),
-                              const SizedBox(width: 4),
-                              _buildTabItem(
-                                1,
-                                'Deskripsi',
-                                Icons.subject_rounded,
-                              ),
-                              const SizedBox(width: 4),
-                              _buildTabItem(
-                                2,
-                                'Benefit',
-                                Icons.redeem_outlined,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 240),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          transitionBuilder: (child, animation) => ClipRect(
-                            child: SizeTransition(
-                              sizeFactor: animation,
-                              alignment: Alignment.topCenter,
-                              child: child,
-                            ),
-                          ),
-                          child: _buildDetailSectionCard(currentJob, isDark),
-                        ),
-                      ],
-                    ),
+                    padding: const EdgeInsets.fromLTRB(28, 16, 28, 10),
+                    child: _buildReferenceQualificationCard(currentJob, isDark),
                   ),
                 ),
 
                 // ── BAGIAN BAWAH: OPSI MELIHAT DATA DENGAN LENGKAP ──
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 160),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      14,
+                      20,
+                      AppLayoutMetrics.contentBottomClearance(context),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1842,12 +1813,25 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
 
+                        if (currentJob.hasNextAction) ...[
+                          _buildOptionCard(
+                            icon: Icons.task_alt_rounded,
+                            iconColor: const Color(0xFF22A06B),
+                            title: currentJob.nextActionType!,
+                            subtitle:
+                                '${_formatTimelineDate(currentJob.nextActionAt!)}${currentJob.nextActionNote?.trim().isNotEmpty == true ? ' — ${currentJob.nextActionNote}' : ''}',
+                            onTap: () => _openEditJob(currentJob),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+
                         // Option 1: Timeline & Riwayat Seleksi with Hero Morph
                         _buildOptionCard(
                           icon: Icons.timeline_rounded,
                           iconColor: const Color(0xFF5C44E4),
                           title: 'Timeline & Riwayat Tahapan',
-                          subtitle: 'Status saat ini: ${currentJob.status}',
+                          subtitle:
+                              'Status saat ini: ${currentJob.status} • ${currentJob.recruitmentEvents.length} riwayat',
                           trailingBadge: currentJob.status,
                           badgeColor: AppTheme.getStatusColor(
                             currentJob.status,
@@ -2121,384 +2105,228 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       return const ['Kualifikasi belum dicantumkan pada lamaran ini.'];
     }
 
-    final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    final quals = <String>[];
-    for (final l in lines) {
-      final clean = l.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim();
-      if (clean.toLowerCase().contains('lulusan') ||
-          clean.toLowerCase().contains('pengalaman') ||
-          clean.toLowerCase().contains('menguasai') ||
-          clean.toLowerCase().contains('memiliki') ||
-          clean.toLowerCase().contains('keahlian') ||
-          clean.toLowerCase().contains('pendidikan') ||
-          clean.toLowerCase().contains('kualifikasi') ||
-          clean.toLowerCase().contains('skill') ||
-          clean.toLowerCase().contains('syarat')) {
-        quals.add(clean);
-      }
-    }
-
-    if (quals.isNotEmpty) return quals;
-
-    return const [
-      'Kualifikasi belum dapat dipisahkan dari deskripsi asli. Buka tab Deskripsi untuk membaca teks lengkap.',
-    ];
-  }
-
-  List<String> _getJobResponsibilitiesList(JobApplication job) {
-    final raw = job.jobDescription;
-    if (raw.isEmpty) {
-      return const ['Deskripsi pekerjaan belum dicantumkan pada lamaran ini.'];
-    }
-
-    final lines = raw.split('\n').where((l) => l.trim().isNotEmpty).toList();
-    final resps = <String>[];
-    for (final l in lines) {
-      final clean = l.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim();
-      if (clean.toLowerCase().contains('mengembangkan') ||
-          clean.toLowerCase().contains('merancang') ||
-          clean.toLowerCase().contains('membuat') ||
-          clean.toLowerCase().contains('mengelola') ||
-          clean.toLowerCase().contains('bertanggung') ||
-          clean.toLowerCase().contains('berkolaborasi') ||
-          clean.toLowerCase().contains('melakukan') ||
-          clean.toLowerCase().contains('tugas') ||
-          clean.toLowerCase().contains('tanggung jawab')) {
-        resps.add(clean);
-      }
-    }
-
-    if (resps.isNotEmpty) return resps;
-
-    return lines
+    // The reference design calls this section "Kualifikasi minimum", but the
+    // app must not invent qualifications. Display the exact user-entered job
+    // description, only normalizing visual bullet prefixes.
+    return raw
+        .split('\n')
         .map((line) => line.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim())
         .where((line) => line.isNotEmpty)
         .toList();
   }
 
-  List<String> _getBenefitsList(JobApplication job) {
-    final lines = job.jobDescription
-        .split('\n')
-        .map((line) => line.replaceAll(RegExp(r'^[•\-\*\d\.\s]+'), '').trim())
-        .where((line) => line.isNotEmpty);
-    const keywords = [
-      'benefit',
-      'fasilitas',
-      'tunjangan',
-      'bpjs',
-      'bonus',
-      'cuti',
-      'asuransi',
-      'allowance',
-      'insurance',
-      'leave',
-      'training',
-    ];
-    final benefits = lines
-        .where((line) {
-          final normalized = line.toLowerCase();
-          return keywords.any(normalized.contains);
-        })
-        .toSet()
-        .toList();
-
-    if (benefits.isNotEmpty) return benefits;
-    return const ['Informasi benefit belum dicantumkan pada lowongan ini.'];
-  }
-
-  Widget _buildInteractiveInfoChip({
+  Widget _buildInfoBubble({
+    required Widget icon,
+    required String label,
     required int index,
-    required double availableWidth,
-    required Widget iconWidget,
-    required String shortText,
-    required String fullText,
   }) {
-    final isExpanded = _expandedInfoChipIndex == index;
-    final anyExpanded = _expandedInfoChipIndex != null;
-    final isCompact = anyExpanded && !isExpanded;
     final isDark = AppTheme.isDark(context);
-    const compactWidth = 50.0;
-    const totalSpacing = 16.0;
-    final equalWidth = (availableWidth - totalSpacing) / 3;
-    final expandedWidth = availableWidth - totalSpacing - (compactWidth * 2);
-    final targetWidth = anyExpanded
-        ? (isExpanded ? expandedWidth : compactWidth)
-        : equalWidth;
-
-    return Semantics(
-      button: true,
-      selected: isExpanded,
-      label: '$fullText. Ketuk untuk ${isExpanded ? 'tutup' : 'buka'} detail.',
-      child: Tooltip(
-        message: fullText,
-        child: GestureDetector(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() {
-              if (_expandedInfoChipIndex == index) {
-                _expandedInfoChipIndex = null;
-              } else {
-                _expandedInfoChipIndex = index;
-              }
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOutCubicEmphasized,
-            width: targetWidth,
-            height: compactWidth,
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 0 : 14),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF242428) : Colors.white,
-              borderRadius: BorderRadius.circular(compactWidth / 2),
-              border: Border.all(
-                color: isExpanded
-                    ? const Color(0xFFB9A7F3)
-                    : (isDark
-                          ? const Color(0xFF383842)
-                          : const Color(0xFFE5E0D5)),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: isExpanded
-                      ? const Color(0xFF5C44E4).withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
-                  blurRadius: isExpanded ? 12 : 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                iconWidget,
-                if (!isCompact) ...[
-                  const SizedBox(width: 9),
-                  Flexible(
-                    child: Text(
-                      isExpanded ? fullText : shortText,
-                      style: TextStyle(
-                        fontSize: isExpanded ? 12.5 : 12,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : const Color(0xFF121214),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+    final expanded = _expandedInfoBubbleIndex == index;
+    return FluidBounceButton(
+      selected: expanded,
+      semanticLabel: 'Lihat detail $label',
+      onTap: () => setState(() {
+        _expandedInfoBubbleIndex = expanded ? null : index;
+      }),
+      scaleFactor: 0.97,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: expanded
+              ? (isDark ? const Color(0xFF3A325D) : const Color(0xFFFFF4C7))
+              : (isDark ? const Color(0xFF242428) : Colors.white),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: expanded
+                ? const Color(0xFFF8BA38)
+                : (isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5)),
           ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            icon,
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF121214),
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 15,
+              color: isDark ? Colors.white70 : const Color(0xFF55555A),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTabItem(int index, String label, IconData icon) {
-    final isSelected = _selectedTab == index;
-    final isDark = AppTheme.isDark(context);
-    final activeColor = switch (index) {
-      0 => const Color(0xFFFFE39A),
-      1 => const Color(0xFFDCCEF8),
-      _ => const Color(0xFFCDECCF),
+  Widget _buildExpandedBubbleDetail(
+    JobApplication job,
+    int index,
+    bool isDark,
+  ) {
+    final (icon, title, detail) = switch (index) {
+      0 => (
+        Icons.payments_rounded,
+        'Rincian gaji',
+        job.salaryOffered?.trim().isNotEmpty == true
+            ? job.salaryOffered!.trim()
+            : 'Nominal gaji belum dicantumkan.',
+      ),
+      1 => (
+        Icons.home_work_rounded,
+        'Mode kerja',
+        '${job.workType == 'WFO' ? 'On-site' : job.workType}${job.location?.trim().isNotEmpty == true ? ' di ${job.location!.trim()}' : ''}',
+      ),
+      _ => (
+        Icons.work_outline_rounded,
+        'Status lamaran',
+        'Tahap saat ini: ${job.status}. Dilamar pada ${job.appliedDate.day}/${job.appliedDate.month}/${job.appliedDate.year}.',
+      ),
     };
-    return Expanded(
-      child: FluidBounceButton(
-        semanticLabel: 'Tampilkan $label',
-        selected: isSelected,
-        onTap: () {
-          if (_selectedTab != index) setState(() => _selectedTab = index);
-        },
-        scaleFactor: 0.97,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
-          constraints: const BoxConstraints(minHeight: 48),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? activeColor.withValues(alpha: 0.22) : Colors.white)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.16 : 0.07,
-                      ),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected
-                    ? (isDark ? activeColor : const Color(0xFF252529))
-                    : (isDark ? Colors.white54 : const Color(0xFF77777C)),
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    height: 1.1,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: isSelected
-                        ? (isDark ? Colors.white : const Color(0xFF252529))
-                        : (isDark ? Colors.white60 : const Color(0xFF68686D)),
-                  ),
-                ),
-              ),
-            ],
+    return MotionReveal(
+      key: ValueKey('job-bubble-$index'),
+      duration: const Duration(milliseconds: 220),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF242428) : Colors.white,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailSectionCard(JobApplication job, bool isDark) {
-    final items = switch (_selectedTab) {
-      0 => _getQualificationsList(job),
-      1 => _getJobResponsibilitiesList(job),
-      _ => _getBenefitsList(job),
-    };
-    final title = switch (_selectedTab) {
-      0 => 'Kualifikasi minimum',
-      1 => 'Deskripsi pekerjaan',
-      _ => 'Benefit & fasilitas',
-    };
-    final subtitle = switch (_selectedTab) {
-      0 => 'Hal penting yang perlu kamu siapkan',
-      1 => 'Tanggung jawab utama posisi ini',
-      _ => 'Fasilitas yang tercantum di lowongan',
-    };
-    final icon = switch (_selectedTab) {
-      0 => Icons.verified_outlined,
-      1 => Icons.subject_rounded,
-      _ => Icons.redeem_outlined,
-    };
-    final accent = switch (_selectedTab) {
-      0 => const Color(0xFFF1B82D),
-      1 => const Color(0xFF7257D9),
-      _ => const Color(0xFF2E8B57),
-    };
-
-    return Container(
-      key: ValueKey(_selectedTab),
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 19, 20, 8),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E24) : Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: accent.withValues(alpha: isDark ? 0.28 : 0.22),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.055),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, size: 19, color: accent),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white : const Color(0xFF19191B),
-                        letterSpacing: -0.25,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: isDark
-                            ? const Color(0xFFA8A8AF)
-                            : const Color(0xFF747478),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Divider(
-            height: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFFEDE9E1),
-          ),
-          const SizedBox(height: 14),
-          ...List.generate(
-            items.length,
-            (index) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: const Color(0xFF5C44E4), size: 19),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(top: 1),
-                    decoration: BoxDecoration(
-                      color: accent,
-                      shape: BoxShape.circle,
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Text(
-                      items[index],
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? const Color(0xFFE7E7EA)
-                            : const Color(0xFF343438),
-                        height: 1.46,
-                      ),
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.3,
+                      color: isDark ? Colors.white70 : const Color(0xFF5C5C62),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildReferenceQualificationCard(JobApplication job, bool isDark) {
+    final description = _getQualificationsList(job);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 17),
+          padding: const EdgeInsets.fromLTRB(20, 31, 20, 20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF232329) : Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.08),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...description.map(
+                (line) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        margin: const EdgeInsets.only(top: 6, right: 9),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF151515),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          line,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF202124),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned.fill(
+          top: 0,
+          bottom: null,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 9),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF3A325D)
+                    : const Color(0xFFFFF4C7),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: const Text(
+                'Kualifikasi minimum',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

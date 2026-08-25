@@ -1,5 +1,5 @@
 import { createHash, randomInt } from 'node:crypto'
-import { apiError, audit, requireAdmin, supabaseAdmin } from '@/lib/admin-server'
+import { apiError, audit, requireAdmin, requireOwner, supabaseAdmin } from '@/lib/admin-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAdmin(request)
+    const user = await requireOwner(request)
     const body = await request.json()
     const plan = body.plan === 'yearly' ? 'yearly' : 'monthly'
     const durationDays = plan === 'yearly' ? 365 : 30

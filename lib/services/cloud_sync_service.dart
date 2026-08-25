@@ -156,4 +156,18 @@ class CloudSyncService {
       'payload': payload,
     }, onConflict: 'user_id');
   }
+
+  /// Returns only the current user's cloud preferences. Callers decide whether
+  /// they want to merge or replace local values, preventing a silent overwrite.
+  static Future<Map<String, dynamic>?> fetchPreferences() async {
+    final user = await SupabaseService.ensureAuthenticated();
+    final row = await SupabaseService.client
+        .from('user_preferences')
+        .select('payload')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    final payload = row?['payload'];
+    if (payload is! Map) return null;
+    return Map<String, dynamic>.from(payload);
+  }
 }

@@ -1,5 +1,6 @@
 import OpenAI from 'npm:openai@4'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import OpenAI from 'npm:openai@4'
 
 const jsonHeaders = { 'Content-Type': 'application/json' }
 
@@ -31,17 +32,15 @@ Deno.serve(async (request) => {
     return new Response(JSON.stringify({ error: 'Permintaan AI tidak valid.' }), { status: 400, headers: jsonHeaders })
   }
 
-  const admin = createClient(projectUrl, serviceRoleKey)
-  const { count } = await admin
-    .from('app_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('name', 'ai_request')
-    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-  if ((count ?? 0) >= 10) {
+  const { data: slotGranted, error: quotaError } = await userClient.rpc('claim_ai_request_slot')
+  if (quotaError) {
+    return new Response(JSON.stringify({ error: 'Kuota AI belum siap. Coba lagi nanti.' }), { status: 503, headers: jsonHeaders })
+  }
+  if (slotGranted !== true) {
     return new Response(JSON.stringify({ error: 'Kuota AI harian sudah tercapai.' }), { status: 429, headers: jsonHeaders })
   }
 
+  const admin = createClient(projectUrl, serviceRoleKey)
   const client = new OpenAI({ apiKey: openAiKey })
   const completion = await client.chat.completions.create({
     model: Deno.env.get('OPENAI_MODEL') ?? 'gpt-4o-mini',

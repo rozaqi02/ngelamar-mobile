@@ -29,7 +29,7 @@ class BackupImportPayload {
 /// Creates and restores portable ZIP backups. The manifest is validated before
 /// any data is returned, and archive paths are never written directly to disk.
 class BackupService {
-  static const schemaVersion = 3;
+  static const schemaVersion = 5;
   static const _manifestName = 'backup.json';
   static const _maxArchiveBytes = 50 * 1024 * 1024;
   static const _maxAttachmentBytes = 10 * 1024 * 1024;
@@ -77,6 +77,38 @@ class BackupService {
       if (logoWasNew && record['companyLogoPath'] != null) {
         attachmentBytes += archive.findFile(record['companyLogoPath'])!.size;
       }
+      final cvWasNew =
+          job.pdfCvPath != null && !attachmentNames.containsKey(job.pdfCvPath);
+      record['pdfCvPath'] = await _addAttachment(
+        archive: archive,
+        sourcePath: job.pdfCvPath,
+        kind: 'cv_docs',
+        jobId: job.id,
+        attachmentNames: attachmentNames,
+        attachmentBytes: attachmentBytes,
+      );
+      if (cvWasNew && record['pdfCvPath'] != null) {
+        attachmentBytes += archive.findFile(record['pdfCvPath'])!.size;
+      }
+      final customAttachments = <Map<String, dynamic>>[];
+      for (final attachment in job.attachments.take(10)) {
+        final wasNew = !attachmentNames.containsKey(attachment.path);
+        final archivedPath = await _addAttachment(
+          archive: archive,
+          sourcePath: attachment.path,
+          kind: 'job_attachments',
+          jobId: job.id,
+          attachmentNames: attachmentNames,
+          attachmentBytes: attachmentBytes,
+        );
+        if (wasNew && archivedPath != null) {
+          attachmentBytes += archive.findFile(archivedPath)!.size;
+        }
+        if (archivedPath != null) {
+          customAttachments.add({...attachment.toMap(), 'path': archivedPath});
+        }
+      }
+      record['attachments'] = customAttachments;
       serializedJobs.add(record);
     }
 
@@ -130,7 +162,7 @@ class BackupService {
       );
     }
 
-    if (archive.length > _maxJobs + 1) {
+    if (archive.length > (_maxJobs * 13) + 1) {
       throw const BackupException('Backup memuat terlalu banyak file.');
     }
     final totalUncompressed = archive.fold<int>(
@@ -158,7 +190,10 @@ class BackupService {
     }
 
     final backupSchemaVersion = manifest['schemaVersion'];
-    if (backupSchemaVersion != 2 && backupSchemaVersion != schemaVersion) {
+    if (backupSchemaVersion != 2 &&
+        backupSchemaVersion != 3 &&
+        backupSchemaVersion != 4 &&
+        backupSchemaVersion != schemaVersion) {
       throw const BackupException('Versi backup ini belum didukung.');
     }
     final rawJobs = manifest['jobs'];
@@ -198,6 +233,35 @@ class BackupService {
           restoredPaths: restoredPaths,
           appDirectory: appDirectory,
         );
+        record['pdfCvPath'] = backupSchemaVersion >= 4
+            ? await _restoreAttachment(
+                attachmentReference: record['pdfCvPath']?.toString(),
+                expectedKind: 'cv_docs',
+                attachments: attachments,
+                restoredPaths: restoredPaths,
+                appDirectory: appDirectory,
+              )
+            : null;
+        if (backupSchemaVersion >= 5 && record['attachments'] is List) {
+          final restoredAttachments = <Map<String, dynamic>>[];
+          for (final rawAttachment in record['attachments'] as List) {
+            if (rawAttachment is! Map) continue;
+            final attachment = Map<String, dynamic>.from(rawAttachment);
+            final restoredPath = await _restoreAttachment(
+              attachmentReference: attachment['path']?.toString(),
+              expectedKind: 'job_attachments',
+              attachments: attachments,
+              restoredPaths: restoredPaths,
+              appDirectory: appDirectory,
+            );
+            if (restoredPath != null) {
+              restoredAttachments.add({...attachment, 'path': restoredPath});
+            }
+          }
+          record['attachments'] = restoredAttachments;
+        } else {
+          record['attachments'] = const [];
+        }
         jobs.add(JobApplication.fromMap(record));
       }
     } catch (error) {
@@ -253,6 +317,8 @@ class BackupService {
         // rather than restoring references outside this app's storage.
         record['screenshotPath'] = null;
         record['companyLogoPath'] = null;
+        record['pdfCvPath'] = null;
+        record['attachments'] = const [];
         jobs.add(JobApplication.fromMap(record));
       }
       return BackupImportPayload(
@@ -338,7 +404,7 @@ class BackupService {
 
   static String _safeExtension(String sourcePath) {
     final match = RegExp(
-      r'\.(jpg|jpeg|png|webp)$',
+      r'\.(jpg|jpeg|png|webp|pdf)$',
       caseSensitive: false,
     ).firstMatch(sourcePath);
     return match == null ? '.bin' : '.${match.group(1)!.toLowerCase()}';

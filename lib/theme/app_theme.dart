@@ -74,7 +74,9 @@ class AppTheme {
 
   // ─────────────────────────────────────────────────
   // Dynamic Card Color Selector
-  // Assigns vibrant theme color per card index or company name
+  // Company-card colour is intentionally independent from recruitment status.
+  // Status is communicated by [getStatusColor] only, so a purple company card
+  // can never be mistaken for an interview stage.
   // ─────────────────────────────────────────────────
   static Color getCardColor(int index) {
     const colors = [
@@ -114,10 +116,20 @@ class AppTheme {
   }
 
   static Color getCompanyCardColor(String companyName, [String? status]) {
-    if (status != null && status.isNotEmpty) {
-      return getJobCardColor(status);
-    }
-    return getJobCardColor('Dikirim');
+    const companyTones = <Color>[
+      Color(0xFFE5D9FF), // lilac
+      Color(0xFFFFE1A8), // amber
+      Color(0xFFBDEDE0), // mint
+      Color(0xFFFFD5CF), // coral
+      Color(0xFFCFE8FF), // blue
+      Color(0xFFFFD8ED), // rose
+    ];
+    final normalized = companyName.trim().toLowerCase();
+    final hash = normalized.codeUnits.fold<int>(
+      0,
+      (value, unit) => value + unit,
+    );
+    return companyTones[hash % companyTones.length];
   }
 
   static bool isDarkCard(Color color) {

@@ -27,6 +27,10 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Isi pesan kotak masuk tidak valid.' }, { status: 400 })
     }
     const type = ['announcement', 'pro', 'reminder', 'system'].includes(body.type) ? body.type : 'announcement'
+    const actionUrl = validActionUrl(body.actionUrl)
+    if (body.actionUrl && actionUrl === null) {
+      return Response.json({ error: 'Tautan aksi harus berupa URL HTTPS yang valid.' }, { status: 400 })
+    }
     const { data, error } = await supabaseAdmin()
       .from('notification_inbox')
       .insert({
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
         title,
         body: message,
         type,
-        action_url: typeof body.actionUrl === 'string' && body.actionUrl ? body.actionUrl.trim() : null,
+        action_url: actionUrl,
       })
       .select()
       .single()
@@ -69,7 +73,11 @@ export async function PATCH(request: Request) {
       updates.type = body.type
     }
     if (typeof body.actionUrl !== 'undefined') {
-      updates.action_url = typeof body.actionUrl === 'string' && body.actionUrl.trim() ? body.actionUrl.trim() : null
+      const actionUrl = validActionUrl(body.actionUrl)
+      if (body.actionUrl && actionUrl === null) {
+        return Response.json({ error: 'Tautan aksi harus berupa URL HTTPS yang valid.' }, { status: 400 })
+      }
+      updates.action_url = actionUrl
     }
     const { data, error } = await supabaseAdmin()
       .from('notification_inbox')
@@ -82,6 +90,16 @@ export async function PATCH(request: Request) {
     return Response.json({ notification: data })
   } catch (error) {
     return apiError(error)
+  }
+}
+
+function validActionUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'https:' ? url.toString() : null
+  } catch {
+    return null
   }
 }
 

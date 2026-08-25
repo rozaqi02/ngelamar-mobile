@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties and fill it with values kept outside Git.
+# The referenced .jks file is ignored by android/.gitignore and must be backed up securely.
+storePassword=replace-with-a-strong-password
+keyPassword=replace-with-a-strong-password
+keyAlias=ngelamar-release
+storeFile=../keys/ngelamar-release.jks

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/job_application.dart';
 import '../services/prefs_service.dart';
 import '../services/notification_service.dart';
+import '../services/android_home_widget_service.dart';
 import '../services/pro_verification_service.dart';
 import '../services/secure_hive_service.dart';
 
@@ -15,6 +16,7 @@ class JobState {
   final List<JobApplication> jobs;
   final String searchQuery;
   final String selectedStatusFilter;
+  final String selectedWorkTypeFilter;
   final bool onlyFavoritesFilter;
   final bool onlyWfhFilter;
   final bool isLoading;
@@ -30,6 +32,7 @@ class JobState {
     required this.jobs,
     this.searchQuery = '',
     this.selectedStatusFilter = 'Semua',
+    this.selectedWorkTypeFilter = 'Semua',
     this.onlyFavoritesFilter = false,
     this.onlyWfhFilter = false,
     this.isLoading = false,
@@ -46,6 +49,7 @@ class JobState {
     List<JobApplication>? jobs,
     String? searchQuery,
     String? selectedStatusFilter,
+    String? selectedWorkTypeFilter,
     bool? onlyFavoritesFilter,
     bool? onlyWfhFilter,
     bool? isLoading,
@@ -62,6 +66,8 @@ class JobState {
       jobs: jobs ?? this.jobs,
       searchQuery: searchQuery ?? this.searchQuery,
       selectedStatusFilter: selectedStatusFilter ?? this.selectedStatusFilter,
+      selectedWorkTypeFilter:
+          selectedWorkTypeFilter ?? this.selectedWorkTypeFilter,
       onlyFavoritesFilter: onlyFavoritesFilter ?? this.onlyFavoritesFilter,
       onlyWfhFilter: onlyWfhFilter ?? this.onlyWfhFilter,
       isLoading: isLoading ?? this.isLoading,
@@ -80,6 +86,7 @@ class JobState {
   // Metrics & Stats
   int get totalCount => jobs.length;
   int get appliedCount => jobs.where((j) => j.status == 'Dikirim').length;
+  int get ghostedCount => jobs.where((j) => j.isGhosted).length;
   int get interviewCount => jobs
       .where(
         (j) => j.status.contains('Interview') || j.status == 'Tes / Psikotes',
@@ -129,6 +136,10 @@ class JobState {
       }
       if (selectedStatusFilter != 'Semua' &&
           job.status != selectedStatusFilter) {
+        return false;
+      }
+      if (selectedWorkTypeFilter != 'Semua' &&
+          job.workType != selectedWorkTypeFilter) {
         return false;
       }
       if (onlyFavoritesFilter && !job.isFavorite) {
@@ -270,6 +281,7 @@ class JobNotifier extends StateNotifier<JobState> {
 
     unawaited(refreshProEntitlement());
     _syncRemindersQuietly(loaded);
+    _syncWidgetQuietly(loaded);
     return box;
   }
 
@@ -296,8 +308,14 @@ class JobNotifier extends StateNotifier<JobState> {
     });
   }
 
+  void _syncWidgetQuietly(List<JobApplication> jobs) {
+    AndroidHomeWidgetService.syncJobs(jobs).catchError((Object error) {
+      debugPrint('Sinkronisasi widget Android gagal: $error');
+    });
+  }
+
   void _scheduleReminderQuietly(JobApplication job) {
-    NotificationService.syncInterviewReminder(job).catchError((Object error) {
+    NotificationService.syncJobReminders(job).catchError((Object error) {
       debugPrint('Penjadwalan notifikasi gagal: $error');
       return null;
     });
@@ -342,7 +360,10 @@ class JobNotifier extends StateNotifier<JobState> {
     return state.jobs.any(
       (job) =>
           job.id != excludingId &&
-          (job.screenshotPath == path || job.companyLogoPath == path),
+          (job.screenshotPath == path ||
+              job.companyLogoPath == path ||
+              job.pdfCvPath == path ||
+              job.attachments.any((attachment) => attachment.path == path)),
     );
   }
 
@@ -365,6 +386,10 @@ class JobNotifier extends StateNotifier<JobState> {
     for (final job in jobs) {
       await _deleteAttachmentIfUnused(job.screenshotPath, excludingId: job.id);
       await _deleteAttachmentIfUnused(job.companyLogoPath, excludingId: job.id);
+      await _deleteAttachmentIfUnused(job.pdfCvPath, excludingId: job.id);
+      for (final attachment in job.attachments) {
+        await _deleteAttachmentIfUnused(attachment.path, excludingId: job.id);
+      }
     }
   }
 
@@ -378,6 +403,7 @@ class JobNotifier extends StateNotifier<JobState> {
       final updated = _normalizedJobs([...state.jobs, ...samples]);
       state = state.copyWith(jobs: updated);
       _syncRemindersQuietly(updated);
+      _syncWidgetQuietly(updated);
       return true;
     } catch (e) {
       debugPrint('Error loading sample jobs: $e');
@@ -412,6 +438,7 @@ class JobNotifier extends StateNotifier<JobState> {
     final updated = _normalizedJobs([...state.jobs, ...accepted]);
     state = state.copyWith(jobs: updated);
     _syncRemindersQuietly(updated);
+    _syncWidgetQuietly(updated);
     return JobImportResult(
       importedCount: accepted.length,
       skippedCount: newJobs.length - accepted.length,
@@ -435,6 +462,7 @@ class JobNotifier extends StateNotifier<JobState> {
       state = state.copyWith(jobs: []);
       await _deleteAttachmentsForJobs(jobsToDelete);
       await NotificationService.cancelAllInterviewReminders();
+      _syncWidgetQuietly(const []);
       return true;
     } catch (e) {
       debugPrint('Error clearing jobs: $e');
@@ -446,11 +474,13 @@ class JobNotifier extends StateNotifier<JobState> {
     final duplicate = _findDuplicate(job);
     if (duplicate != null) throw DuplicateJobException(duplicate);
 
+    final savedJob = _ensureInitialHistory(job);
     final box = await _boxReady;
-    await box.put(job.id, job.toJson());
-    final updated = _normalizedJobs([job, ...state.jobs]);
+    await box.put(savedJob.id, savedJob.toJson());
+    final updated = _normalizedJobs([savedJob, ...state.jobs]);
     state = state.copyWith(jobs: updated);
-    _scheduleReminderQuietly(job);
+    _scheduleReminderQuietly(savedJob);
+    _syncWidgetQuietly(updated);
   }
 
   /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet) dengan proteksi anti-duplikasi.
@@ -486,30 +516,115 @@ class JobNotifier extends StateNotifier<JobState> {
     if (existing == null) {
       throw StateError('Lamaran yang ingin diperbarui tidak ditemukan.');
     }
+    if (existing.isSampleData && job.status != existing.status) {
+      throw StateError(
+        'Status data contoh dikunci. Jadikan data contoh sebagai lamaran nyata terlebih dahulu.',
+      );
+    }
     final duplicate = _findDuplicate(job, excludingId: job.id);
     if (duplicate != null) throw DuplicateJobException(duplicate);
 
+    final savedJob = _withStatusHistory(existing, job);
     final box = await _boxReady;
-    await box.put(job.id, job.toJson());
+    await box.put(savedJob.id, savedJob.toJson());
     final updated = _normalizedJobs(
-      state.jobs.map((j) => j.id == job.id ? job : j),
+      state.jobs.map((j) => j.id == savedJob.id ? savedJob : j),
     );
     state = state.copyWith(jobs: updated);
+    _syncWidgetQuietly(updated);
 
-    if (existing.screenshotPath != job.screenshotPath) {
+    if (existing.screenshotPath != savedJob.screenshotPath) {
       await _deleteAttachmentIfUnused(existing.screenshotPath);
     }
-    if (existing.companyLogoPath != job.companyLogoPath) {
+    if (existing.companyLogoPath != savedJob.companyLogoPath) {
       await _deleteAttachmentIfUnused(existing.companyLogoPath);
     }
-
-    if (job.status == 'Ditolak' ||
-        job.status == 'Diterima' ||
-        (job.interviewDate == null && job.testDate == null)) {
-      _cancelReminderQuietly(job.id);
-    } else {
-      _scheduleReminderQuietly(job);
+    if (existing.pdfCvPath != savedJob.pdfCvPath) {
+      await _deleteAttachmentIfUnused(existing.pdfCvPath);
     }
+    for (final attachment in existing.attachments) {
+      if (!savedJob.attachments.any((item) => item.path == attachment.path)) {
+        await _deleteAttachmentIfUnused(attachment.path);
+      }
+    }
+
+    if (savedJob.status == 'Ditolak' ||
+        savedJob.status == 'Diterima' ||
+        (savedJob.interviewDate == null && savedJob.testDate == null)) {
+      _cancelReminderQuietly(savedJob.id);
+    } else {
+      _scheduleReminderQuietly(savedJob);
+    }
+  }
+
+  JobApplication _ensureInitialHistory(JobApplication job) {
+    if (job.recruitmentEvents.isNotEmpty) return job;
+    return job.copyWith(
+      recruitmentEvents: [
+        RecruitmentEvent(
+          id: 'event_applied_${job.id}',
+          type: 'lamaran_dikirim',
+          title: job.status == 'Dikirim'
+              ? 'Lamaran dikirim'
+              : 'Lamaran dicatat (${job.status})',
+          occurredAt: job.appliedDate,
+        ),
+      ],
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  JobApplication _withStatusHistory(
+    JobApplication existing,
+    JobApplication candidate,
+  ) {
+    final now = DateTime.now();
+    final existingEvents = existing.recruitmentEvents.isEmpty
+        ? _ensureInitialHistory(existing).recruitmentEvents
+        : existing.recruitmentEvents;
+    final statusChanged = existing.status != candidate.status;
+    return candidate.copyWith(
+      createdAt: existing.createdAt,
+      updatedAt: now,
+      recruitmentEvents: statusChanged
+          ? [
+              ...existingEvents,
+              RecruitmentEvent(
+                id: 'event_status_${candidate.id}_${now.microsecondsSinceEpoch}',
+                type: 'status',
+                title: 'Status menjadi ${candidate.status}',
+                occurredAt: now,
+                notes: candidate.outcomeReason,
+              ),
+            ]
+          : (candidate.recruitmentEvents.isEmpty
+                ? existingEvents
+                : candidate.recruitmentEvents),
+    );
+  }
+
+  Future<void> addRecruitmentEvent(String jobId, RecruitmentEvent event) async {
+    final job = state.jobs.firstWhere((item) => item.id == jobId);
+    await updateJob(
+      job.copyWith(recruitmentEvents: [...job.recruitmentEvents, event]),
+    );
+  }
+
+  Future<void> setNextAction({
+    required String jobId,
+    required DateTime? dueAt,
+    String? type,
+    String? note,
+  }) async {
+    final job = state.jobs.firstWhere((item) => item.id == jobId);
+    await updateJob(
+      job.copyWith(
+        nextActionAt: dueAt,
+        nextActionType: type,
+        nextActionNote: note,
+        clearNextAction: dueAt == null,
+      ),
+    );
   }
 
   Future<void> deleteJob(String id) async {
@@ -521,6 +636,7 @@ class JobNotifier extends StateNotifier<JobState> {
     state = state.copyWith(jobs: updated);
     await _deleteAttachmentsForJobs([job]);
     _cancelReminderQuietly(id);
+    _syncWidgetQuietly(updated);
   }
 
   Future<void> toggleFavorite(String id) async {
@@ -531,8 +647,18 @@ class JobNotifier extends StateNotifier<JobState> {
 
   Future<void> updateStatus(String id, String status) async {
     final job = state.jobs.firstWhere((j) => j.id == id);
-    if (job.isSampleData) return;
+    if (job.isSampleData) {
+      throw StateError(
+        'Status data contoh dikunci. Jadikan data contoh sebagai lamaran nyata terlebih dahulu.',
+      );
+    }
     final updated = job.copyWith(status: status);
+    await updateJob(updated);
+  }
+
+  Future<void> convertSampleJobToReal(String id) async {
+    final job = state.jobs.firstWhere((j) => j.id == id);
+    final updated = job.copyWith(isSampleData: false);
     await updateJob(updated);
   }
 
@@ -542,6 +668,10 @@ class JobNotifier extends StateNotifier<JobState> {
 
   void setStatusFilter(String status) {
     state = state.copyWith(selectedStatusFilter: status);
+  }
+
+  void setWorkTypeFilter(String workType) {
+    state = state.copyWith(selectedWorkTypeFilter: workType);
   }
 
   void toggleOnlyFavoritesFilter() {
@@ -556,6 +686,7 @@ class JobNotifier extends StateNotifier<JobState> {
     state = state.copyWith(
       searchQuery: '',
       selectedStatusFilter: 'Semua',
+      selectedWorkTypeFilter: 'Semua',
       onlyFavoritesFilter: false,
       onlyWfhFilter: false,
     );

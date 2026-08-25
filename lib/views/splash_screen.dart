@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/prefs_service.dart';
+import '../services/remote_config_service.dart';
 import 'landing/landing_screen.dart';
 import 'main_navigation.dart';
 
@@ -44,6 +46,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _navigate() async {
+    await RemoteConfigService.refresh();
+    if (RemoteConfigService.requiresUpdate('2.25.5')) {
+      if (!mounted) return;
+      await _showRequiredUpdate();
+      return;
+    }
     final isDone = await PrefsService.isOnboardingDone();
     if (!mounted) return;
 
@@ -52,6 +60,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     } else {
       _goToLanding();
     }
+  }
+
+  Future<void> _showRequiredUpdate() async {
+    final storeUrl = RemoteConfigService.minimumSupportedStoreUrl;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          icon: const Icon(Icons.system_update_alt_rounded),
+          title: const Text('Pembaruan diperlukan'),
+          content: const Text(
+            'Versi Ngelamar ini sudah tidak didukung. Perbarui aplikasi agar data dan fitur tetap aman.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: storeUrl == null
+                  ? null
+                  : () => launchUrl(
+                      Uri.parse(storeUrl),
+                      mode: LaunchMode.externalApplication,
+                    ),
+              child: const Text('Perbarui aplikasi'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _goToLanding() {

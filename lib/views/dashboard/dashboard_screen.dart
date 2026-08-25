@@ -9,11 +9,13 @@ import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_search_field.dart';
 import '../../widgets/apple_animations.dart';
+import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/crying_envelope_mascot.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
+import '../../widgets/app_motion.dart';
 import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
 import '../jobs/add_edit_job_screen.dart';
@@ -34,7 +36,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _addBtnKey = GlobalKey();
   bool _isSearchActive = false;
-  int? _expandedIndex;
+  final Set<int> _expandedIndices = <int>{};
   Timer? _debounce;
   String _profileSubtitle = 'Minat belum dipilih';
 
@@ -67,25 +69,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
     final result = await Navigator.of(ctx).push<JobApplication>(
-      PageRouteBuilder<JobApplication>(
-        transitionDuration: const Duration(milliseconds: 380),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const AddEditJobScreen(startQuickMode: true),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curvedAnim = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutQuart,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1.0),
-              end: Offset.zero,
-            ).animate(curvedAnim),
-            child: child,
-          );
-        },
+      AppMotion.fadeScaleRoute<JobApplication>(
+        builder: (_) => const AddEditJobScreen(startQuickMode: true),
       ),
     );
     if (result != null && mounted) {
@@ -267,6 +252,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           );
         },
       ),
+    );
+  }
+
+  void _showWeeklyRecap(List<JobApplication> jobs) {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _WeeklyRecapSheet(jobs: jobs),
     );
   }
 
@@ -497,7 +491,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Navigator.pop(ctx);
                     Navigator.push(
                       context,
-                      CupertinoPageRoute(
+                      AppMotion.detailDockRoute(
                         builder: (_) => JobDetailScreen(job: job),
                       ),
                     );
@@ -565,7 +559,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Navigator.pop(ctx);
                     Navigator.push(
                       context,
-                      CupertinoPageRoute(
+                      AppMotion.detailDockRoute(
                         builder: (_) => JobDetailScreen(job: job),
                       ),
                     );
@@ -645,10 +639,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ? state.userName
         : 'Pencari Kerja';
     final displayJobs = state.priorityJobs;
-    final activeExpandedIndex =
-        _expandedIndex != null && _expandedIndex! < displayJobs.length
-        ? _expandedIndex
-        : null;
 
     final hasProfilePhoto =
         state.userProfilePhoto.isNotEmpty &&
@@ -742,8 +732,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
 
-                    // Circular Search Button
+                    // Top Right Action Button: Circular Search Button
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -756,12 +747,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         });
                       },
                       child: Container(
-                        width: 42,
-                        height: 42,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF242428)
-                              : Colors.white,
+                          color: bg,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isDark
@@ -783,10 +772,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           _isSearchActive
                               ? Icons.close_rounded
                               : Icons.search_rounded,
-                          size: 20,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF121214),
+                          size: 21,
+                          color: txtPri,
                         ),
                       ),
                     ),
@@ -794,132 +781,148 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
               ),
 
-              // Search Bar (if active)
-              if (_isSearchActive)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: AppSearchField(
-                    controller: _searchController,
-                    autofocus: true,
-                    hintText: 'Cari posisi, perusahaan, atau kota...',
-                    onClear: () {
-                      ref.read(jobProvider.notifier).setSearchQuery('');
-                      setState(() {});
-                    },
-                    onChanged: (v) {
-                      if (_debounce?.isActive ?? false) _debounce!.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 400), () {
-                        if (mounted) {
-                          setState(() {});
-                          ref.read(jobProvider.notifier).setSearchQuery(v);
-                        }
-                      });
-                    },
-                  ),
-                ),
+              // Search Bar with Smooth Expansion Animation
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                child: _isSearchActive
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                        child: AppSearchField(
+                          controller: _searchController,
+                          autofocus: true,
+                          hintText: 'Cari posisi, perusahaan, atau kota...',
+                          onClear: () {
+                            ref.read(jobProvider.notifier).setSearchQuery('');
+                            setState(() {});
+                          },
+                          onChanged: (v) {
+                            if (_debounce?.isActive ?? false) {
+                              _debounce!.cancel();
+                            }
+                            _debounce = Timer(
+                              const Duration(milliseconds: 400),
+                              () {
+                                if (mounted) {
+                                  setState(() {});
+                                  ref
+                                      .read(jobProvider.notifier)
+                                      .setSearchQuery(v);
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
-              // ── LARGE TITLE & ACTIONS ROW (NO OFFSIDE OVERFLOW) ──
+              // ── LARGE TITLE ROW WITH RIGHT-ALIGNED FILTER BUTTON (SESUAI FOTO) ──
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Text(
-                        'LANGKAH\nKARIERMU',
+                        'LIHAT\nLAMARANMU',
                         style: TextStyle(
-                          fontSize: 36,
+                          fontSize: 34,
                           fontWeight: FontWeight.w900,
                           color: txtPri,
-                          letterSpacing: -1.65,
-                          height: 0.94,
+                          letterSpacing: -1.6,
+                          height: 0.96,
+                        ),
+                      ),
+                    ),
+
+                    FluidBounceButton(
+                      semanticLabel: 'Buka ringkasan mingguan',
+                      onTap: () => _showWeeklyRecap(state.jobs),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: bg,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : const Color(0xFFDCD8CE),
+                            width: 1.4,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.insights_rounded,
+                          size: 19,
+                          color: Color(0xFF5C44E4),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
 
-                    // Actions: Filter (Atas) & Tambah (Bawah) - Rata Kanan
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Filter Pill Button with Fluid Touch Bounce
-                        FluidBounceButton(
-                          onTap: () => _showFilterModal(context),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 5,
+                    // Filters Pill Button (Sesuai Foto Mockup)
+                    FluidBounceButton(
+                      onTap: () => _showFilterModal(context),
+                      child: Container(
+                        height: 42,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color:
+                                (state.selectedStatusFilter != 'Semua' ||
+                                    state.onlyFavoritesFilter ||
+                                    state.onlyWfhFilter)
+                                ? const Color(0xFF5C44E4)
+                                : (isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFDCD8CE)),
+                            width: 1.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
                             ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF242428)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 16,
+                              color:
+                                  (state.selectedStatusFilter != 'Semua' ||
+                                      state.onlyFavoritesFilter ||
+                                      state.onlyWfhFilter)
+                                  ? const Color(0xFF5C44E4)
+                                  : txtPri,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Filters',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
                                 color:
                                     (state.selectedStatusFilter != 'Semua' ||
                                         state.onlyFavoritesFilter ||
                                         state.onlyWfhFilter)
                                     ? const Color(0xFF5C44E4)
-                                    : (isDark
-                                          ? const Color(0xFF383842)
-                                          : const Color(0xFFDCD8CE)),
-                                width: 1.2,
+                                    : txtPri,
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.04,
-                                  ),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.tune_rounded,
-                                  size: 13,
-                                  color:
-                                      (state.selectedStatusFilter != 'Semua' ||
-                                          state.onlyFavoritesFilter ||
-                                          state.onlyWfhFilter)
-                                      ? const Color(0xFF5C44E4)
-                                      : (isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF121214)),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  (state.selectedStatusFilter != 'Semua' ||
-                                          state.onlyFavoritesFilter ||
-                                          state.onlyWfhFilter)
-                                      ? 'Filter (Aktif)'
-                                      : 'Filter',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        (state.selectedStatusFilter !=
-                                                'Semua' ||
-                                            state.onlyFavoritesFilter ||
-                                            state.onlyWfhFilter)
-                                        ? const Color(0xFF5C44E4)
-                                        : (isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF121214)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -965,42 +968,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             FluidBounceButton(
                               key: _addBtnKey,
                               onTap: () => _openAddJob(context),
-                              child: Container(
-                                width: double.infinity,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF5C44E4)
-                                      : const Color(0xFF19191B),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.16,
+                              child: Hero(
+                                tag: 'add_job_action_button',
+                                flightShuttleBuilder:
+                                    (
+                                      flightContext,
+                                      animation,
+                                      flightDirection,
+                                      fromHeroContext,
+                                      toHeroContext,
+                                    ) => Material(
+                                      type: MaterialType.transparency,
+                                      child: toHeroContext.widget,
+                                    ),
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF5C44E4)
+                                        : const Color(0xFF19191B),
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 5),
                                       ),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_rounded,
-                                      color: Colors.white,
-                                      size: 21,
-                                    ),
-                                    SizedBox(width: 9),
-                                    Text(
-                                      'Catat Lamaran',
-                                      style: TextStyle(
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.add_rounded,
                                         color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w900,
+                                        size: 21,
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(width: 9),
+                                      Text(
+                                        'Catat Lamaran',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -1012,7 +1029,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 height: 56,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF1E8E3E),
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(28),
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(
@@ -1051,7 +1068,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 )
               else
-                _buildEdgeToEdgeStackedDeck(displayJobs, activeExpandedIndex),
+                _buildEdgeToEdgeStackedDeck(displayJobs),
             ],
           ),
         ),
@@ -1059,23 +1076,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-  Widget _buildEdgeToEdgeStackedDeck(
-    List<JobApplication> jobs,
-    int? activeExpandedIndex,
-  ) {
+  Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs) {
     return Column(
       children: List.generate(jobs.length, (index) {
         final job = jobs[index];
-        final isExpanded = index == activeExpandedIndex;
+        final isLast = index == jobs.length - 1;
+        final isExpanded =
+            _expandedIndices.contains(index) ||
+            (isLast && !_expandedIndices.contains(-100));
         final cardColor = AppTheme.getCompanyCardColor(
           job.companyName,
           job.status,
         );
-        final isDarkText =
-            cardColor == AppTheme.cardYellow || cardColor == AppTheme.cardGreen;
+        final isDarkText = !AppTheme.isDarkCard(cardColor);
         final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
 
-        final isLast = index == jobs.length - 1;
         final topMargin = index == 0 ? 0.0 : -22.0;
         final minimumLastHeight = (MediaQuery.sizeOf(context).height * 0.38)
             .clamp(280.0, 440.0)
@@ -1087,244 +1102,255 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             .inDays;
         final needsFollowup = job.status == 'Dikirim' && daysSinceApplied >= 7;
 
-        return Semantics(
-          button: true,
-          label:
-              '${job.companyName}, ${job.position}. ${isExpanded ? 'Terbuka. Ketuk untuk menutup.' : 'Tertutup. Ketuk untuk membuka.'}',
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _expandedIndex = isExpanded ? null : index);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.fastOutSlowIn,
-              width: double.infinity,
-              constraints: BoxConstraints(
-                minHeight: isLast ? minimumLastHeight : 0,
-              ),
-              margin: EdgeInsets.only(top: topMargin),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.vertical(
-                  top: const Radius.circular(32),
-                  bottom: isLast
-                      ? const Radius.circular(32)
-                      : const Radius.circular(0),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.10),
-                    blurRadius: 10,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: AnimatedSize(
+        return StaggeredReveal(
+          index: index,
+          child: Semantics(
+            button: true,
+            label:
+                '${job.companyName}, ${job.position}. ${isExpanded ? 'Terbuka. Ketuk untuk menutup.' : 'Tertutup. Ketuk untuk membuka.'}',
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (_expandedIndices.contains(index)) {
+                    _expandedIndices.remove(index);
+                    if (isLast) {
+                      _expandedIndices.add(
+                        -100,
+                      ); // sentinel to allow closing last card if tapped
+                    }
+                  } else {
+                    _expandedIndices.add(index);
+                    if (isLast) {
+                      _expandedIndices.remove(-100);
+                    }
+                  }
+                });
+              },
+              child: AnimatedContainer(
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.fastOutSlowIn,
-                alignment: Alignment.topCenter,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    22,
-                    18,
-                    22,
-                    isLast
-                        ? 135 + MediaQuery.paddingOf(context).bottom
-                        : (isExpanded ? 48 : 44),
+                width: double.infinity,
+                constraints: BoxConstraints(
+                  minHeight: isLast ? minimumLastHeight : 0,
+                ),
+                margin: EdgeInsets.only(top: topMargin),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.vertical(
+                    top: const Radius.circular(32),
+                    bottom: isLast
+                        ? const Radius.circular(32)
+                        : const Radius.circular(0),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Top Row: Logo + Company Name + Smart Alert / Arrow
-                      Row(
-                        children: [
-                          Hero(
-                            tag: 'company_logo_${job.id}',
-                            flightShuttleBuilder:
-                                (
-                                  flightContext,
-                                  animation,
-                                  flightDirection,
-                                  fromHeroContext,
-                                  toHeroContext,
-                                ) {
-                                  return Material(
-                                    type: MaterialType.transparency,
-                                    child: toHeroContext.widget,
-                                  );
-                                },
-                            child: CompanyLogoBadge(
-                              companyName: job.companyName,
-                              size: 42,
-                              customImagePath: job.companyLogoPath,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-
-                          // Company Name
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  job.companyName,
-                                  style: TextStyle(
-                                    fontSize: 18.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: titleColor,
-                                    letterSpacing: -0.3,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.fastOutSlowIn,
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      22,
+                      18,
+                      22,
+                      isLast
+                          ? AppLayoutMetrics.contentBottomClearance(context)
+                          : (isExpanded ? 48 : 44),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Top Row: Logo + Company Name + Smart Alert / Arrow
+                        Row(
+                          children: [
+                            SizedBox.square(
+                              dimension: 42,
+                              child: Hero(
+                                tag: 'company_logo_${job.id}',
+                                createRectTween: companyLogoRectTween,
+                                flightShuttleBuilder: companyLogoFlightShuttle,
+                                child: CompanyLogoBadge(
+                                  companyName: job.companyName,
+                                  size: 42,
+                                  customImagePath: job.companyLogoPath,
                                 ),
-                                if (needsFollowup) ...[
-                                  const SizedBox(height: 2),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+
+                            // Company Name
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    job.companyName,
+                                    style: TextStyle(
+                                      fontSize: 18.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: titleColor,
+                                      letterSpacing: -0.3,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.2,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (needsFollowup) ...[
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
                                       ),
-                                      borderRadius: BorderRadius.circular(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        'H+7 Waktunya Follow-Up',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ),
-                                    child: const Text(
-                                      'H+7 Waktunya Follow-Up',
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.bold,
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                            // Diagonal Arrow in Circular White Container with Fluid Fade Animation
+                            AnimatedOpacity(
+                              opacity: isExpanded ? 0.0 : 1.0,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.fastOutSlowIn,
+                              child: AnimatedScale(
+                                scale: isExpanded ? 0.82 : 1.0,
+                                duration: const Duration(milliseconds: 260),
+                                curve: Curves.fastOutSlowIn,
+                                child: IgnorePointer(
+                                  ignoring: isExpanded,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      Navigator.push(
+                                        context,
+                                        AppMotion.detailDockRoute(
+                                          builder: (_) =>
+                                              JobDetailScreen(job: job),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: const BoxDecoration(
                                         color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.arrow_outward_rounded,
+                                          size: 18,
+                                          color: Color(0xFF121214),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Expanded Card Body (Position Title, Salary, Details Button)
+                        if (isExpanded) ...[
+                          const SizedBox(height: 18),
+
+                          // Position Title
+                          Text(
+                            job.position,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                              letterSpacing: -0.5,
+                              height: 1.18,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Bottom Row: Salary in Rp & Right Chevron >
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                AppMotion.detailDockRoute(
+                                  builder: (_) => JobDetailScreen(job: job),
+                                ),
+                              );
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    job.salaryOffered != null &&
+                                            job.salaryOffered!.isNotEmpty
+                                        ? job.salaryOffered!
+                                        : 'Gaji belum dicantumkan',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: titleColor,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Lihat Detail',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: titleColor.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 22,
+                                      color: titleColor,
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
-
-                          // Diagonal Arrow in Circular White Container with Fluid Fade Animation
-                          AnimatedOpacity(
-                            opacity: isExpanded ? 0.0 : 1.0,
-                            duration: const Duration(milliseconds: 260),
-                            curve: Curves.fastOutSlowIn,
-                            child: AnimatedScale(
-                              scale: isExpanded ? 0.82 : 1.0,
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.fastOutSlowIn,
-                              child: IgnorePointer(
-                                ignoring: isExpanded,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    Navigator.push(
-                                      context,
-                                      CupertinoPageRoute(
-                                        builder: (_) =>
-                                            JobDetailScreen(job: job),
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.arrow_outward_rounded,
-                                        size: 18,
-                                        color: Color(0xFF121214),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
-                      ),
-
-                      // Expanded Card Body (Position Title, Salary, Details Button)
-                      if (isExpanded) ...[
-                        const SizedBox(height: 18),
-
-                        // Position Title
-                        Text(
-                          job.position,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: titleColor,
-                            letterSpacing: -0.5,
-                            height: 1.18,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        // Bottom Row: Salary in Rp & Right Chevron >
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (_) => JobDetailScreen(job: job),
-                              ),
-                            );
-                          },
-                          behavior: HitTestBehavior.opaque,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  job.salaryOffered != null &&
-                                          job.salaryOffered!.isNotEmpty
-                                      ? job.salaryOffered!
-                                      : 'Gaji belum dicantumkan',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    color: titleColor,
-                                    letterSpacing: -0.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Row(
-                                children: [
-                                  Text(
-                                    'Lihat Detail',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: titleColor.withValues(alpha: 0.85),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 22,
-                                    color: titleColor,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1332,6 +1358,160 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
         );
       }),
+    );
+  }
+}
+
+class _WeeklyRecapSheet extends StatelessWidget {
+  final List<JobApplication> jobs;
+
+  const _WeeklyRecapSheet({required this.jobs});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final start = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final weekly = jobs
+        .where((job) => !job.appliedDate.isBefore(start))
+        .toList();
+    final interview = jobs
+        .where((job) => job.status.startsWith('Interview'))
+        .length;
+    final followup = jobs.where((job) => job.needsFollowup).length;
+    final accepted = jobs.where((job) => job.status == 'Diterima').length;
+    final isDark = AppTheme.isDark(context);
+    final background = isDark
+        ? const Color(0xFF1E1E24)
+        : const Color(0xFFFBF8F2);
+    final foreground = isDark ? Colors.white : const Color(0xFF19191B);
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : const Color(0xFFD5CEBF),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'RINGKASAN\nMINGGU INI',
+              style: TextStyle(
+                fontSize: 28,
+                height: .95,
+                fontWeight: FontWeight.w900,
+                color: foreground,
+                letterSpacing: -1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Progres lamaranmu sejak Senin.',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: isDark ? Colors.white60 : const Color(0xFF6B6B70),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                _RecapMetric(
+                  label: 'Lamaran baru',
+                  value: weekly.length,
+                  color: const Color(0xFF5C44E4),
+                ),
+                const SizedBox(width: 10),
+                _RecapMetric(
+                  label: 'Interview',
+                  value: interview,
+                  color: const Color(0xFF0284C7),
+                ),
+                const SizedBox(width: 10),
+                _RecapMetric(
+                  label: 'Follow-up',
+                  value: followup,
+                  color: const Color(0xFFD97706),
+                ),
+                const SizedBox(width: 10),
+                _RecapMetric(
+                  label: 'Diterima',
+                  value: accepted,
+                  color: const Color(0xFF1E8E3E),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecapMetric extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _RecapMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: value.toDouble()),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+        builder: (context, current, _) => Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            children: [
+              Text(
+                '${current.round()}',
+                style: TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

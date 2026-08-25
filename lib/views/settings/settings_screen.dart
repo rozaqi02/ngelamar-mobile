@@ -20,10 +20,12 @@ import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/apple_animations.dart';
 import '../../widgets/app_dialog.dart';
-import '../../widgets/apple_toast.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/apple_animations.dart';
+import '../../widgets/apple_toast.dart';
+import '../../widgets/app_motion.dart';
+import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../jobs/add_edit_job_screen.dart';
@@ -52,8 +54,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _aboutController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.22.0';
-  static const String _buildNumber = '223';
+  static const String _appVersion = '2.25.5';
+  static const String _buildNumber = '242';
 
   List<String> _userInterests = [];
   bool? _notificationsEnabled;
@@ -131,8 +133,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         setState(() => _accountIdentity = SupabaseService.currentIdentity);
       }
+      if (_hasCloudAccount) {
+        await _restoreCloudProfileIfNeeded();
+      }
     } catch (_) {
       // Local profile remains available when the device is offline.
+    }
+  }
+
+  /// A cloud account should also work on a new device. Local values win when
+  /// already present; missing preferences and a missing CV are restored safely.
+  Future<void> _restoreCloudProfileIfNeeded() async {
+    try {
+      final cloud = await CloudSyncService.fetchPreferences();
+      if (cloud != null) {
+        final state = ref.read(jobProvider);
+        final cloudName = cloud['name']?.toString().trim() ?? '';
+        final cloudEmail = cloud['email']?.toString().trim() ?? '';
+        final cloudAbout = cloud['about']?.toString() ?? '';
+        final rawInterests = cloud['interests'];
+        final cloudInterests = rawInterests is List
+            ? rawInterests.map((item) => item.toString()).toList()
+            : const <String>[];
+
+        if (state.userName.isEmpty && cloudName.isNotEmpty) {
+          await ref.read(jobProvider.notifier).setUserName(cloudName);
+        }
+        if (state.userEmail.isEmpty && cloudEmail.isNotEmpty) {
+          await ref.read(jobProvider.notifier).setUserEmail(cloudEmail);
+        }
+        if (_about.isEmpty && cloudAbout.isNotEmpty) {
+          await PrefsService.setUserAbout(cloudAbout);
+        }
+        if (_userInterests.isEmpty && cloudInterests.isNotEmpty) {
+          await PrefsService.setUserInterests(cloudInterests);
+        }
+        if (mounted) {
+          setState(() {
+            if (_about.isEmpty) _about = cloudAbout;
+            if (_userInterests.isEmpty) _userInterests = cloudInterests;
+          });
+        }
+      }
+
+      final localCv = _cvPdfPath;
+      if (localCv == null || localCv.isEmpty || !await File(localCv).exists()) {
+        final bytes = await CloudSyncService.downloadCv();
+        if (bytes != null) {
+          final directory = await getApplicationDocumentsDirectory();
+          final destination = File('${directory.path}/cv/cv_cloud.pdf');
+          await destination.parent.create(recursive: true);
+          await destination.writeAsBytes(bytes, flush: true);
+          await PrefsService.setCvPdf(destination.path);
+          if (mounted) setState(() => _cvPdfPath = destination.path);
+        }
+      }
+    } catch (_) {
+      // Cloud restoration is opportunistic and must not block the local profile.
     }
   }
 
@@ -222,10 +279,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               prefixIcon: Icon(
                 Icons.badge_outlined,
                 size: 20,
-                color: isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074),
+                color: isDark
+                    ? const Color(0xFFA0A0A8)
+                    : const Color(0xFF707074),
               ),
               filled: true,
-              fillColor: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
+              fillColor: isDark
+                  ? const Color(0xFF282830)
+                  : const Color(0xFFF9F7F2),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 12,
@@ -233,13 +294,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFE5E0D5),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFE5E0D5),
                 ),
               ),
             ),
@@ -259,10 +324,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               prefixIcon: Icon(
                 Icons.mail_outline_rounded,
                 size: 20,
-                color: isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074),
+                color: isDark
+                    ? const Color(0xFFA0A0A8)
+                    : const Color(0xFF707074),
               ),
               filled: true,
-              fillColor: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
+              fillColor: isDark
+                  ? const Color(0xFF282830)
+                  : const Color(0xFFF9F7F2),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 12,
@@ -270,13 +339,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFE5E0D5),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
-                  color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFE5E0D5),
                 ),
               ),
             ),
@@ -647,8 +720,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Hubungkan Akun Google', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Hubungkan Akun Google',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: const Text(
             'Untuk mencadangkan data lamaran ke cloud secara aman, silakan hubungkan akun Google Anda terlebih dahulu.',
           ),
@@ -662,7 +740,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4285F4),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Masuk Google'),
             ),
@@ -705,7 +785,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       debugPrint('Upload cloud backup error: $e');
       if (mounted) {
-        AppToast.error(context, 'Backup cloud belum dapat disimpan. Periksa koneksi internet.');
+        AppToast.error(
+          context,
+          'Backup cloud belum dapat disimpan. Periksa koneksi internet.',
+        );
       }
     } finally {
       if (temporaryBackup != null && await temporaryBackup.exists()) {
@@ -719,8 +802,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Hubungkan Akun Google', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Hubungkan Akun Google',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: const Text(
             'Untuk memulihkan data backup dari cloud, silakan hubungkan akun Google yang Anda gunakan untuk mencadangkan sebelumnya.',
           ),
@@ -734,7 +822,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4285F4),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Masuk Google'),
             ),
@@ -774,7 +864,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 width: 38,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF383842) : const Color(0xFFD7D1C7),
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : const Color(0xFFD7D1C7),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -1065,7 +1157,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
     final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFFBF8F2);
-    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
+    final cardBorder = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFE5E0D5);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF555558);
 
@@ -1132,11 +1226,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(
-                    Icons.close_rounded,
-                    size: 20,
-                    color: txtPri,
-                  ),
+                  icon: Icon(Icons.close_rounded, size: 20, color: txtPri),
                   onPressed: () => Navigator.pop(ctx),
                 ),
               ],
@@ -1175,11 +1265,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Catatan lamaran, besaran gaji, jadwal seleksi, dan foto lampiran disimpan terenkripsi di perangkat. Menghapus seluruh data juga menghapus lampiran yang tersimpan oleh aplikasi.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: txtSec,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(fontSize: 12, color: txtSec, height: 1.4),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -1205,11 +1291,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Ngelamar tidak mengumpulkan, menjual, atau mentransfer data pribadi Anda ke server analitik pihak ketiga manapun.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: txtSec,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(fontSize: 12, color: txtSec, height: 1.4),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -1235,11 +1317,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Koneksi hanya terjadi saat Anda membuka portal loker atau meminta isi otomatis dari tautan HTTPS portal yang didukung. Data lamaran Anda tidak dikirim untuk fitur tersebut.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: txtSec,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(fontSize: 12, color: txtSec, height: 1.4),
                   ),
                 ],
               ),
@@ -1251,7 +1329,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B),
+                  backgroundColor: isDark
+                      ? const Color(0xFF5C44E4)
+                      : const Color(0xFF19191B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -1275,7 +1355,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
     final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2);
-    final cardBorder = isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5);
+    final cardBorder = isDark
+        ? const Color(0xFF383842)
+        : const Color(0xFFE5E0D5);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF555558);
 
@@ -1362,11 +1444,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Text(
               'Teman personal untuk mencatat lamaran dan menyiapkan karirmu dari satu tempat.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: txtSec,
-                height: 1.45,
-              ),
+              style: TextStyle(fontSize: 12.5, color: txtSec, height: 1.45),
             ),
             const SizedBox(height: 16),
             Container(
@@ -1443,7 +1521,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B),
+                  backgroundColor: isDark
+                      ? const Color(0xFF5C44E4)
+                      : const Color(0xFF19191B),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
@@ -1471,162 +1551,149 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ? state.userName
         : 'Pencari Kerja';
     final isDark = AppTheme.isDark(context);
-
-    final bg = isDark ? const Color(0xFF121214) : const Color(0xFFF7F8FA);
-    final cardBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
-    final cardBorder = isDark
-        ? const Color(0xFF383842)
-        : const Color(0xFFEBE8E1);
-    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
-    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
-    final pillBg = isDark ? const Color(0xFF282830) : const Color(0xFF1A1A1E);
+    final bg = AppTheme.getBackground(context);
+    final cardBg = AppTheme.getSurface(context);
+    final cardBorder = AppTheme.getBorder(context);
+    final txtPri = AppTheme.getTextPrimary(context);
+    final txtSec = AppTheme.getTextSecondary(context);
+    final profileCompletion =
+        [
+          state.userName.trim().isNotEmpty,
+          hasPhoto,
+          _cvPdfPath?.isNotEmpty == true,
+          state.jobs.isNotEmpty,
+        ].where((complete) => complete).length /
+        4;
+    final activeApplications = state.jobs
+        .where((job) => job.status != 'Diterima' && job.status != 'Ditolak')
+        .length;
+    final profilePercent = (profileCompletion * 100).round();
 
     return Scaffold(
       backgroundColor: bg,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── TOP NAVY GRADIENT HEADER WITH TITLE & EDIT BUTTON ──
+          // ── TOP BAR: shared title/action language with the Home dashboard ──
           SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isDark
-                      ? const [Color(0xFF131D3F), Color(0xFF0F172A)]
-                      : const [Color(0xFF1E3A8A), Color(0xFF2E59C6)],
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Screen Title: "Profil Saya"
-                      const Text(
-                        'Profil Saya',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -0.8,
-                        ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'PROFIL\nSAYA',
+                      style: TextStyle(
+                        fontSize: 34,
+                        height: 0.96,
+                        fontWeight: FontWeight.w900,
+                        color: txtPri,
+                        letterSpacing: -1.6,
                       ),
-
-                      // Edit Circular Translucent Button (Pencil Icon)
-                      FluidBounceButton(
-                        onTap: _showEditProfileDialog,
-                        child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 1.2,
+                    ),
+                    FluidBounceButton(
+                      onTap: _showEditProfileDialog,
+                      semanticLabel: 'Edit profil pengguna',
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: bg,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: cardBorder, width: 1.4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              CupertinoIcons.pencil,
-                              size: 19,
-                              color: Colors.white,
-                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            CupertinoIcons.pencil,
+                            size: 19,
+                            color: txtPri,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // ── MAIN PROFILE CARD (AVATAR SQUIRCLE + NAME + 2 BLACK PILL BUTTONS) ──
+          // ── MAIN PROFILE CARD: warm Home-style surface ──
           SliverToBoxAdapter(
-            child: Container(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFF2E59C6),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(32),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+                  border: Border.all(
+                    color: cardBorder,
+                    width: AppTheme.borderHairline,
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(
-                        alpha: isDark ? 0.3 : 0.08,
+                        alpha: isDark ? 0.2 : 0.04,
                       ),
-                      blurRadius: 16,
-                      offset: const Offset(0, -4),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Row: Squircle Avatar + Name & Subtitle Info
+                    // Row: Avatar + Name & Subtitle Info
                     Row(
                       children: [
-                        // Squircle Avatar (with camera badge)
+                        // Circular Avatar (with camera badge)
                         GestureDetector(
                           onTap: _pickProfilePhoto,
                           child: Stack(
                             children: [
                               Container(
-                                width: 86,
-                                height: 86,
+                                width: 80,
+                                height: 80,
                                 decoration: BoxDecoration(
                                   color: isDark
                                       ? const Color(0xFF282830)
-                                      : const Color(0xFFE8E5DD),
-                                  borderRadius: BorderRadius.circular(24),
+                                      : const Color(0xFF333336),
+                                  shape: BoxShape.circle,
                                   border: Border.all(
                                     color: isDark
                                         ? const Color(0xFF383842)
                                         : Colors.white,
-                                    width: 3,
+                                    width: 2.5,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(21),
+                                child: ClipOval(
                                   child: hasPhoto
                                       ? Image.file(
                                           File(state.userProfilePhoto),
-                                          width: 86,
-                                          height: 86,
+                                          width: 80,
+                                          height: 80,
                                           fit: BoxFit.cover,
                                         )
                                       : Container(
-                                          decoration: const BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                Color(0xFF6366F1),
-                                                Color(0xFF8B5CF6),
-                                              ],
-                                            ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF333336),
                                           ),
                                           child: const Center(
                                             child: Icon(
                                               CupertinoIcons.person_fill,
-                                              size: 42,
+                                              size: 38,
                                               color: Colors.white,
                                             ),
                                           ),
@@ -1639,16 +1706,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(5),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1E3A8A),
+                                    color: const Color(0xFF5C44E4),
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
-                                    ),
+                                    border: Border.all(color: cardBg, width: 2),
                                   ),
                                   child: const Icon(
                                     Icons.camera_alt_rounded,
-                                    size: 11,
+                                    size: 12,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -1667,10 +1731,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               Text(
                                 displayName,
                                 style: TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.w900,
                                   color: txtPri,
-                                  letterSpacing: -0.6,
+                                  letterSpacing: -0.5,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1683,7 +1747,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                           ? '${state.jobs.length} Lamaran Aktif • Siap Kerja'
                                           : 'Pencari Karir • Terbuka Peluang'),
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
                                   color: txtSec,
                                 ),
@@ -1693,38 +1757,124 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        ProfileCompletionRing(
+                          value: profileCompletion,
+                          color: const Color(0xFF5C44E4),
+                          trackColor: isDark
+                              ? const Color(0xFF383842)
+                              : const Color(0xFFE9E4F5),
+                        ),
                       ],
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
-                    // Two Black Pill Buttons (CV • 2.3 Mb & Contact)
+                    // A small career pulse makes the profile feel like part
+                    // of the applicant journey, not a generic settings page.
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF282438)
+                            : const Color(0xFFF0EAFF),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF4B426F)
+                              : const Color(0xFFD9CDF8),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF5C44E4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.auto_graph_rounded,
+                              size: 19,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  activeApplications == 0
+                                      ? 'Mulai peta kariermu'
+                                      : '$activeApplications lamaran sedang berjalan',
+                                  style: TextStyle(
+                                    color: txtPri,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Profilmu sudah $profilePercent% siap untuk melamar.',
+                                  style: TextStyle(
+                                    color: txtSec,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            CupertinoIcons.sparkles,
+                            size: 17,
+                            color: isDark
+                                ? const Color(0xFFC4B5FD)
+                                : const Color(0xFF5C44E4),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Two high-contrast actions, matching Home's primary/green CTA pair.
                     Row(
                       children: [
-                        // Left Capsule: user's CV PDF
+                        // Left Capsule: CV
                         Expanded(
                           child: FluidBounceButton(
                             onTap: _openCvPdf,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                vertical: 13,
+                                vertical: 12,
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: pillBg,
-                                borderRadius: BorderRadius.circular(30),
+                                color: isDark
+                                    ? const Color(0xFF5C44E4)
+                                    : const Color(0xFF19191B),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusPill,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     CupertinoIcons.doc_text_fill,
                                     size: 14,
                                     color: Colors.white,
@@ -1735,9 +1885,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       _cvPdfPath == null || _cvPdfPath!.isEmpty
                                           ? 'Tambah CV'
                                           : 'Buka CV',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 13,
+                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w800,
                                       ),
                                       maxLines: 1,
@@ -1750,25 +1900,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
 
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
 
-                        // Right Capsule: Kontak / Target Karir
+                        // Right Capsule: Target Karir
                         Expanded(
                           child: FluidBounceButton(
                             onTap: _showCareerInterestsSheet,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                vertical: 13,
+                                vertical: 12,
                                 horizontal: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: pillBg,
-                                borderRadius: BorderRadius.circular(30),
+                                color: const Color(0xFF5C44E4),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusPill,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
@@ -1786,7 +1938,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       'Target Karir',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 13,
+                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w800,
                                       ),
                                       maxLines: 1,
@@ -1827,15 +1979,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: cardBg,
+                      color: isDark ? cardBg : const Color(0xFFFFFBFF),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: cardBorder),
+                      border: Border.all(
+                        color: isDark ? cardBorder : const Color(0xFFD9CDF8),
+                      ),
                     ),
                     child: GestureDetector(
                       onTap: _showEditAboutDialog,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            margin: const EdgeInsets.only(right: 11),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF5C44E4,
+                              ).withValues(alpha: isDark ? 0.24 : 0.12),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: const Icon(
+                              Icons.subject_rounded,
+                              size: 18,
+                              color: Color(0xFF5C44E4),
+                            ),
+                          ),
                           Expanded(
                             child: Text(
                               _about.isEmpty
@@ -1988,10 +2158,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     child: Row(
                       children: [
-                        CompanyLogoBadge(
-                          companyName: job.companyName,
-                          customImagePath: job.companyLogoPath,
-                          size: 46,
+                        Hero(
+                          tag: 'company_logo_${job.id}',
+                          child: CompanyLogoBadge(
+                            companyName: job.companyName,
+                            customImagePath: job.companyLogoPath,
+                            size: 46,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -2053,7 +2226,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             if (val == 'detail') {
                               Navigator.push(
                                 context,
-                                CupertinoPageRoute(
+                                AppMotion.detailDockRoute(
                                   builder: (_) => JobDetailScreen(job: job),
                                 ),
                               );
@@ -2160,7 +2333,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // ── ALL SETTINGS LIST TILES & ACTIONS ──
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              0,
+              20,
+              AppLayoutMetrics.contentBottomClearance(context),
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // 1. PRO Banner Card
@@ -2519,6 +2697,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle:
                             'Laporkan bug atau usulkan fitur langsung ke tim',
                         onTap: _showFeedbackDialog,
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: isDark
+                            ? const Color(0xFF2E2E38)
+                            : const Color(0xFFE6E0D5),
+                      ),
+
+                      // Panduan Fitur Aplikasi (Tutorial Overlay)
+                      _buildSettingTile(
+                        icon: CupertinoIcons.sparkles,
+                        color: const Color(0xFFE65100),
+                        title: 'Panduan Fitur Aplikasi',
+                        subtitle:
+                            'Tampilkan kembali tur interaktif fitur aplikasi',
+                        onTap: () async {
+                          await PrefsService.setAppTourSeen(false);
+                          if (context.mounted) {
+                            AppleToast.info(
+                              context,
+                              'Panduan tur akan muncul saat kembali ke Beranda',
+                            );
+                          }
+                        },
                       ),
                       Divider(
                         height: 1,
