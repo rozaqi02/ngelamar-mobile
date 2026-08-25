@@ -1,6 +1,3 @@
-﻿# Pin Firebase iOS SDK to rock-solid stable 10.29.0 to prevent Swift 6 UnfairLock compilation errors
-$FirebaseSDKVersion = '10.29.0'
-
 platform :ios, '14.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
