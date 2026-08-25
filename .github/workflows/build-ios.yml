@@ -26,10 +26,9 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Prepare iOS Build Directories
+      - name: Configure Flutter
         run: |
           flutter config --no-enable-swift-package-manager
-          mkdir -p build/ios/SourcePackages
           flutter precache --ios
 
       - name: Install Flutter Dependencies
@@ -37,15 +36,7 @@ jobs:
           mkdir -p build/ios/SourcePackages
           flutter pub get
 
-      - name: Clean & Install CocoaPods Dependencies
-        run: |
-          mkdir -p build/ios/SourcePackages
-          cd ios
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
-          cd ..
-
-      - name: Build iOS App (Release Unsigned)
+      - name: Build iOS App Bundle (Unsigned)
         run: |
           flutter build ios --release --no-codesign
 
