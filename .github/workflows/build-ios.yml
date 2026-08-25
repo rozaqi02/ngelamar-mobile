@@ -37,10 +37,11 @@ jobs:
           mkdir -p build/ios/SourcePackages
           flutter pub get
 
-      - name: Install CocoaPods Dependencies
+      - name: Clean & Install CocoaPods Dependencies
         run: |
           mkdir -p build/ios/SourcePackages
           cd ios
+          rm -rf Pods Podfile.lock
           pod install --repo-update
           cd ..
 
