@@ -1,4 +1,4 @@
-﻿name: Build iOS IPA (Sideload Ready)
+name: Build iOS IPA (Sideload Ready)
 
 on:
   workflow_dispatch:
@@ -20,6 +20,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Print Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+          ls /Applications | grep Xcode
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -33,8 +39,14 @@ jobs:
 
       - name: Install Flutter Dependencies
         run: |
-          mkdir -p build/ios/SourcePackages
+          flutter clean
           flutter pub get
+
+      - name: Clean iOS build artifacts
+        run: |
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
+          rm -rf build/ios
+          mkdir -p build/ios/SourcePackages
 
       - name: Build iOS App Bundle (Unsigned)
         run: |
