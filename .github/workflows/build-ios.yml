@@ -26,22 +26,27 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Flutter Precaching & Doctor
+      - name: Configure Flutter & Prepare Directories
         run: |
+          flutter config --no-enable-swift-package-manager
+          mkdir -p build/ios/SourcePackages
           flutter precache --ios
-          flutter doctor -v
 
       - name: Install Flutter Dependencies
-        run: flutter pub get
+        run: |
+          mkdir -p build/ios/SourcePackages
+          flutter pub get
 
       - name: Install CocoaPods Dependencies
         run: |
+          mkdir -p build/ios/SourcePackages
           cd ios
           pod install --repo-update
           cd ..
 
       - name: Build iOS App (Release Unsigned)
         run: |
+          mkdir -p build/ios/SourcePackages
           flutter build ios --release --no-codesign
 
       - name: Package Payload to IPA
