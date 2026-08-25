@@ -26,7 +26,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Configure Flutter & Prepare Directories
+      - name: Prepare iOS Build Directories
         run: |
           flutter config --no-enable-swift-package-manager
           mkdir -p build/ios/SourcePackages
@@ -46,7 +46,6 @@ jobs:
 
       - name: Build iOS App (Release Unsigned)
         run: |
-          mkdir -p build/ios/SourcePackages
           flutter build ios --release --no-codesign
 
       - name: Package Payload to IPA
