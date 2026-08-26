@@ -20,6 +20,7 @@ import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
+import '../notifications/notification_center_screen.dart';
 
 /// Screen 1: Jelajahi Lowongan (Priority Overlapping Deck & Smart Alerts).
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -734,48 +735,119 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     ),
                     const SizedBox(width: 8),
 
-                    // Top Right Action Button: Circular Search Button
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _isSearchActive = !_isSearchActive;
-                          if (!_isSearchActive) {
-                            _searchController.clear();
-                            ref.read(jobProvider.notifier).setSearchQuery('');
-                          }
-                        });
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: bg,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF383842)
-                                : const Color(0xFFDCD8CE),
-                            width: 1.4,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
+                    // Top Right Action Buttons: Notification Bell & Search
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Notification Bell Button
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              AppMotion.detailDockRoute(
+                                builder: (_) => const NotificationCenterScreen(),
                               ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                            );
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: bg,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF383842)
+                                    : const Color(0xFFDCD8CE),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.notifications_outlined,
+                                  size: 21,
+                                  color: txtPri,
+                                ),
+                                if (state.jobs.any((j) =>
+                                    (j.interviewDate != null ||
+                                        j.testDate != null ||
+                                        j.needsFollowup) &&
+                                    j.status != 'Ditolak' &&
+                                    j.status != 'Diterima'))
+                                  Positioned(
+                                    top: 10,
+                                    right: 11,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFDE4B3E),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          _isSearchActive
-                              ? Icons.close_rounded
-                              : Icons.search_rounded,
-                          size: 21,
-                          color: txtPri,
+                        const SizedBox(width: 8),
+
+                        // Circular Search Button
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _isSearchActive = !_isSearchActive;
+                              if (!_isSearchActive) {
+                                _searchController.clear();
+                                ref.read(jobProvider.notifier).setSearchQuery('');
+                              }
+                            });
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: bg,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF383842)
+                                    : const Color(0xFFDCD8CE),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _isSearchActive
+                                  ? Icons.close_rounded
+                                  : Icons.search_rounded,
+                              size: 21,
+                              color: txtPri,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -1023,7 +1095,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             ),
                             const SizedBox(height: 11),
                             FluidBounceButton(
-                              onTap: () => widget.onNavigateTab?.call(1),
+                              onTap: () => widget.onNavigateTab?.call(3),
                               child: Container(
                                 width: double.infinity,
                                 height: 56,
@@ -1091,7 +1163,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         final isDarkText = !AppTheme.isDarkCard(cardColor);
         final titleColor = isDarkText ? const Color(0xFF121214) : Colors.white;
 
-        final topMargin = index == 0 ? 0.0 : -22.0;
         final minimumLastHeight = (MediaQuery.sizeOf(context).height * 0.38)
             .clamp(280.0, 440.0)
             .toDouble();
@@ -1127,14 +1198,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   }
                 });
               },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.fastOutSlowIn,
-                width: double.infinity,
-                constraints: BoxConstraints(
-                  minHeight: isLast ? minimumLastHeight : 0,
-                ),
-                margin: EdgeInsets.only(top: topMargin),
+              child: Transform.translate(
+                offset: Offset(0, index == 0 ? 0.0 : -22.0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.fastOutSlowIn,
+                  width: double.infinity,
+                  constraints: BoxConstraints(
+                    minHeight: isLast ? minimumLastHeight : 0,
+                  ),
+                  margin: EdgeInsets.zero,
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.vertical(
@@ -1352,6 +1425,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             ),

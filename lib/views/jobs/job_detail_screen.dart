@@ -1241,54 +1241,55 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       switch (status) {
         case 'Diterima':
           return const [
-            Color(0xFF143820),
-            Color(0xFF16291C),
-            Color(0xFF131A15),
+            Color(0xFF064E3B),
+            Color(0xFF063A2D),
+            Color(0xFF04241C),
             Color(0xFF121214),
           ];
         case 'Offering':
           return const [
-            Color(0xFF38153A),
-            Color(0xFF28112A),
-            Color(0xFF190F1A),
+            Color(0xFF500724),
+            Color(0xFF380619),
+            Color(0xFF230410),
             Color(0xFF121214),
           ];
         case 'Interview User':
+        case 'Interview':
           return const [
-            Color(0xFF261942),
-            Color(0xFF1C1330),
-            Color(0xFF151020),
+            Color(0xFF2E1065),
+            Color(0xFF220C4C),
+            Color(0xFF160833),
             Color(0xFF121214),
           ];
         case 'Interview HR':
-        case 'Interview':
+        case 'HR Screening':
           return const [
-            Color(0xFF362810),
-            Color(0xFF281F0E),
-            Color(0xFF1A160F),
+            Color(0xFF1E1B4B),
+            Color(0xFF17153B),
+            Color(0xFF100E2B),
             Color(0xFF121214),
           ];
         case 'Tes / Psikotes':
           return const [
-            Color(0xFF381618),
-            Color(0xFF291214),
-            Color(0xFF1A1011),
+            Color(0xFF451A03),
+            Color(0xFF331402),
+            Color(0xFF210D01),
             Color(0xFF121214),
           ];
         case 'Ditolak':
           return const [
-            Color(0xFF24242A),
-            Color(0xFF1C1C20),
-            Color(0xFF161618),
+            Color(0xFF450A0A),
+            Color(0xFF330707),
+            Color(0xFF210505),
             Color(0xFF121214),
           ];
         case 'Dikirim':
         case 'Tersedia':
         default:
           return const [
-            Color(0xFF16263B),
-            Color(0xFF131C28),
-            Color(0xFF12161E),
+            Color(0xFF18181B),
+            Color(0xFF151517),
+            Color(0xFF131315),
             Color(0xFF121214),
           ];
       }
@@ -1303,47 +1304,48 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         ];
       case 'Offering':
         return const [
-          Color(0xFFF0ABFC),
-          Color(0xFFF5D0FE),
-          Color(0xFFFAF5FF),
+          Color(0xFFF472B6),
+          Color(0xFFFBCFE8),
+          Color(0xFFFDF2F8),
           Color(0xFFFBF8F2),
         ];
       case 'Interview User':
+      case 'Interview':
         return const [
-          Color(0xFFC4B5FD),
+          Color(0xFFA78BFA),
           Color(0xFFDDD6FE),
           Color(0xFFF5F3FF),
           Color(0xFFFBF8F2),
         ];
       case 'Interview HR':
-      case 'Interview':
+      case 'HR Screening':
+        return const [
+          Color(0xFF818CF8),
+          Color(0xFFC7D2FE),
+          Color(0xFFEEF2FF),
+          Color(0xFFFBF8F2),
+        ];
+      case 'Tes / Psikotes':
         return const [
           Color(0xFFFDE047),
           Color(0xFFFEF08A),
           Color(0xFFFEFCE8),
           Color(0xFFFBF8F2),
         ];
-      case 'Tes / Psikotes':
+      case 'Ditolak':
         return const [
           Color(0xFFFCA5A5),
           Color(0xFFFECACA),
           Color(0xFFFEF2F2),
           Color(0xFFFBF8F2),
         ];
-      case 'Ditolak':
-        return const [
-          Color(0xFFCBD5E1),
-          Color(0xFFE2E8F0),
-          Color(0xFFF8FAFC),
-          Color(0xFFFBF8F2),
-        ];
       case 'Dikirim':
       case 'Tersedia':
       default:
         return const [
-          Color(0xFF93C5FD),
-          Color(0xFFBFDBFE),
-          Color(0xFFEFF6FF),
+          Color(0xFF27272A),
+          Color(0xFF52525B),
+          Color(0xFFF4F4F5),
           Color(0xFFFBF8F2),
         ];
     }

@@ -95,41 +95,32 @@ class AppTheme {
       case 'Contoh':
         return const Color(0xFF8B5CF6);
       case 'Dikirim':
-        return const Color(0xFF38BDF8); // Bright Sky Blue
-      case 'HR Screening':
-        return const Color(0xFF22D3EE); // Bright Cyan
+      case 'Tersimpan':
+        return const Color(0xFF18181B); // Hitam Solid
       case 'Tes / Psikotes':
-        return const Color(0xFFFB923C); // Bright Energetic Orange
+        return const Color(0xFFFBBF24); // Kuning Amber Hangat
       case 'Interview HR':
-        return const Color(0xFFFBBF24); // Bright Sunny Amber
+      case 'HR Screening':
+        return const Color(0xFF635BFF); // Ungu Cerah / Violet
       case 'Interview User':
-        return const Color(0xFFA78BFA); // Bright Violet
+      case 'Interview':
+        return const Color(0xFF8B5CF6); // Ungu Indigo / Soft Violet
       case 'Offering':
-        return const Color(0xFFF472B6); // Bright Fuchsia Pink
+        return const Color(0xFFEC4899); // Pink Fuchsia Cerah
       case 'Diterima':
-        return const Color(0xFF34D399); // Bright Fresh Mint Green
+        return const Color(0xFF34D399); // Hijau Lime / Fresh Mint
       case 'Ditolak':
-        return const Color(0xFFFB7185); // Bright Coral Rose
+        return const Color(0xFFDE4B3E); // Merah Karang / Coral Red
       default:
-        return const Color(0xFF38BDF8);
+        return const Color(0xFF18181B);
     }
   }
 
   static Color getCompanyCardColor(String companyName, [String? status]) {
-    const companyTones = <Color>[
-      Color(0xFFE5D9FF), // lilac
-      Color(0xFFFFE1A8), // amber
-      Color(0xFFBDEDE0), // mint
-      Color(0xFFFFD5CF), // coral
-      Color(0xFFCFE8FF), // blue
-      Color(0xFFFFD8ED), // rose
-    ];
-    final normalized = companyName.trim().toLowerCase();
-    final hash = normalized.codeUnits.fold<int>(
-      0,
-      (value, unit) => value + unit,
-    );
-    return companyTones[hash % companyTones.length];
+    if (status != null && status.isNotEmpty) {
+      return getJobCardColor(status);
+    }
+    return getJobCardColor('Dikirim');
   }
 
   static bool isDarkCard(Color color) {
@@ -144,23 +135,24 @@ class AppTheme {
       case 'Contoh':
         return isDark ? const Color(0xFFC4B5FD) : const Color(0xFF8B5CF6);
       case 'Dikirim':
-        return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
-      case 'HR Screening':
-        return isDark ? const Color(0xFF22D3EE) : const Color(0xFF06B6D4);
+      case 'Tersimpan':
+        return isDark ? const Color(0xFF3F3F46) : const Color(0xFF18181B);
       case 'Tes / Psikotes':
-        return isDark ? const Color(0xFFFB923C) : const Color(0xFFF97316);
+        return isDark ? const Color(0xFFFCD34D) : const Color(0xFFF59E0B);
       case 'Interview HR':
-        return isDark ? const Color(0xFFFBBF24) : const Color(0xFFF59E0B);
+      case 'HR Screening':
+        return isDark ? const Color(0xFF818CF8) : const Color(0xFF635BFF);
       case 'Interview User':
+      case 'Interview':
         return isDark ? const Color(0xFFA78BFA) : const Color(0xFF8B5CF6);
       case 'Offering':
-        return isDark ? const Color(0xFFF472B6) : const Color(0xFFD946EF);
+        return isDark ? const Color(0xFFF472B6) : const Color(0xFFEC4899);
       case 'Diterima':
         return isDark ? const Color(0xFF4ADE80) : const Color(0xFF10B981);
       case 'Ditolak':
-        return isDark ? const Color(0xFFFB7185) : const Color(0xFFF43F5E);
+        return isDark ? const Color(0xFFF87171) : const Color(0xFFDE4B3E);
       default:
-        return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
+        return isDark ? const Color(0xFF3F3F46) : const Color(0xFF18181B);
     }
   }
 

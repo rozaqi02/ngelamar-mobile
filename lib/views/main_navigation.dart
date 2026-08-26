@@ -12,11 +12,11 @@ import '../widgets/app_tour_overlay.dart';
 import '../widgets/welcome_screen_route.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'discovery/discovery_welcome_screen.dart';
-import 'hub/career_hub_screen.dart';
+import 'discovery/job_discovery_screen.dart';
 import 'jobs/job_list_screen.dart';
 import 'jobs/job_list_welcome_screen.dart';
-import 'notifications/notification_center_screen.dart';
-import 'notifications/notification_welcome_screen.dart';
+import 'prep/career_prep_welcome_screen.dart';
+import 'prep/fresh_grad_prep_screen.dart';
 import 'settings/settings_screen.dart';
 
 class _NavItem {
@@ -33,10 +33,10 @@ class _NavItem {
 
 /// Floating Capsule Pill Navigation Bar (5 Items).
 /// 1. Beranda (Priority Overlapping Deck)
-/// 2. Cari Loker (Glints & JobStreet Search Engine)
-/// 3. Lamaran (Full Tracker & Status Management)
-/// 4. Persiapan (Career Prep & Checklist)
-/// 5. Profil (CRM Analytics & Settings)
+/// 2. Persiapan Karir (Checklist, Modul & Tips Karir)
+/// 3. Daftar Lamaran (Full Tracker & Status Management)
+/// 4. Portal Loker (Akses Cepat Portal Karir Resmi)
+/// 5. Profil (Pengaturan, Resume & Akun)
 class MainNavigation extends ConsumerStatefulWidget {
   const MainNavigation({super.key});
 
@@ -60,19 +60,19 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       label: 'Beranda',
     ),
     _NavItem(
-      activeIcon: Icons.travel_explore_rounded,
-      inactiveIcon: Icons.travel_explore_outlined,
-      label: 'Cari Lokerku',
+      activeIcon: Icons.school_rounded,
+      inactiveIcon: Icons.school_outlined,
+      label: 'Persiapan',
     ),
     _NavItem(
       activeIcon: Icons.mail_rounded,
       inactiveIcon: Icons.mail_outline_rounded,
-      label: 'Lamaran Saya',
+      label: 'Lamaran',
     ),
     _NavItem(
-      activeIcon: Icons.notifications_rounded,
-      inactiveIcon: Icons.notifications_none_rounded,
-      label: 'Kabar',
+      activeIcon: Icons.travel_explore_rounded,
+      inactiveIcon: Icons.travel_explore_outlined,
+      label: 'Portal Loker',
     ),
     _NavItem(
       activeIcon: Icons.person_rounded,
@@ -91,9 +91,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         key: const ValueKey(0),
         onNavigateTab: (index) => _onTabTapped(index),
       ),
-      const CareerHubScreen(key: ValueKey(1)),
+      const FreshGradPrepScreen(key: ValueKey(1)),
       const JobListScreen(key: ValueKey(2)),
-      const NotificationCenterScreen(key: ValueKey(3)),
+      const JobDiscoveryScreen(key: ValueKey(3)),
       const SettingsScreen(key: ValueKey(4)),
     ];
 
@@ -127,11 +127,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   Future<void> _checkAndShowTabWelcomeScreen(int index) async {
     if (!mounted) return;
     if (index == 1) {
-      final seen = await PrefsService.isDiscoveryIntroSeen();
+      final seen = await PrefsService.isCareerPrepIntroSeen();
       if (!seen && mounted) {
         Navigator.push(
           context,
-          WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
+          WelcomeScreenRoute(child: const CareerPrepWelcomeScreen()),
         );
       }
     } else if (index == 2) {
@@ -143,11 +143,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         );
       }
     } else if (index == 3) {
-      final seen = await PrefsService.isNotificationIntroSeen();
+      final seen = await PrefsService.isDiscoveryIntroSeen();
       if (!seen && mounted) {
         Navigator.push(
           context,
-          WelcomeScreenRoute(child: const NotificationWelcomeScreen()),
+          WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
         );
       }
     }
