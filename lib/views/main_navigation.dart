@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/job_provider.dart';
 import '../services/prefs_service.dart';
 import '../widgets/apple_toast.dart';
-import '../widgets/app_motion.dart';
 import '../widgets/app_layout_metrics.dart';
 import '../widgets/app_tour_overlay.dart';
 import '../widgets/welcome_screen_route.dart';

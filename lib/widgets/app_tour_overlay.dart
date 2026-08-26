@@ -7,7 +7,7 @@ import 'apple_animations.dart';
 
 /// Target area specification for the guided tour spotlight
 class TourTargetRect {
-  final Rect Function(Size screenSize, EdgeInsets padding) computeRect;
+  final Rect Function(Size screenSize, EdgeInsets padding, double contentLeft, double contentWidth) computeRect;
   final BorderRadius borderRadius;
   final bool isCircle;
 
@@ -41,10 +41,9 @@ class AppTourStep {
   });
 }
 
-/// MyTelkomsel / Gojek style Interactive Guided Tour Overlay.
-/// Takes over the application, switches tabs programmatically,
-/// highlights actual UI elements with cutout spotlights and pulse glow rings,
-/// and walks users through every core feature seamlessly.
+/// Interactive Guided Tour Overlay (Material 3 & Apple Fluid Design).
+/// Highlights actual UI elements with cutout spotlights and pulse glow rings,
+/// and walks users through every core feature seamlessly with zero offside bugs.
 class AppTourOverlay extends StatefulWidget {
   final Function(int tabIndex) onSwitchTab;
   final VoidCallback onFinish;
@@ -77,89 +76,87 @@ class AppTourOverlayState extends State<AppTourOverlay>
       accentColor: const Color(0xFFF59E0B),
       placeCardBelow: false,
       targetRect: TourTargetRect(
-        computeRect: (size, pad) {
-          // Highlight the primary job card stack in Dashboard
-          final top = pad.top + 260;
-          return Rect.fromLTWH(16, top, size.width - 32, 230);
+        computeRect: (size, pad, cLeft, cWidth) {
+          final top = pad.top + 220;
+          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 240);
         },
         borderRadius: BorderRadius.circular(28),
       ),
     ),
 
-    // Step 2: Beranda - Filter & Pencarian
+    // Step 2: Beranda - Notifikasi & Cari Cepat
     AppTourStep(
       targetTabIndex: 0,
-      badgeText: 'Langkah 2/5 • Filter & Cari',
-      title: 'Filter & Cari Cepat',
+      badgeText: 'Langkah 2/5 • Notifikasi & Cari',
+      title: 'Notifikasi & Cari Cepat',
       description:
-          'Saring lowongan kerja idamanmu atau lakukan pencarian instan dengan tombol Filter dan Pencarian di pojok kanan atas.',
-      icon: Icons.tune_rounded,
-      accentColor: const Color(0xFF0288D1),
+          'Akses pengingat interview dan follow-up lewat tombol Lonceng Notifikasi, serta saring lowonganmu lewat tombol Pencarian.',
+      icon: Icons.notifications_active_rounded,
+      accentColor: const Color(0xFF635BFF),
       placeCardBelow: true,
       targetRect: TourTargetRect(
-        computeRect: (size, pad) {
-          final top = pad.top + 74;
-          return Rect.fromLTWH(size.width - 116, top, 96, 46);
+        computeRect: (size, pad, cLeft, cWidth) {
+          final top = pad.top + 10;
+          return Rect.fromLTWH(cLeft + cWidth - 110, top, 96, 48);
         },
-        borderRadius: BorderRadius.circular(23),
+        borderRadius: BorderRadius.circular(24),
       ),
     ),
 
-    // Step 3: Portal Loker Resmi & Persiapan Karirku
+    // Step 3: Siapkan Karir
     AppTourStep(
       targetTabIndex: 1,
-      badgeText: 'Langkah 3/5 • Portal & Karir',
-      title: 'Portal Loker & Persiapan Karir',
+      badgeText: 'Langkah 3/5 • Siapkan Karir',
+      title: 'Modul & Checklist Karir',
       description:
-          'Jelajahi lowongan terverifikasi di Portal Loker Resmi, serta akses panduan wawancara dan simulasi gaji di tab Persiapan Karirku.',
-      icon: Icons.travel_explore_rounded,
+          'Tingkatkan peluang lolos dengan panduan lengkap fresh graduate: checklist berkas, tips interview, dan template pesan HR.',
+      icon: Icons.school_rounded,
       accentColor: const Color(0xFF10B981),
       placeCardBelow: true,
       targetRect: TourTargetRect(
-        computeRect: (size, pad) {
-          final top = pad.top + 10;
-          return Rect.fromLTWH(18, top, size.width - 36, 52);
+        computeRect: (size, pad, cLeft, cWidth) {
+          final top = pad.top + 80;
+          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 130);
         },
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
       ),
     ),
 
-    // Step 4: Daftar Lamaranku - Pelacak Lengkap
+    // Step 4: Daftar Lamaran - Manajemen Status
     AppTourStep(
       targetTabIndex: 2,
-      badgeText: 'Langkah 4/5 • Daftar Lamaranku',
-      title: 'Manajemen Status Lengkap',
+      badgeText: 'Langkah 4/5 • Daftar Lamaran',
+      title: 'Filter & Manajemen Status',
       description:
-          'Pantau riwayat berkas dari Dikirim, Tes / Psikotes, Interview HR, hingga Penawaran Gaji (Offering) dalam tampilan List atau Grid.',
-      icon: Icons.dashboard_customize_rounded,
+          'Saring lamaran berdasarkan status: Dikirim, Psikotes, Interview, hingga Offering. Tersedia dalam tampilan Daftar atau Grid.',
+      icon: Icons.mail_rounded,
       accentColor: const Color(0xFF8B5CF6),
       placeCardBelow: true,
       targetRect: TourTargetRect(
-        computeRect: (size, pad) {
-          final top = pad.top + 120;
-          return Rect.fromLTWH(16, top, size.width - 32, 48);
+        computeRect: (size, pad, cLeft, cWidth) {
+          final top = pad.top + 88;
+          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 54);
         },
         borderRadius: BorderRadius.circular(22),
       ),
     ),
 
-    // Step 5: Tombol Tambah Lamaran (+)
+    // Step 5: Portal Karir Resmi
     AppTourStep(
-      targetTabIndex: 2,
-      badgeText: 'Langkah 5/5 • Catat Lamaran',
-      title: 'Tombol Aksi Cepat (+)',
+      targetTabIndex: 3,
+      badgeText: 'Langkah 5/5 • Portal Karir',
+      title: 'Jelajah Portal Karir Resmi',
       description:
-          'Catat lamaran baru dalam hitungan detik. Mendukung Mode Cepat, autofill dari tautan loker, dan lampiran dokumen PDF CV.',
-      icon: Icons.add_circle_rounded,
-      accentColor: const Color(0xFFEC4899),
+          'Buka dan cari lowongan terverifikasi secara langsung di LinkedIn, Glints, Jobstreet, Kalibrr, dan portal karir resmi lainnya.',
+      icon: Icons.travel_explore_rounded,
+      accentColor: const Color(0xFF0284C7),
       placeCardBelow: true,
       targetRect: TourTargetRect(
-        computeRect: (size, pad) {
-          final top = pad.top + 12;
-          return Rect.fromLTWH(size.width - 64, top, 46, 46);
+        computeRect: (size, pad, cLeft, cWidth) {
+          final top = pad.top + 90;
+          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 140);
         },
-        borderRadius: BorderRadius.circular(23),
-        isCircle: true,
+        borderRadius: BorderRadius.circular(24),
       ),
     ),
   ];
@@ -224,23 +221,38 @@ class AppTourOverlayState extends State<AppTourOverlay>
     final step = steps[_currentStepIndex];
     final isDark = AppTheme.isDark(context);
 
-    final targetRect = step.targetRect.computeRect(screenSize, padding);
+    // Responsive horizontal bounds matching MainNavigation (maxWidth: 840)
+    final contentWidth = math.min(screenSize.width, 840.0);
+    final contentLeft = (screenSize.width - contentWidth) / 2;
 
-    // Precise Coachmark Card Positioning (Guaranteed zero offside/clipping)
+    final targetRect = step.targetRect.computeRect(
+      screenSize,
+      padding,
+      contentLeft,
+      contentWidth,
+    );
+
+    // Precise Coachmark Card Dimensions & Positioning (Guaranteed zero offside/clipping)
+    final cardWidth = math.min(contentWidth - 32, 440.0);
+    final cardLeft = (screenSize.width - cardWidth) / 2;
+
     double cardTop;
     if (step.placeCardBelow) {
       cardTop = targetRect.bottom + 16;
-      final maxTop = screenSize.height - padding.bottom - 245;
+      final maxTop = screenSize.height - padding.bottom - 260;
       if (cardTop > maxTop) {
-        cardTop = math.max(padding.top + 14, targetRect.top - 225);
+        cardTop = math.max(padding.top + 14, targetRect.top - 240);
       }
     } else {
-      cardTop = targetRect.top - 225;
+      cardTop = targetRect.top - 240;
       if (cardTop < padding.top + 14) {
         cardTop = targetRect.bottom + 16;
       }
     }
-    cardTop = cardTop.clamp(padding.top + 14, screenSize.height - padding.bottom - 245);
+    cardTop = cardTop.clamp(
+      padding.top + 14,
+      screenSize.height - padding.bottom - 260,
+    );
 
     return Material(
       color: Colors.transparent,
@@ -292,10 +304,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             ),
           ),
 
-          // ── 3. MATERIAL YOU (MATERIAL 3) COACHMARK CARD ──
+          // ── 3. MATERIAL 3 COACHMARK CARD (RESPONSIVE & ZERO OFFSIDE) ──
           Positioned(
-            left: 16,
-            right: 16,
+            left: cardLeft,
+            width: cardWidth,
             top: cardTop,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),
@@ -316,7 +328,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
               },
               child: Container(
                 key: ValueKey<int>(_currentStepIndex),
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF211F26) : Colors.white,
                   borderRadius: BorderRadius.circular(28),
@@ -328,7 +340,9 @@ class AppTourOverlayState extends State<AppTourOverlay>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.15),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.40 : 0.15,
+                      ),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -338,8 +352,9 @@ class AppTourOverlayState extends State<AppTourOverlay>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // M3 Assist Chip Row + Skip
+                    // M3 Assist Chip Row + Skip Button
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
                           child: Container(
@@ -412,9 +427,11 @@ class AppTourOverlayState extends State<AppTourOverlay>
                     Text(
                       step.title,
                       style: TextStyle(
-                        fontSize: 19,
+                        fontSize: 18.5,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? const Color(0xFFE6E1E5) : const Color(0xFF1D1B20),
+                        color: isDark
+                            ? const Color(0xFFE6E1E5)
+                            : const Color(0xFF1D1B20),
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -425,7 +442,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
                     Text(
                       step.description,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13.5,
                         color: isDark
                             ? const Color(0xFFCAC4D0)
                             : const Color(0xFF49454F),
@@ -434,19 +451,20 @@ class AppTourOverlayState extends State<AppTourOverlay>
                       ),
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                    // Progress Dots + Action Buttons Row
+                    // Progress Dots + Action Buttons Row (Guaranteed ZERO Offside)
                     Row(
                       children: [
                         // Progress Indicator Dots
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: List.generate(steps.length, (idx) {
                             final isActive = idx == _currentStepIndex;
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(right: 5),
-                              width: isActive ? 20 : 6,
+                              width: isActive ? 18 : 6,
                               height: 6,
                               decoration: BoxDecoration(
                                 color: isActive
@@ -467,21 +485,21 @@ class AppTourOverlayState extends State<AppTourOverlay>
                           FluidBounceButton(
                             onTap: _prevStep,
                             child: Container(
-                              height: 40,
+                              height: 38,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                                horizontal: 14,
                               ),
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? const Color(0xFF2D2B33)
                                     : const Color(0xFFE8DEF8),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(19),
                               ),
                               child: Center(
                                 child: Text(
                                   'Kembali',
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
                                     color: isDark
                                         ? const Color(0xFFE8DEF8)
@@ -494,15 +512,15 @@ class AppTourOverlayState extends State<AppTourOverlay>
                           const SizedBox(width: 8),
                         ],
 
-                        // M3 Filled Next / Finish Button
+                        // M3 Filled Next / Finish Button (Zero Offside)
                         FluidBounceButton(
                           onTap: _nextStep,
                           child: Container(
-                            height: 40,
-                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
                               color: step.accentColor,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(19),
                             ),
                             child: Center(
                               child: Row(
@@ -510,20 +528,20 @@ class AppTourOverlayState extends State<AppTourOverlay>
                                 children: [
                                   Text(
                                     _currentStepIndex == steps.length - 1
-                                        ? 'Mulai Gunakan'
+                                        ? 'Selesai'
                                         : 'Lanjut',
                                     style: const TextStyle(
-                                      fontSize: 13.5,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: Colors.white,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   Icon(
                                     _currentStepIndex == steps.length - 1
                                         ? Icons.check_circle_rounded
                                         : Icons.arrow_forward_rounded,
-                                    size: 16,
+                                    size: 15,
                                     color: Colors.white,
                                   ),
                                 ],
