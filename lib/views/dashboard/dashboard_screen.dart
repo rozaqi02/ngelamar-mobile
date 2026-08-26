@@ -1303,43 +1303,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               ),
                             ),
 
-                            // Diagonal Arrow in Circular White Container with Fluid Fade Animation
-                            AnimatedOpacity(
-                              opacity: isExpanded ? 0.0 : 1.0,
-                              duration: const Duration(milliseconds: 260),
-                              curve: Curves.fastOutSlowIn,
-                              child: AnimatedScale(
-                                scale: isExpanded ? 0.82 : 1.0,
-                                duration: const Duration(milliseconds: 260),
-                                curve: Curves.fastOutSlowIn,
-                                child: IgnorePointer(
-                                  ignoring: isExpanded,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      Navigator.push(
-                                        context,
-                                        AppMotion.detailDockRoute(
-                                          builder: (_) =>
-                                              JobDetailScreen(job: job),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.arrow_outward_rounded,
-                                          size: 18,
-                                          color: Color(0xFF121214),
-                                        ),
-                                      ),
-                                    ),
+                            // Diagonal Arrow in Circular White Container (Always visible)
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.push(
+                                  context,
+                                  AppMotion.detailDockRoute(
+                                    builder: (_) => JobDetailScreen(job: job),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.arrow_outward_rounded,
+                                    size: 18,
+                                    color: Color(0xFF121214),
                                   ),
                                 ),
                               ),
