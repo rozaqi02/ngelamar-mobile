@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.27.0+244 - 2026-08-26
+
+### Added
+- **Single Universal Release APK:** Kompilasi release APK teroptimasi dengan R8 minification dan resource shrinking.
+- **Modern CI/CD iOS Build Pipeline:** Dukungan build workflow otomatis untuk rilis iOS `.ipa` sideload-ready via GitHub Actions.
+
+### Changed
+- **Pembaruan Dependensi:** Upgrade `firebase_core` dan `firebase_messaging` ke versi resmi dengan kompatibilitas penuh.
+- **Pembersihan Repositori:** Menghapus asset non-relevan dan merapikan struktur file dokumentasi.
+- **Dokumentasi Lengkap:** Pembaruan README profesional, terstruktur, dan ramah pengguna.
+
 ## 2.21.0+221 - 2026-08-23
 
 ### Added

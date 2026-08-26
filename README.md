@@ -1,139 +1,122 @@
-# Ngelamar App (v2.21.0)
+﻿# 🚀 Ngelamar — Personal Career CRM & Job Application Tracker
 
-Aplikasi personal career CRM dan pelacak lamaran kerja yang menggabungkan pencarian portal, persiapan karier, pengingat, CV, dan tracker lamaran dalam satu pengalaman mobile.
+<p align="center">
+  <img src="assets/images/app_icon.png" width="120" alt="Ngelamar Logo" style="border-radius: 24px;" />
+</p>
 
-Dikembangkan oleh **idka-solutions team**.
+<p align="center">
+  <b>Aplikasi pelacak lamaran kerja cerdas, persiapan karier, dan manajemen interview dalam satu genggaman.</b>
+</p>
 
----
-
-## Fitur Utama & Keunggulan Unik
-
-### Pembaruan v2.21.0
-
-- **Ngelamar Cloud:** akun Google opsional menautkan identitas anonim agar UID,
-  status PRO, serta file cloud pengguna tetap konsisten saat ganti perangkat.
-- **Backup dan CV privat:** backup ZIP tetap terenkripsi sebelum diunggah ke
-  Storage privat; CV PDF memakai bucket dan RLS per pengguna.
-- **Control room admin:** proyek `admin-web` siap Vercel untuk metrik,
-  pembuatan kode PRO, pengumuman, remote config, feedback, dan audit aksi.
-- **Backend yang dapat dioperasikan:** migration, Edge Function digest/AI,
-  inbox aplikasi, event privat, template, referral, serta dokumentasi setup
-  Google OAuth dan Vercel sudah tersedia.
-
-### Sorotan v2.20.0
-
-- **Detail lowongan baru:** Kualifikasi, deskripsi, dan benefit memakai selector tiga kolom yang selalu terlihat tanpa perlu menggeser tab.
-- **Bubble informasi presisi:** Gaji, mode kerja, dan tahap memakai satu permukaan serta satu border; bubble yang menyusut selalu berbentuk lingkaran 50×50.
-- **Cari Lokerku:** Pencarian portal dan Siapkan Karirmu disatukan dalam Career Hub yang dapat digeser, dengan identitas portal resmi dan konfirmasi sebelum membuka situs eksternal.
-- **Lamaran Saya:** Mendukung tampilan grid/list tersimpan, kontrol bookmark–urutan–tampilan yang ringkas, serta filter status yang lebih jelas.
-- **Beranda personal:** Foto profil tidak terdistorsi, label minat mengambil pilihan pengguna, dan stacked card mempunyai ruang judul yang lebih lega.
-- **Data contoh konsisten:** Tutorial memuat tepat enam lamaran dummy pada kategori `Contoh`; status data panduan dikunci dan seed lama dimigrasikan otomatis.
-- **Notifikasi terpusat:** Menu Kabar menampilkan jadwal seleksi, follow-up, status izin, dan pengingat berikutnya.
-- **Form lamaran lebih cepat:** Mode Catat Cepat, impor dari teks/tautan, feedback animasi, dan transisi dari tombol tambah ke form.
-- **Interaksi yang lebih hidup:** Animasi status, micro-interaction, haptic terpusat, morph route, dan animasi kartu menuju tracker.
-- **Profil dan CV:** Bagian Tentang dapat diisi manual dan tombol CV membuka PDF milik pengguna.
-- **Backup aman:** Ekspor ZIP terenkripsi dengan konfirmasi dan visibilitas kata sandi serta peringatan bahwa kata sandi tidak dapat dipulihkan.
-- **PRO tervalidasi backend:** Entitlement diverifikasi melalui Supabase dan tidak mempercayai status premium lokal.
-- **Ngelamar Cloud (opsional):** Login Google menautkan akun anonim tanpa
-  mengubah UID, lalu membuka backup ZIP terenkripsi, sinkronisasi preferensi,
-  CV privat, remote config, feedback, serta inbox pengumuman.
-- **Admin web siap Vercel:** Dashboard terpisah untuk kode PRO, pengguna aktif,
-  remote announcement, feedback, dan audit admin. Lihat
-  [panduan deploy](admin-web/README.md).
-
-1. **Apple iOS 26 Liquid Glass Bottom Navbar**
-   - Dual-layer glassmorphic blur (`sigmaX: 35, sigmaY: 35`).
-   - Liquid active pill indicator yang meluncur mulus dengan fisika fluida.
-   - Specular edge highlight reflection khas curved glass Apple.
-   - Responsif terhadap mode gelap dan mode terang.
-
-2. **FITUR UNGGULAN PEMBEDA: Career Flight Deck & AI Readiness Matrix**
-   - Scoring AI Readiness Index (0-100%) secara real-time.
-   - Rekomendasi otomatis aksi karir (Follow-Up HRD, Evaluator Gaji UMR, Persiapan Interview).
-   - Ekspor Laporan Eksekutif Progres Karir 1-tap ke WhatsApp atau Catatan.
-   - Perbandingan Penawaran Berdampingan (Side-by-Side Offer Comparison Sheet) jika memiliki 2+ status Offering.
-
-3. **Notifikasi Lokal & Pengingat Interview**
-   - Pengingat otomatis jadwal interview via notifikasi lokal HP.
-   - Deteksi otomatis lamaran duplikat saat paste atau pengisian form.
-
-4. **AppleToast v2 Floating Dynamic Capsule**
-   - Notifikasi kapsul melayang di bagian bawah layar di atas navbar.
-   - Mendukung sistem antrian pesan statis untuk mencegah penumpukan toast.
-   - Dilengkapi tombol aksi interaktif (misal: "Lihat", "Kirim WA").
-
-5. **Dashboard & Ringkasan Progres**
-   - Salam pembuka dinamis sesuai waktu lokal dan nama pengguna.
-   - Ringkasan statistik lamaran aktif (Total, Dikirim, Interview & Tes, Offering).
-   - Indikator Response Rate HRD dalam bentuk persentase.
-   - Smart Auto-Fill CTA untuk mengisi form otomatis dari teks loker.
-   - Dialog opsional untuk memuat contoh data lamaran saat pertama kali digunakan.
-
-6. **Manajemen Lamaran Kerja Overhauled**
-   - Pinned Cupertino Search Header dengan filter teks langsung.
-   - Monogram Avatar Perusahaan otomatis dengan gradien dinamis.
-   - Consolidated Apple Pill Status & Quick Filter Bar.
-   - Grouped Card layout dengan indikator status dot dan badge lokasi/tipe kerja.
-
-7. **Detail Lamaran, Skill Gap Checklist & Cheat-Sheet Interview**
-   - Informasi detail status, tanggal melamar, tipe kerja, lokasi, sumber loker, dan ekspektasi gaji.
-   - Interactive Skill Gap Checklist untuk persiapan interview.
-   - Cheat-Sheet Interview & Follow-Up Generator ke HRD.
-   - Evaluator Gaji & UMR Kota.
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
+  <img src="https://img.shields.io/badge/Version-2.27.0-2E7D32?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-000000?style=for-the-badge" alt="Platforms" />
+</p>
 
 ---
 
-## Privasi & Keamanan Data
+## 📌 Tentang Aplikasi
 
-- **Offline-first & terenkripsi:** Catatan lamaran disimpan di perangkat dalam basis data Hive terenkripsi; preferensi profil yang sensitif memakai penyimpanan aman perangkat.
-- **Tanpa formulir registrasi:** Aplikasi membuat sesi anonim Supabase untuk identitas instalasi, validasi PRO, dan pencatatan aktivitas minimal.
-- **Koneksi terkontrol:** Membuka portal loker atau meminta isi otomatis dari tautan HTTPS akan terhubung ke situs terkait setelah konfirmasi pengguna. Isi lamaran tetap disimpan lokal.
-- **Backup & pemulihan:** Anda dapat membuat dan memulihkan cadangan ZIP terenkripsi berisi riwayat serta lampiran. Kata sandi backup tidak disimpan aplikasi; simpan sendiri dengan aman. Backup JSON versi lama masih bisa diimpor, tetapi tidak membawa lampiran.
-- **Hapus tuntas:** Menghapus seluruh data juga menghapus lampiran yang dikelola aplikasi.
+**Ngelamar** adalah aplikasi *Personal Career CRM* dan *Job Tracker* berbasis *offline-first* yang dirancang untuk membantu para pencari kerja (jobseeker), fresh graduate, maupun profesional dalam mengelola seluruh proses pencarian kerja secara terstruktur, privat, dan efisien.
+
+Dengan Ngelamar, Anda tidak akan lagi melewatkan jadwal interview, lupa status follow-up HRD, atau bingung mengevaluasi penawaran kerja (*offering*).
 
 ---
 
-## Cara Menginstall File APK (`Ngelamar.apk`)
+## ✨ Fitur Unggulan
 
-1. Unduh file `Ngelamar.apk` yang berada di root repository ini ke perangkat Android Anda.
-2. Buka file `Ngelamar.apk` melalui Pengelola File (File Manager).
-3. Jika muncul peringatan keamanan, aktifkan opsi **"Izin dari sumber ini"** atau **"Install aplikasi dari sumber tidak dikenal"** di Pengaturan HP Anda.
-4. Tekan **Install** dan tunggu hingga proses selesai.
-5. Aplikasi **Ngelamar** siap digunakan!
+### 1. 📋 Smart Job Tracker & Status Management
+- **Manajemen Status Lengkap:** Lacak status lamaran mulai dari *Tersimpan*, *Terkirim*, *Interview & Tes*, *Offering*, hingga *Diterima* atau *Ditolak*.
+- **Filter Cepat & Pencarian Real-time:** Filter berdasarkan status, tipe kerja (WFO, WFH, Hybrid), serta pencarian nama posisi dan perusahaan.
+- **Deteksi Duplikasi Otomatis:** Mencegah Anda melamar ke posisi atau perusahaan yang sama dua kali tanpa sengaja.
+
+### 2. 🧠 Career Flight Deck & AI Matrix
+- **AI Readiness Index (0–100%):** Evaluasi kesiapan lamaran Anda secara real-time berdasarkan kelengkapan berkas dan persiapan interview.
+- **Skill Gap Checklist:** Checklist interaktif untuk memetakan skill yang dibutuhkan vs skill yang dimiliki.
+- **Evaluator Gaji & UMR:** Bandingkan ekspektasi gaji yang ditawarkan dengan standar UMR wilayah setempat.
+- **Offer Comparison Sheet:** Perbandingan berdampingan (*side-by-side*) jika Anda menerima lebih dari satu tawaran kerja.
+
+### 3. 🌐 Career Hub & Portal Discovery
+- **Akses Cepat Portal Terkemuka:** Terintegrasi dengan portal loker resmi seperti **LinkedIn, Jobstreet, Glints, Indeed, Kalibrr, dan KitaLulus**.
+- **Konfirmasi Aman:** Membuka tautan eksternal secara aman dengan perlindungan privasi.
+
+### 4. ⏰ Pengingat & Notifikasi Terjadwal
+- **Local Interview Reminder:** Pengingat otomatis di ponsel Anda untuk jadwal wawancara, tes teknis, atau psikotes.
+- **Pusat Kabar (Notification Center):** Rekap seluruh pengingat aktif, tindak lanjut (*follow-up*), dan status aplikasi dalam satu layar.
+
+### 5. 🔒 Privasi, Keamanan & Cloud Sync
+- **Offline-First & Local Encrypted:** Seluruh catatan lamaran disimpan lokal di perangkat dengan basis data Hive terenkripsi.
+- **Ngelamar Cloud (Opsional):** Cadangkan data terenkripsi dan sinkronisasi preferensi profil secara aman melalui Supabase.
+- **Ekspor & Impor ZIP:** Buat cadangan penuh data beserta lampiran dengan perlindungan kata sandi.
 
 ---
 
-## Teknologi yang Digunakan
+## 📲 Cara Instalasi
 
-- **Framework:** Flutter (Dart)
-- **State Management:** Flutter Riverpod
-- **Local Database:** Hive / Hive Flutter
-- **Penyimpanan Aman:** Hive terenkripsi, Flutter Secure Storage, dan SharedPreferences untuk preferensi non-sensitif
-- **Backend:** Supabase anonymous authentication, RLS, dan RPC untuk validasi entitlement PRO
-- **Notifikasi Lokal:** Flutter Local Notifications
-- **Desain UI/UX:** Apple iOS 26 Liquid Glass Design System
+### 🤖 Pengguna Android (.apk)
+1. Unduh file **`ngelamar-v2.27.0-release.apk`** yang berada di root repository ini.
+2. Buka file APK melalui aplikasi **Pengelola File (File Manager)** ponsel Anda.
+3. Jika muncul peringatan keamanan, izinkan **"Install aplikasi dari sumber tidak dikenal"** di Pengaturan.
+4. Tekan **Install** dan tunggu hingga selesai.
+
+### 🍏 Pengguna iPhone / iOS (.ipa)
+Aplikasi iOS dapat dipasang (*sideloading*) langsung menggunakan PC/Laptop:
+1. Unduh artifact **`Ngelamar-iOS-Release.ipa`** dari menu [GitHub Actions Releases / Artifacts](https://github.com/rozaqi02/ngelamar-mobile/actions).
+2. Hubungkan iPhone ke Laptop/PC menggunakan kabel data.
+3. Buka software **3uTools** (atau AltStore / Sideloadly) di Laptop Windows.
+4. Buka menu **Toolbox > IPA Signature**, masukkan file `.ipa` dan login dengan Apple ID gratis Anda.
+5. Klik **Install**, lalu di iPhone buka **Pengaturan > Umum > Manajemen Profil/Perangkat** dan pilih **Percayai Pengembang**.
 
 ---
 
-## Langkah Menjalankan Aplikasi (Developer)
+## 🛠️ Panduan Developer (Local Setup)
 
-1. Pastikan Flutter SDK telah terinstall di komputer Anda.
-2. Clone repository ini:
+### Prasyarat:
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) (versi stable terbaru `3.22+` / `3.27+`)
+- [Dart SDK](https://dart.dev/get-dart)
+- Android Studio / Xcode / VS Code
+- Git
+
+### Langkah Menjalankan Aplikasi:
+
+1. **Clone repository:**
    ```bash
    git clone https://github.com/rozaqi02/ngelamar-mobile.git
-   cd app-mobile-loker
+   cd ngelamar-mobile
    ```
-3. Unduh dependencies:
+
+2. **Pasang dependensi:**
    ```bash
    flutter pub get
    ```
-4. Jalankan aplikasi:
+
+3. **Jalankan pada emulator / perangkat fisik:**
    ```bash
    flutter run
    ```
 
+4. **Build APK Rilis (Android):**
+   ```bash
+   flutter build apk --release --obfuscate --split-debug-info=build/app/outputs/symbols
+   ```
+
 ---
 
-## Hak Cipta
+## 🏗️ Arsitektur & Teknologi
 
-(c) 2024 idka-solutions team. Seluruh hak cipta dilindungi undang-undang.
+- **Core Framework:** Flutter (Dart)
+- **State Management:** Flutter Riverpod (`StateNotifierProvider`)
+- **Local Database:** Hive & Secure Storage (AES encrypted)
+- **Backend & Auth:** Supabase (PostgreSQL, Row Level Security, Edge Functions)
+- **Push Notification:** Firebase Cloud Messaging (FCM) & Flutter Local Notifications
+- **Design System:** Google Material You (Material 3) solid color design
+
+---
+
+## 📄 Lisensi & Hak Cipta
+
+Dikembangkan oleh **idka-solutions team**.  
+Seluruh hak cipta dilindungi undang-undang.
