@@ -1,4 +1,4 @@
-﻿# 🚀 Ngelamar — Personal Career CRM & Job Application Tracker
+# 🚀 Ngelamar — Personal Career CRM & Job Application Tracker
 
 <p align="center">
   <img src="assets/images/app_icon.png" width="120" alt="Ngelamar Logo" style="border-radius: 24px;" />
@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
-  <img src="https://img.shields.io/badge/Version-2.27.0-2E7D32?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.28.0-2E7D32?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-000000?style=for-the-badge" alt="Platforms" />
 </p>
@@ -57,7 +57,7 @@ Dengan Ngelamar, Anda tidak akan lagi melewatkan jadwal interview, lupa status f
 ## 📲 Cara Instalasi
 
 ### 🤖 Pengguna Android (.apk)
-1. Unduh file **`ngelamar-v2.27.0-release.apk`** yang berada di root repository ini.
+1. Unduh file **`ngelamar-v2.28.0-release.apk`** yang berada di root repository ini.
 2. Buka file APK melalui aplikasi **Pengelola File (File Manager)** ponsel Anda.
 3. Jika muncul peringatan keamanan, izinkan **"Install aplikasi dari sumber tidak dikenal"** di Pengaturan.
 4. Tekan **Install** dan tunggu hingga selesai.

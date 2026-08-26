@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.28.0+245 - 2026-08-26
+
+### Added
+- **Universal Release APK v2.28.0:** Kompatibilitas penuh untuk seluruh perangkat Android (termasuk Samsung Galaxy One UI) dengan release keystore v1+v2 signature.
+- **Cross-Platform Safe Image Provider:** Dukungan upload dan render foto profil yang aman di Web (blob/data URL) dan Android native tanpa runtime crash.
+
+### Changed
+- **Pewarnaan Status Lamaran:** Status "Dikirim" diperbarui menjadi Abu-Abu Slate (#64748B) dengan gradien lembut di Job Detail.
+- **Navigasi & Animasi Transisi:** Tab Daftar Lamaran diposisikan di tengah dengan animasi transisi cross-fade lembut 180ms.
+- **Interactive Tour Overlay:** Peningkatan pemotongan cutout spotlight transparan dengan iluminasi putih dan perlindungan dari interupsi welcome screen.
+
 ## 2.27.0+244 - 2026-08-26
 
 ### Added
