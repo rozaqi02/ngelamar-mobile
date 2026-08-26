@@ -46,7 +46,6 @@ app.*.map.json
 /android/.kotlin/
 
 # Android binaries & build artifacts
-*.apk
 *.aab
 *.jks
 *.keystore
