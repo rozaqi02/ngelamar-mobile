@@ -124,10 +124,10 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
   }
 
   Future<void> _checkAndShowTabWelcomeScreen(int index) async {
-    if (!mounted) return;
+    if (!mounted || _isAppTourVisible) return;
     if (index == 1) {
       final seen = await PrefsService.isCareerPrepIntroSeen();
-      if (!seen && mounted) {
+      if (!seen && mounted && !_isAppTourVisible) {
         Navigator.push(
           context,
           WelcomeScreenRoute(child: const CareerPrepWelcomeScreen()),
@@ -135,7 +135,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       }
     } else if (index == 2) {
       final seen = await PrefsService.isJobListIntroSeen();
-      if (!seen && mounted) {
+      if (!seen && mounted && !_isAppTourVisible) {
         Navigator.push(
           context,
           WelcomeScreenRoute(child: const JobListWelcomeScreen()),
@@ -143,7 +143,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       }
     } else if (index == 3) {
       final seen = await PrefsService.isDiscoveryIntroSeen();
-      if (!seen && mounted) {
+      if (!seen && mounted && !_isAppTourVisible) {
         Navigator.push(
           context,
           WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
@@ -163,7 +163,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
       setState(() {
         _currentIndex = index;
       });
-      _checkAndShowTabWelcomeScreen(index);
+      if (!_isAppTourVisible) {
+        _checkAndShowTabWelcomeScreen(index);
+      }
       if (index == 0) _maybeShowAppTour();
     }
   }

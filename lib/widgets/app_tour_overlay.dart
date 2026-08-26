@@ -77,8 +77,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
       placeCardBelow: false,
       targetRect: TourTargetRect(
         computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 220;
-          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 240);
+          final top = pad.top + 175;
+          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 280);
         },
         borderRadius: BorderRadius.circular(28),
       ),
@@ -582,13 +582,6 @@ class _SpotlightCutoutPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    // 1. Solid Dark Scrim with Cutout Hole
-    final backgroundPaint = Paint()
-      ..color = const Color(0xB8000000) // 72% opacity dark scrim
-      ..style = PaintingStyle.fill;
-
-    final backgroundPath = Path()..addRect(fullRect);
-
     final holeRRect = RRect.fromRectAndCorners(
       targetRect.inflate(6),
       topLeft: borderRadius.topLeft,
@@ -597,26 +590,39 @@ class _SpotlightCutoutPainter extends CustomPainter {
       bottomRight: borderRadius.bottomRight,
     );
 
-    final holePath = Path();
+    // 1. Solid Dark Scrim with 100% Guaranteed Cutout Hole via PathFillType.evenOdd
+    final scrimPath = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(fullRect);
+
     if (isCircle) {
-      holePath.addOval(targetRect.inflate(6));
+      scrimPath.addOval(targetRect.inflate(6));
     } else {
-      holePath.addRRect(holeRRect);
+      scrimPath.addRRect(holeRRect);
     }
 
-    final combinedPath = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      holePath,
-    );
+    final backgroundPaint = Paint()
+      ..color = const Color(0xB8000000) // 72% opacity dark scrim
+      ..style = PaintingStyle.fill;
 
-    canvas.drawPath(combinedPath, backgroundPaint);
+    canvas.drawPath(scrimPath, backgroundPaint);
 
-    // 2. Crisp Solid Accent Border (Material 3 focus indicator)
+    // 2. Soft Bright Illumination / Whitening layer inside the spotlight cutout
+    final highlightPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.18) // Soft translucent white illumination
+      ..style = PaintingStyle.fill;
+
+    if (isCircle) {
+      canvas.drawOval(targetRect.inflate(6), highlightPaint);
+    } else {
+      canvas.drawRRect(holeRRect, highlightPaint);
+    }
+
+    // 3. Crisp Solid Accent Border (Material 3 focus indicator)
     final borderPaint = Paint()
       ..color = accentColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
+      ..strokeWidth = 2.4;
 
     if (isCircle) {
       canvas.drawOval(targetRect.inflate(6), borderPaint);
