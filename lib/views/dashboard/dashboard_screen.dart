@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +16,7 @@ import '../../widgets/crying_envelope_mascot.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/app_motion.dart';
+import '../../widgets/safe_avatar_image.dart';
 import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
 import '../jobs/add_edit_job_screen.dart';
@@ -642,10 +642,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         : 'Pencari Kerja';
     final displayJobs = state.priorityJobs;
 
-    final hasProfilePhoto =
-        state.userProfilePhoto.isNotEmpty &&
-        File(state.userProfilePhoto).existsSync();
-
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
@@ -683,22 +679,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           ],
                         ),
                         child: ClipOval(
-                          child: hasProfilePhoto
-                              ? Image.file(
-                                  File(state.userProfilePhoto),
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.center,
-                                  filterQuality: FilterQuality.medium,
-                                  width: 44,
-                                  height: 44,
-                                )
-                              : const Center(
-                                  child: Icon(
-                                    Icons.person_rounded,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
+                          child: SafeAvatarImage(
+                            imagePath: state.userProfilePhoto,
+                            size: 44,
+                          ),
                         ),
                       ),
                     ),

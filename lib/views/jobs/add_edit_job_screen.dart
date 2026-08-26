@@ -17,6 +17,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
+import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/rupiah_input_formatter.dart';
 
@@ -1562,43 +1563,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                         ),
                                       ],
                                     ),
-                                    child: ClipOval(
-                                      child:
-                                          _companyLogoPath != null &&
-                                              File(
-                                                _companyLogoPath!,
-                                              ).existsSync()
-                                          ? Image.file(
-                                              File(_companyLogoPath!),
-                                              width: 64,
-                                              height: 64,
-                                              fit: BoxFit.cover,
-                                              cacheWidth:
-                                                  (64 *
-                                                          MediaQuery.of(
-                                                            context,
-                                                          ).devicePixelRatio)
-                                                      .round(),
-                                              cacheHeight:
-                                                  (64 *
-                                                          MediaQuery.of(
-                                                            context,
-                                                          ).devicePixelRatio)
-                                                      .round(),
-                                            )
-                                          : Center(
-                                              child: Text(
-                                                displayCompany.isNotEmpty
-                                                    ? displayCompany[0]
-                                                          .toUpperCase()
-                                                    : 'N',
-                                                style: TextStyle(
-                                                  fontSize: 28,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: txtPri,
-                                                ),
-                                              ),
-                                            ),
+                                    child: CompanyLogoBadge(
+                                      companyName: displayCompany.isNotEmpty
+                                          ? displayCompany
+                                          : 'N',
+                                      customImagePath: _companyLogoPath,
+                                      size: 64,
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF282830)
+                                          : const Color(0xFFF0EDE6),
                                     ),
                                   ),
                                   Positioned(

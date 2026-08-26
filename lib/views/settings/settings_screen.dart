@@ -26,6 +26,7 @@ import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
+import '../../widgets/safe_avatar_image.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../jobs/add_edit_job_screen.dart';
@@ -1679,25 +1680,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   ),
                                 ),
                                 child: ClipOval(
-                                  child: hasPhoto
-                                      ? Image.file(
-                                          File(state.userProfilePhoto),
-                                          width: 80,
-                                          height: 80,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Container(
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF333336),
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              CupertinoIcons.person_fill,
-                                              size: 38,
-                                              color: Colors.white,
-                                            ),
-                                          ),
+                                  child: SafeAvatarImage(
+                                    imagePath: state.userProfilePhoto,
+                                    size: 80,
+                                    fallback: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF333336),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          CupertinoIcons.person_fill,
+                                          size: 38,
+                                          color: Colors.white,
                                         ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                               Positioned(

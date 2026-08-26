@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Renders authentic company icons (GoTo, Shopee, BCA, Google, Uber, Amazon, Microsoft, etc.),
@@ -21,10 +22,22 @@ class CompanyLogoBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final lower = companyName.toLowerCase().trim();
 
-    final hasCustomImage =
-        customImagePath != null &&
-        customImagePath!.isNotEmpty &&
-        File(customImagePath!).existsSync();
+    final customPath = customImagePath?.trim();
+    final isWebOrUrl = kIsWeb ||
+        (customPath != null &&
+            (customPath.startsWith('http://') ||
+                customPath.startsWith('https://') ||
+                customPath.startsWith('blob:') ||
+                customPath.startsWith('data:')));
+
+    bool hasValidLocalFile = false;
+    if (!kIsWeb && customPath != null && customPath.isNotEmpty && !isWebOrUrl) {
+      try {
+        hasValidLocalFile = File(customPath).existsSync();
+      } catch (_) {}
+    }
+
+    final hasCustomImage = (isWebOrUrl && customPath != null && customPath.isNotEmpty) || hasValidLocalFile;
 
     return Container(
       width: size,
@@ -42,14 +55,25 @@ class CompanyLogoBadge extends StatelessWidget {
       ),
       child: ClipOval(
         child: hasCustomImage
-            ? Image.file(
-                File(customImagePath!),
-                width: size,
-                height: size,
-                fit: BoxFit.cover,
-                cacheWidth: (size * MediaQuery.of(context).devicePixelRatio)
-                    .round(),
-              )
+            ? (isWebOrUrl
+                ? Image.network(
+                    customPath!,
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Center(child: _buildBrandIcon(lower)),
+                  )
+                : Image.file(
+                    File(customPath!),
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                    cacheWidth: (size * MediaQuery.of(context).devicePixelRatio)
+                        .round(),
+                    errorBuilder: (context, error, stackTrace) =>
+                        Center(child: _buildBrandIcon(lower)),
+                  ))
             : Center(child: _buildBrandIcon(lower)),
       ),
     );

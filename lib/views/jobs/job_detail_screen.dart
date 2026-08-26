@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1075,12 +1076,27 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.file(
-                                  File(currentJob.screenshotPath!),
-                                  height: 180,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: kIsWeb ||
+                                        currentJob.screenshotPath!
+                                            .startsWith('http') ||
+                                        currentJob.screenshotPath!
+                                            .startsWith('blob:')
+                                    ? Image.network(
+                                        currentJob.screenshotPath!,
+                                        height: 180,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const SizedBox.shrink(),
+                                      )
+                                    : Image.file(
+                                        File(currentJob.screenshotPath!),
+                                        height: 180,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const SizedBox.shrink(),
+                                      ),
                               ),
                             ),
                           ],
