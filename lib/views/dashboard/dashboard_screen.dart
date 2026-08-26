@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
@@ -1198,8 +1199,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   }
                 });
               },
-              child: Transform.translate(
-                offset: Offset(0, index == 0 ? 0.0 : -22.0),
+              child: OverlapShift(
+                isFirst: index == 0,
+                overlap: 24.0,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.fastOutSlowIn,
@@ -1207,36 +1209,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   constraints: BoxConstraints(
                     minHeight: isLast ? minimumLastHeight : 0,
                   ),
-                  margin: EdgeInsets.zero,
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.vertical(
-                    top: const Radius.circular(32),
-                    bottom: isLast
-                        ? const Radius.circular(32)
-                        : const Radius.circular(0),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.vertical(
+                      top: const Radius.circular(32),
+                      bottom: isLast
+                          ? const Radius.circular(32)
+                          : const Radius.circular(0),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.fastOutSlowIn,
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      22,
-                      18,
-                      22,
-                      isLast
-                          ? AppLayoutMetrics.contentBottomClearance(context)
-                          : (isExpanded ? 48 : 44),
-                    ),
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.fastOutSlowIn,
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        22,
+                        18,
+                        22,
+                        isLast
+                            ? AppLayoutMetrics.contentBottomClearance(context)
+                            : (isExpanded ? 48 : 44),
+                      ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -1586,6 +1587,94 @@ class _RecapMetric extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Custom SingleChildRenderObjectWidget that reduces layout height by [overlap]
+/// and shifts child paint offset upwards by [overlap] for seamless card stacking.
+class OverlapShift extends SingleChildRenderObjectWidget {
+  final double overlap;
+  final bool isFirst;
+
+  const OverlapShift({
+    super.key,
+    required this.isFirst,
+    this.overlap = 24.0,
+    required super.child,
+  });
+
+  @override
+  RenderOverlapShift createRenderObject(BuildContext context) {
+    return RenderOverlapShift(isFirst: isFirst, overlap: overlap);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    RenderOverlapShift renderObject,
+  ) {
+    renderObject
+      ..isFirst = isFirst
+      ..overlap = overlap;
+  }
+}
+
+class RenderOverlapShift extends RenderShiftedBox {
+  bool _isFirst;
+  double _overlap;
+
+  RenderOverlapShift({
+    RenderBox? child,
+    required bool isFirst,
+    required double overlap,
+  })  : _isFirst = isFirst,
+        _overlap = overlap,
+        super(child);
+
+  bool get isFirst => _isFirst;
+  set isFirst(bool value) {
+    if (_isFirst != value) {
+      _isFirst = value;
+      markNeedsLayout();
+    }
+  }
+
+  double get overlap => _overlap;
+  set overlap(double value) {
+    if (_overlap != value) {
+      _overlap = overlap;
+      markNeedsLayout();
+    }
+  }
+
+  @override
+  void performLayout() {
+    if (child != null) {
+      child!.layout(constraints, parentUsesSize: true);
+      final childSize = child!.size;
+      final effectiveOverlap = _isFirst ? 0.0 : _overlap;
+      size = Size(
+        childSize.width,
+        (childSize.height - effectiveOverlap).clamp(0.0, double.infinity),
+      );
+      final BoxParentData childParentData = child!.parentData! as BoxParentData;
+      childParentData.offset = Offset(0, -effectiveOverlap);
+    } else {
+      size = Size.zero;
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    if (child == null) return false;
+    final effectiveOverlap = _isFirst ? 0.0 : _overlap;
+    return result.addWithPaintOffset(
+      offset: Offset(0, -effectiveOverlap),
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child!.hitTest(result, position: transformed);
+      },
     );
   }
 }

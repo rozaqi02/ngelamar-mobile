@@ -107,6 +107,45 @@ class _NotificationCenterScreenState
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (Navigator.canPop(context)) ...[
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF242428) : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF383842)
+                          : AppTheme.warmBorder,
+                      width: 1.4,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.20 : 0.04,
+                        ),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: textColor,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
