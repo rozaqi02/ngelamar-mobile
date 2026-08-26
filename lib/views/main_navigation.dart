@@ -62,17 +62,17 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     _NavItem(
       activeIcon: Icons.school_rounded,
       inactiveIcon: Icons.school_outlined,
-      label: 'Persiapan',
+      label: 'Siapkan Karir',
     ),
     _NavItem(
       activeIcon: Icons.mail_rounded,
       inactiveIcon: Icons.mail_outline_rounded,
-      label: 'Lamaran',
+      label: 'Daftar Lamaran',
     ),
     _NavItem(
       activeIcon: Icons.travel_explore_rounded,
       inactiveIcon: Icons.travel_explore_outlined,
-      label: 'Portal Loker',
+      label: 'Portal Karir',
     ),
     _NavItem(
       activeIcon: Icons.person_rounded,
@@ -404,60 +404,91 @@ class _FadeTabStack extends StatefulWidget {
   State<_FadeTabStack> createState() => _FadeTabStackState();
 }
 
-class _FadeTabStackState extends State<_FadeTabStack> {
-  int? _leavingIndex;
-  int _transitionSerial = 0;
+class _FadeTabStackState extends State<_FadeTabStack>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _fadeControllers;
+  late final List<Animation<double>> _fadeAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeControllers = List.generate(
+      widget.children.length,
+      (index) => AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 180),
+        value: index == widget.activeIndex ? 1.0 : 0.0,
+      ),
+    );
+    _fadeAnimations = _fadeControllers.map((ctrl) {
+      return CurvedAnimation(
+        parent: ctrl,
+        curve: Curves.easeInOutCubic,
+      );
+    }).toList();
+  }
 
   @override
   void didUpdateWidget(covariant _FadeTabStack oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.activeIndex == widget.activeIndex) return;
+    if (oldWidget.activeIndex != widget.activeIndex) {
+      final prev = oldWidget.activeIndex;
+      final next = widget.activeIndex;
 
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    _leavingIndex = reduceMotion ? null : oldWidget.activeIndex;
-    final serial = ++_transitionSerial;
-    if (!reduceMotion) {
-      Future<void>.delayed(AppMotion.tabFade, () {
-        if (mounted && serial == _transitionSerial) {
-          setState(() => _leavingIndex = null);
-        }
-      });
+      final reduceMotion =
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      if (reduceMotion) {
+        _fadeControllers[prev].value = 0.0;
+        _fadeControllers[next].value = 1.0;
+      } else {
+        _fadeControllers[prev].animateTo(0.0, curve: Curves.easeIn);
+        _fadeControllers[next].animateTo(1.0, curve: Curves.easeOut);
+      }
     }
   }
 
   @override
+  void dispose() {
+    for (final ctrl in _fadeControllers) {
+      ctrl.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Stack(
       fit: StackFit.expand,
       children: List.generate(widget.children.length, (index) {
-        final active = index == widget.activeIndex;
-        final visible = active || index == _leavingIndex;
-        // Offstage keeps state alive but removes inactive screens from layout,
-        // hit testing, semantics, and Hero discovery. This avoids duplicate
-        // company-logo Hero tags across the five retained tabs.
-        return Offstage(
-          offstage: !visible,
-          child: IgnorePointer(
-            ignoring: !active,
-            child: ExcludeSemantics(
-              excluding: !active,
-              child: HeroMode(
-                enabled: active,
-                child: TickerMode(
-                  enabled: active,
-                  child: AnimatedOpacity(
-                    opacity: active ? 1 : 0,
-                    duration: reduceMotion ? Duration.zero : AppMotion.tabFade,
-                    curve: Curves.linear,
-                    child: RepaintBoundary(child: widget.children[index]),
+        final isActive = index == widget.activeIndex;
+        return AnimatedBuilder(
+          animation: _fadeAnimations[index],
+          builder: (context, child) {
+            final val = _fadeAnimations[index].value;
+            final isVisible = val > 0.0 || isActive;
+
+            return Offstage(
+              offstage: !isVisible,
+              child: IgnorePointer(
+                ignoring: !isActive,
+                child: ExcludeSemantics(
+                  excluding: !isActive,
+                  child: HeroMode(
+                    enabled: isActive,
+                    child: TickerMode(
+                      enabled: isVisible,
+                      child: Opacity(
+                        opacity: val.clamp(0.0, 1.0),
+                        child: RepaintBoundary(
+                          child: widget.children[index],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       }),
     );
