@@ -96,7 +96,7 @@ class AppTheme {
         return const Color(0xFF8B5CF6);
       case 'Dikirim':
       case 'Tersimpan':
-        return const Color(0xFF18181B); // Hitam Solid
+        return const Color(0xFF64748B); // Abu-Abu Slate Elegan
       case 'Tes / Psikotes':
         return const Color(0xFFFBBF24); // Kuning Amber Hangat
       case 'Interview HR':
@@ -112,7 +112,7 @@ class AppTheme {
       case 'Ditolak':
         return const Color(0xFFDE4B3E); // Merah Karang / Coral Red
       default:
-        return const Color(0xFF18181B);
+        return const Color(0xFF64748B);
     }
   }
 
@@ -136,7 +136,7 @@ class AppTheme {
         return isDark ? const Color(0xFFC4B5FD) : const Color(0xFF8B5CF6);
       case 'Dikirim':
       case 'Tersimpan':
-        return isDark ? const Color(0xFF3F3F46) : const Color(0xFF18181B);
+        return isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
       case 'Tes / Psikotes':
         return isDark ? const Color(0xFFFCD34D) : const Color(0xFFF59E0B);
       case 'Interview HR':
@@ -152,7 +152,7 @@ class AppTheme {
       case 'Ditolak':
         return isDark ? const Color(0xFFF87171) : const Color(0xFFDE4B3E);
       default:
-        return isDark ? const Color(0xFF3F3F46) : const Color(0xFF18181B);
+        return isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
     }
   }
 

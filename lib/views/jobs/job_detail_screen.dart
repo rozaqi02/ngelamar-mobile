@@ -1287,9 +1287,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         case 'Tersedia':
         default:
           return const [
-            Color(0xFF18181B),
-            Color(0xFF151517),
-            Color(0xFF131315),
+            Color(0xFF1E293B),
+            Color(0xFF192231),
+            Color(0xFF141A25),
             Color(0xFF121214),
           ];
       }
@@ -1343,9 +1343,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       case 'Tersedia':
       default:
         return const [
-          Color(0xFF27272A),
-          Color(0xFF52525B),
-          Color(0xFFF4F4F5),
+          Color(0xFFCBD5E1),
+          Color(0xFFE2E8F0),
+          Color(0xFFF1F5F9),
           Color(0xFFFBF8F2),
         ];
     }
