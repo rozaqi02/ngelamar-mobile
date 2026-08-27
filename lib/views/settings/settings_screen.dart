@@ -30,6 +30,7 @@ import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/safe_avatar_image.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
+import '../../widgets/pro_envelope_mascot.dart';
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
 import '../jobs/job_list_screen.dart';
@@ -1803,47 +1804,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'PROFIL\nSAYA',
-                      style: TextStyle(
-                        fontSize: 34,
-                        height: 0.96,
-                        fontWeight: FontWeight.w900,
-                        color: txtPri,
-                        letterSpacing: -1.6,
-                      ),
-                    ),
-                    FluidBounceButton(
-                      onTap: _showEditProfileDialog,
-                      semanticLabel: 'Edit profil pengguna',
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: bg,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: cardBorder, width: 1.4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
-                              ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            CupertinoIcons.pencil,
-                            size: 19,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'PROFIL\nSAYA',
+                          style: TextStyle(
+                            fontSize: 30,
+                            height: 1.0,
+                            fontWeight: FontWeight.w900,
                             color: txtPri,
+                            letterSpacing: -1.2,
                           ),
                         ),
+                        FluidBounceButton(
+                          onTap: _showEditProfileDialog,
+                          semanticLabel: 'Edit profil pengguna',
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: bg,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: cardBorder, width: 1.4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Icon(
+                                CupertinoIcons.pencil,
+                                size: 19,
+                                color: txtPri,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Akun, preferensi, dan riwayat lamaranmu.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: txtSec,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -2595,14 +2611,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFFFE7A3), Color(0xFFF8BA38)],
                         ),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE7A719)),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(
-                              0xFF1E3A8A,
-                            ).withValues(alpha: 0.25),
+                              0xFFF59E0B,
+                            ).withValues(alpha: 0.22),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -2610,19 +2629,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.workspace_premium_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                          const SizedBox(
+                            width: 72,
+                            height: 58,
+                            child: ProKingEnvelopeMascot(width: 72, height: 58),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2630,7 +2642,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 Text(
                                   'Upgrade ke Ngelamar PRO',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFF3E2A00),
                                     fontWeight: FontWeight.w900,
                                     fontSize: 13.5,
                                   ),
@@ -2639,7 +2651,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 Text(
                                   'Rp 10.000 / bln • Buka seluruh fitur',
                                   style: TextStyle(
-                                    color: Color(0xFFDBEAFE),
+                                    color: Color(0xFF705000),
                                     fontSize: 11,
                                   ),
                                 ),
@@ -2648,7 +2660,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           const Icon(
                             CupertinoIcons.chevron_right,
-                            color: Colors.white,
+                            color: Color(0xFF3E2A00),
                             size: 16,
                           ),
                         ],

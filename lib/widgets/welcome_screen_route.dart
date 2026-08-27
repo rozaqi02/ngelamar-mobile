@@ -27,7 +27,7 @@ class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: FractionallySizedBox(
                   widthFactor: 1,
-                  heightFactor: 0.84,
+                  heightFactor: 0.52,
                   child: _WelcomeDismissibleSheet(child: child),
                 ),
               ),
@@ -105,13 +105,9 @@ class _WelcomeDismissibleSheetState extends State<_WelcomeDismissibleSheet>
       HapticFeedback.lightImpact();
       Navigator.of(context).pop();
     } else {
-      _springAnimation = Tween<double>(
-        begin: _dragOffset,
-        end: 0.0,
-      ).animate(CurvedAnimation(
-        parent: _springController,
-        curve: Curves.easeOutCubic,
-      ));
+      _springAnimation = Tween<double>(begin: _dragOffset, end: 0.0).animate(
+        CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic),
+      );
       _springController.forward(from: 0.0);
     }
   }

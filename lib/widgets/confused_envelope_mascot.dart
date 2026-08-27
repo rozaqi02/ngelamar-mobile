@@ -57,6 +57,12 @@ class _ConfusedEnvelopeMascotState extends State<ConfusedEnvelopeMascot>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return CustomPaint(
+        size: Size(widget.width, widget.height),
+        painter: _ConfusedMascotPainter(progress: 0),
+      );
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {

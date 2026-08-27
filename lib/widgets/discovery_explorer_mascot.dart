@@ -38,6 +38,12 @@ class _DiscoveryExplorerMascotState extends State<DiscoveryExplorerMascot>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return CustomPaint(
+        size: Size(widget.width, widget.height),
+        painter: _DiscoveryExplorerPainter(progress: 0),
+      );
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {

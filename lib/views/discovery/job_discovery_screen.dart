@@ -289,6 +289,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     final background = isDark
         ? const Color(0xFF121214)
         : const Color(0xFFFAF8F5);
+    final visibleQueries = _searchHistory.isEmpty
+        ? const ['Fresh graduate', 'Remote', 'Admin', 'UI/UX']
+        : _searchHistory;
 
     final content = Container(
       color: background,
@@ -359,6 +362,18 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    Text(
+                      'Cari sekali, lalu buka di portal yang paling relevan.',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: isDark
+                            ? const Color(0xFFA0A0A8)
+                            : const Color(0xFF6B6A70),
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     AppSearchField(
                       controller: _searchController,
                       hintText: 'Contoh: Flutter, BUMN, remote, startup...',
@@ -402,7 +417,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              'HISTORI PENCARIAN',
+                              _searchHistory.isEmpty
+                                  ? 'COBA KATA KUNCI INI'
+                                  : 'HISTORI PENCARIAN',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
@@ -436,103 +453,85 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                   ),
                   SizedBox(
                     height: 38,
-                    child: _searchHistory.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: visibleQueries.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final query = visibleQueries[index];
+                        final isCurrent =
+                            _searchController.text.trim().toLowerCase() ==
+                            query.toLowerCase();
+                        return FluidBounceButton(
+                          semanticLabel: 'Gunakan kata kunci $query',
+                          selected: isCurrent,
+                          onTap: () {
+                            setState(() {
+                              _searchController.text = query;
+                              _searchController.selection =
+                                  TextSelection.collapsed(
+                                    offset: _searchController.text.length,
+                                  );
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isCurrent
+                                  ? const Color(0xFF1E8E3E)
+                                  : (isDark
+                                        ? const Color(0xFF203027)
+                                        : Colors.white),
+                              borderRadius: BorderRadius.circular(19),
+                              border: Border.all(
+                                color: isCurrent
+                                    ? const Color(0xFF1E8E3E)
+                                    : (isDark
+                                          ? const Color(0xFF31523A)
+                                          : const Color(0xFFBFDCC6)),
+                                width: 1.1,
+                              ),
+                            ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
+                                Icon(
+                                  Icons.access_time_rounded,
+                                  size: 13,
+                                  color: isCurrent
+                                      ? Colors.white
+                                      : (isDark
+                                            ? const Color(0xFFCFE9D5)
+                                            : const Color(0xFF20442A)),
+                                ),
+                                const SizedBox(width: 5),
                                 Text(
-                                  'Belum ada riwayat pencarian',
+                                  query,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    fontStyle: FontStyle.italic,
-                                    color: isDark
-                                        ? Colors.white38
-                                        : Colors.black38,
+                                    fontWeight: isCurrent
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : (isDark
+                                              ? const Color(0xFFCFE9D5)
+                                              : const Color(0xFF20442A)),
                                   ),
                                 ),
                               ],
                             ),
-                          )
-                        : ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: _searchHistory.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (context, index) {
-                              final query = _searchHistory[index];
-                              final isCurrent =
-                                  _searchController.text.trim().toLowerCase() ==
-                                  query.toLowerCase();
-                              return FluidBounceButton(
-                                semanticLabel: 'Gunakan kata kunci $query',
-                                selected: isCurrent,
-                                onTap: () {
-                                  setState(() {
-                                    _searchController.text = query;
-                                    _searchController.selection =
-                                        TextSelection.collapsed(
-                                          offset: _searchController.text.length,
-                                        );
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 7,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isCurrent
-                                        ? const Color(0xFF1E8E3E)
-                                        : (isDark
-                                              ? const Color(0xFF203027)
-                                              : Colors.white),
-                                    borderRadius: BorderRadius.circular(19),
-                                    border: Border.all(
-                                      color: isCurrent
-                                          ? const Color(0xFF1E8E3E)
-                                          : (isDark
-                                                ? const Color(0xFF31523A)
-                                                : const Color(0xFFBFDCC6)),
-                                      width: 1.1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.access_time_rounded,
-                                        size: 13,
-                                        color: isCurrent
-                                            ? Colors.white
-                                            : (isDark
-                                                  ? const Color(0xFFCFE9D5)
-                                                  : const Color(0xFF20442A)),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        query,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isCurrent
-                                              ? FontWeight.w800
-                                              : FontWeight.w600,
-                                          color: isCurrent
-                                              ? Colors.white
-                                              : (isDark
-                                                    ? const Color(0xFFCFE9D5)
-                                                    : const Color(0xFF20442A)),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
                           ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),

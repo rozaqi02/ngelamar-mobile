@@ -1452,6 +1452,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         currentJob.location != null && currentJob.location!.trim().isNotEmpty;
 
     final experienceText = currentJob.status;
+    final statusBackground =
+        _getStatusGradients(currentJob.status, isDark: isDark)
+            .map((color) {
+              if (isDark) return color;
+              return Color.lerp(color, AppTheme.warmBackground, 0.42)!;
+            })
+            .toList(growable: false);
 
     // Scroll animation factor (0.0 to 1.0)
     final scrollRatio = (_scrollOffset / 160.0).clamp(0.0, 1.0);
@@ -1460,7 +1467,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     return Scaffold(
       backgroundColor: isDark
           ? const Color(0xFF121214)
-          : const Color(0xFFFBF8F2),
+          : AppTheme.warmBackground,
       body: Stack(
         children: [
           // ── DYNAMIC STATUS-BASED GRADIENT BACKGROUND ──
@@ -1474,10 +1481,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: _getStatusGradients(
-                    currentJob.status,
-                    isDark: isDark,
-                  ),
+                  colors: statusBackground,
                   stops: const [0.0, 0.45, 0.78, 1.0],
                 ),
               ),

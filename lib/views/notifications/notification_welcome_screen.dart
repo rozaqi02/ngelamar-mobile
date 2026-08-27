@@ -23,10 +23,12 @@ class NotificationWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF1F1115) : const Color(0xFFFCF2F2);
-    final tonalBtnColor =
-        isDark ? const Color(0xFF381B22) : const Color(0xFFFFDAD6);
-    final tonalIconColor =
-        isDark ? const Color(0xFFFFB3B8) : const Color(0xFF93000A);
+    final tonalBtnColor = isDark
+        ? const Color(0xFF381B22)
+        : const Color(0xFFFFDAD6);
+    final tonalIconColor = isDark
+        ? const Color(0xFFFFB3B8)
+        : const Color(0xFF93000A);
 
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFDCC8CA) : const Color(0xFF4B5563);
@@ -71,7 +73,7 @@ class NotificationWelcomeScreen extends StatelessWidget {
 
                 // Mascot Canvas
                 const Center(
-                  child: WavingGreetingMascot(width: 250, height: 185),
+                  child: WavingGreetingMascot(width: 126, height: 94),
                 ),
 
                 const Spacer(),
@@ -84,7 +86,7 @@ class NotificationWelcomeScreen extends StatelessWidget {
                       TextSpan(
                         text: 'Jangan Lewatkan ',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: txtPri,
                           letterSpacing: -1.0,
@@ -94,7 +96,7 @@ class NotificationWelcomeScreen extends StatelessWidget {
                       const TextSpan(
                         text: 'Momennya',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFFBA1A1A),
                           letterSpacing: -1.0,
@@ -114,22 +116,22 @@ class NotificationWelcomeScreen extends StatelessWidget {
                     'Jadwal seleksi, follow-up, dan kabar penting lamaranmu terkumpul di sini.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
+                      fontSize: 11.5,
+                      height: 1.35,
                       color: txtSec,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 26),
+                const SizedBox(height: 12),
 
                 // Material 3 Filled Button
                 FluidBounceButton(
                   onTap: () => _close(context),
                   child: Container(
                     width: double.infinity,
-                    height: 54,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: const Color(0xFFBA1A1A),
                       borderRadius: BorderRadius.circular(28),
@@ -159,7 +161,7 @@ class NotificationWelcomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
+                SizedBox(height: bottomInset > 0 ? bottomInset + 8 : 12),
               ],
             ),
           ),

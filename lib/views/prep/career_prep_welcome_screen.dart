@@ -22,10 +22,12 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF1D1409) : const Color(0xFFFBF4E8);
-    final tonalBtnColor =
-        isDark ? const Color(0xFF382612) : const Color(0xFFFFE088);
-    final tonalIconColor =
-        isDark ? const Color(0xFFFDE047) : const Color(0xFF452B00);
+    final tonalBtnColor = isDark
+        ? const Color(0xFF382612)
+        : const Color(0xFFFFE088);
+    final tonalIconColor = isDark
+        ? const Color(0xFFFDE047)
+        : const Color(0xFF452B00);
 
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFDACBB9) : const Color(0xFF4B5563);
@@ -69,9 +71,7 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
                 const Spacer(),
 
                 // Mascot Canvas
-                const Center(
-                  child: CareerPrepMascot(width: 265, height: 190),
-                ),
+                const Center(child: CareerPrepMascot(width: 132, height: 96)),
 
                 const Spacer(),
 
@@ -83,7 +83,7 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
                       TextSpan(
                         text: 'Kuasai Tahapan ',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: txtPri,
                           letterSpacing: -1.0,
@@ -93,7 +93,7 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
                       const TextSpan(
                         text: 'Seleksi',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFFB45309),
                           letterSpacing: -1.0,
@@ -113,22 +113,22 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
                     'Siapkan checklist berkas ATS, latihan interview metode STAR, dan simulasi gaji UMR.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
+                      fontSize: 11.5,
+                      height: 1.35,
                       color: txtSec,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 26),
+                const SizedBox(height: 12),
 
                 // Material 3 Filled Button
                 FluidBounceButton(
                   onTap: () => _handleClose(context),
                   child: Container(
                     width: double.infinity,
-                    height: 54,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: const Color(0xFFB45309),
                       borderRadius: BorderRadius.circular(28),
@@ -158,7 +158,7 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
+                SizedBox(height: bottomInset > 0 ? bottomInset + 8 : 12),
               ],
             ),
           ),

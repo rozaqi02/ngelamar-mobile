@@ -65,7 +65,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   late TextEditingController _labelsController;
 
   String _status = 'Dikirim';
-  String _workType = 'WFO';
+  String _workType = 'Belum ditentukan';
   String _jobSource = 'LinkedIn';
   String _sourcePlatform = 'Manual';
   String _priority = 'Normal';
@@ -341,8 +341,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color:
-                      isDark ? const Color(0xFF383842) : Colors.grey.shade300,
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -403,26 +404,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               txtPri,
               txtSec,
             ),
-            _buildPreviewRow(
-              'Mode Kerja',
-              result.workType,
-              txtPri,
-              txtSec,
-            ),
+            _buildPreviewRow('Mode Kerja', result.workType, txtPri, txtSec),
             if (result.location != null && result.location!.isNotEmpty)
-              _buildPreviewRow(
-                'Lokasi',
-                result.location!,
-                txtPri,
-                txtSec,
-              ),
+              _buildPreviewRow('Lokasi', result.location!, txtPri, txtSec),
             if (result.hrContact != null && result.hrContact!.isNotEmpty)
-              _buildPreviewRow(
-                'Kontak HR',
-                result.hrContact!,
-                txtPri,
-                txtSec,
-              ),
+              _buildPreviewRow('Kontak HR', result.hrContact!, txtPri, txtSec),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -1022,6 +1008,29 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           Text(
             'Simpan tiga informasi penting dulu. Detail lain bisa dilengkapi nanti.',
             style: TextStyle(fontSize: 11.5, color: txtSec, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Mode kerja',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: txtSec,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: ['Belum ditentukan', 'WFO', 'WFH', 'Hybrid'].map((type) {
+              final selected = _workType == type;
+              return ChoiceChip(
+                label: Text(type),
+                selected: selected,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _workType = type),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 16),
           Text(

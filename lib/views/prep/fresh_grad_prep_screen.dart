@@ -433,9 +433,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  28,
+                  20,
                   widget.embedded ? 8 : 20,
-                  28,
+                  20,
                   10,
                 ),
                 child: Column(
@@ -450,7 +450,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                           child: Text(
                             'SIAPKAN\nKARIRMU',
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 30,
                               fontWeight: FontWeight.w900,
                               color: txtPri,
                               letterSpacing: -1.2,
@@ -470,8 +470,8 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                             );
                           },
                           child: Container(
-                            width: 38,
-                            height: 38,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF222226)
@@ -513,7 +513,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
 
             // ── PREPARATION MENU ──
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(28, 10, 28, 18),
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   children: List.generate(cardConfigs.length, (i) {
@@ -1069,36 +1069,46 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Standar UMP/UMK Daerah',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF121214),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Standar UMP/UMK Daerah',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF121214),
+                          ),
                         ),
-                      ),
-                      Text(
-                        _useCustomUmr
-                            ? 'Input Manual Aktif'
-                            : 'Standar Resmi 2025/2026',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? const Color(0xFFA0A0A8) : Colors.grey,
+                        Text(
+                          _useCustomUmr
+                              ? 'Input Manual Aktif'
+                              : 'Standar Resmi 2025/2026',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? const Color(0xFFA0A0A8)
+                                : Colors.grey,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  Text(
-                    SalaryEvaluatorService.formatRupiah(targetUmr),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: Color(0xFF5C44E4),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      SalaryEvaluatorService.formatRupiah(targetUmr),
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: Color(0xFF5C44E4),
+                      ),
                     ),
                   ),
                 ],
@@ -1107,16 +1117,18 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               const SizedBox(height: 12),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Sesuaikan Nilai UMP/UMK Manual',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: isDark ? Colors.white : const Color(0xFF121214),
+                  Expanded(
+                    child: Text(
+                      'Sesuaikan Nilai UMP/UMK Manual',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : const Color(0xFF121214),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 12),
                   CupertinoSwitch(
                     value: _useCustomUmr,
                     activeTrackColor: isDark
@@ -1366,20 +1378,30 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: textColor,
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                color: textColor,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
-              color: textColor,
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
+                color: textColor,
+              ),
             ),
           ),
         ],
@@ -1852,38 +1874,49 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     final color = t['color'] as Color;
                     return GestureDetector(
                       onTap: () => _showTopicDetailModal(context, t),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF282830)
-                              : const Color(0xFFF9F7F2),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF3E3E48)
-                                : const Color(0xFFE5E0D5),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 154),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(t['icon'] as IconData, size: 14, color: color),
-                            const SizedBox(width: 6),
-                            Text(
-                              t['title'] as String,
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF121214),
-                              ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF282830)
+                                : const Color(0xFFF9F7F2),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF3E3E48)
+                                  : const Color(0xFFE5E0D5),
                             ),
-                          ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                t['icon'] as IconData,
+                                size: 14,
+                                color: color,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  t['title'] as String,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF121214),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

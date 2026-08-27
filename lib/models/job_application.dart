@@ -9,8 +9,12 @@ class RecruitmentEvent {
   final String title;
   final DateTime occurredAt;
   final DateTime? scheduledAt;
+  final DateTime? completedAt;
   final String? notes;
   final String? outcome;
+  final int? roundNumber;
+  final String? source;
+  final bool isDeleted;
 
   RecruitmentEvent({
     required this.id,
@@ -18,9 +22,15 @@ class RecruitmentEvent {
     required this.title,
     required this.occurredAt,
     this.scheduledAt,
+    this.completedAt,
     this.notes,
     this.outcome,
+    this.roundNumber,
+    this.source,
+    this.isDeleted = false,
   });
+
+  DateTime get eventDate => scheduledAt ?? occurredAt;
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -28,8 +38,12 @@ class RecruitmentEvent {
     'title': title,
     'occurredAt': occurredAt.toIso8601String(),
     'scheduledAt': scheduledAt?.toIso8601String(),
+    'completedAt': completedAt?.toIso8601String(),
     'notes': notes,
     'outcome': outcome,
+    'roundNumber': roundNumber,
+    'source': source,
+    'isDeleted': isDeleted,
   };
 
   factory RecruitmentEvent.fromMap(Map<String, dynamic> map) {
@@ -40,8 +54,12 @@ class RecruitmentEvent {
       title: map['title']?.toString() ?? 'Pembaruan proses',
       occurredAt: occurredAt ?? DateTime.now(),
       scheduledAt: DateTime.tryParse(map['scheduledAt']?.toString() ?? ''),
+      completedAt: DateTime.tryParse(map['completedAt']?.toString() ?? ''),
       notes: map['notes']?.toString(),
       outcome: map['outcome']?.toString(),
+      roundNumber: _asInt(map['roundNumber']),
+      source: map['source']?.toString(),
+      isDeleted: map['isDeleted'] == true,
     );
   }
 }
@@ -183,8 +201,9 @@ class JobApplication {
   final String companyName;
   final String position;
   final String
-  status; // 'Contoh', 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
+  status; // 'Tersimpan', 'Contoh', 'Dikirim', 'Tes / Psikotes', 'Interview HR', 'Interview User', 'Offering', 'Diterima', 'Ditolak'
   final DateTime appliedDate;
+  final DateTime? savedAt;
   final String? salaryOffered; // Contoh: "Rp 18.000.000 - Rp 25.000.000"
   final int? minSalary; // Numeric value untuk sorting / filtering
   final int? maxSalary;
@@ -207,6 +226,7 @@ class JobApplication {
   final String? pdfCvPath; // Path file dokumen PDF CV yang dilampirkan
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? closedAt;
   final String priority; // 'Rendah', 'Normal', 'Tinggi'
   final bool isTargetCompany;
   final List<String> labels;
@@ -232,6 +252,8 @@ class JobApplication {
     required this.position,
     required this.status,
     required this.appliedDate,
+    this.savedAt,
+    this.closedAt,
     this.salaryOffered,
     this.minSalary,
     this.maxSalary,
@@ -280,13 +302,106 @@ class JobApplication {
        attachments = List.unmodifiable(attachments ?? const []),
        workType = normalizeWorkType(workType);
 
-  int get daysSinceApplied => DateTime.now().difference(appliedDate).inDays;
+  DateTime? get appliedAt => (isSaved || isDraft) ? null : appliedDate;
 
-  bool get isGhosted => status == 'Dikirim' && daysSinceApplied >= 14;
+  int get daysSinceApplied =>
+      appliedAt != null ? DateTime.now().difference(appliedAt!).inDays : 0;
 
-  bool get needsFollowup => status == 'Dikirim' && daysSinceApplied >= 7;
+  DateTime get lastMeaningfulActivityAt {
+    DateTime latest = appliedDate;
+    if (savedAt != null && savedAt!.isAfter(latest)) {
+      latest = savedAt!;
+    }
+    if (lastFollowUpAt != null && lastFollowUpAt!.isAfter(latest)) {
+      latest = lastFollowUpAt!;
+    }
+    if (interviewDate != null && interviewDate!.isAfter(latest)) {
+      latest = interviewDate!;
+    }
+    if (testDate != null && testDate!.isAfter(latest)) {
+      latest = testDate!;
+    }
+    for (final event in recruitmentEvents) {
+      if (event.eventDate.isAfter(latest)) {
+        latest = event.eventDate;
+      }
+    }
+    return latest;
+  }
+
+  int get daysSinceLastActivity =>
+      DateTime.now().difference(lastMeaningfulActivityAt).inDays;
+
+  bool get isDraft => status == 'Draft';
+
+  bool get isSaved => status == 'Tersimpan';
+
+  bool get isApplied => !isSaved && !isDraft;
+
+  bool get isClosed =>
+      status == 'Diterima' || status == 'Ditolak' || status == 'Dibatalkan';
+
+  bool get isGhosted =>
+      status == 'Dikirim' && isApplied && daysSinceLastActivity >= 14;
+
+  bool get needsFollowup =>
+      status == 'Dikirim' && isApplied && daysSinceLastActivity >= 7;
 
   bool get hasNextAction => nextActionAt != null && nextActionType != null;
+
+  DateTime? get nextDueAt {
+    if (isClosed || isSaved) return null;
+    final now = DateTime.now();
+    final candidates = <DateTime>[];
+    if (interviewDate != null && interviewDate!.isAfter(now)) {
+      candidates.add(interviewDate!);
+    }
+    if (testDate != null && testDate!.isAfter(now)) {
+      candidates.add(testDate!);
+    }
+    if (nextActionAt != null && nextActionAt!.isAfter(now)) {
+      candidates.add(nextActionAt!);
+    }
+    if (applicationDeadline != null && applicationDeadline!.isAfter(now)) {
+      candidates.add(applicationDeadline!);
+    }
+    for (final event in recruitmentEvents) {
+      if (!event.isDeleted && event.eventDate.isAfter(now)) {
+        candidates.add(event.eventDate);
+      }
+    }
+    if (candidates.isEmpty) return null;
+    candidates.sort();
+    return candidates.first;
+  }
+
+  DateTime? get overdueDueAt {
+    if (isClosed || isSaved) return null;
+    final now = DateTime.now();
+    final past = <DateTime>[];
+    if (interviewDate != null &&
+        interviewDate!.isBefore(now) &&
+        !recruitmentEvents.any(
+          (e) =>
+              e.type.toLowerCase().contains('interview') &&
+              e.completedAt != null,
+        )) {
+      past.add(interviewDate!);
+    }
+    if (testDate != null &&
+        testDate!.isBefore(now) &&
+        !recruitmentEvents.any(
+          (e) => e.type.toLowerCase().contains('test') && e.completedAt != null,
+        )) {
+      past.add(testDate!);
+    }
+    if (nextActionAt != null && nextActionAt!.isBefore(now)) {
+      past.add(nextActionAt!);
+    }
+    if (past.isEmpty) return null;
+    past.sort();
+    return past.first;
+  }
 
   List<RecruiterContact> get effectiveRecruiterContacts {
     if (recruiterContacts.isNotEmpty ||
@@ -313,6 +428,10 @@ class JobApplication {
         return 'WFH';
       case 'hybrid':
         return 'Hybrid';
+      case 'belum ditentukan':
+      case 'tidak diketahui':
+      case 'unknown':
+        return 'Belum ditentukan';
       case 'on-site':
       case 'onsite':
       case 'on site':
@@ -328,6 +447,8 @@ class JobApplication {
     String? position,
     String? status,
     DateTime? appliedDate,
+    DateTime? savedAt,
+    DateTime? closedAt,
     String? salaryOffered,
     int? minSalary,
     int? maxSalary,
@@ -374,6 +495,8 @@ class JobApplication {
       position: position ?? this.position,
       status: status ?? this.status,
       appliedDate: appliedDate ?? this.appliedDate,
+      savedAt: savedAt ?? this.savedAt,
+      closedAt: closedAt ?? this.closedAt,
       salaryOffered: salaryOffered ?? this.salaryOffered,
       minSalary: minSalary ?? this.minSalary,
       maxSalary: maxSalary ?? this.maxSalary,
@@ -428,6 +551,8 @@ class JobApplication {
       'position': position,
       'status': status == 'HR Screening' ? 'Interview HR' : status,
       'appliedDate': appliedDate.toIso8601String(),
+      'savedAt': savedAt?.toIso8601String(),
+      'closedAt': closedAt?.toIso8601String(),
       'salaryOffered': salaryOffered,
       'minSalary': minSalary,
       'maxSalary': maxSalary,
@@ -500,6 +625,9 @@ class JobApplication {
             ),
           ];
 
+    final savedAtParsed = DateTime.tryParse(map['savedAt']?.toString() ?? '');
+    final closedAtParsed = DateTime.tryParse(map['closedAt']?.toString() ?? '');
+
     return JobApplication(
       id: map['id'] ?? '',
       companyName: map['companyName'] ?? '',
@@ -508,6 +636,8 @@ class JobApplication {
       appliedDate: map['appliedDate'] != null
           ? (DateTime.tryParse(map['appliedDate']) ?? DateTime.now())
           : DateTime.now(),
+      savedAt: savedAtParsed,
+      closedAt: closedAtParsed,
       salaryOffered: map['salaryOffered'],
       minSalary: _asInt(map['minSalary']),
       maxSalary: _asInt(map['maxSalary']),

@@ -22,10 +22,12 @@ class JobListWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF161224) : const Color(0xFFF6F2FC);
-    final tonalBtnColor =
-        isDark ? const Color(0xFF261E3D) : const Color(0xFFEADBFC);
-    final tonalIconColor =
-        isDark ? const Color(0xFFD8B4FE) : const Color(0xFF4A1A78);
+    final tonalBtnColor = isDark
+        ? const Color(0xFF261E3D)
+        : const Color(0xFFEADBFC);
+    final tonalIconColor = isDark
+        ? const Color(0xFFD8B4FE)
+        : const Color(0xFF4A1A78);
 
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFC7BED9) : const Color(0xFF4B5563);
@@ -70,7 +72,7 @@ class JobListWelcomeScreen extends StatelessWidget {
 
                 // Mascot Canvas
                 const Center(
-                  child: WavingGreetingMascot(width: 270, height: 205),
+                  child: WavingGreetingMascot(width: 132, height: 98),
                 ),
 
                 const Spacer(),
@@ -83,7 +85,7 @@ class JobListWelcomeScreen extends StatelessWidget {
                       TextSpan(
                         text: 'Kelola Lamaran ',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: txtPri,
                           letterSpacing: -1.0,
@@ -93,7 +95,7 @@ class JobListWelcomeScreen extends StatelessWidget {
                       const TextSpan(
                         text: 'Terstruktur',
                         style: TextStyle(
-                          fontSize: 30,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF6750A4),
                           letterSpacing: -1.0,
@@ -113,22 +115,22 @@ class JobListWelcomeScreen extends StatelessWidget {
                     'Pantau seluruh tahapan seleksi, jadwal interview, dan progres karirmu secara rapi.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
+                      fontSize: 11.5,
+                      height: 1.35,
                       color: txtSec,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 26),
+                const SizedBox(height: 12),
 
                 // Material 3 Filled Button
                 FluidBounceButton(
                   onTap: () => _handleClose(context),
                   child: Container(
                     width: double.infinity,
-                    height: 54,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: const Color(0xFF6750A4),
                       borderRadius: BorderRadius.circular(28),
@@ -158,7 +160,7 @@ class JobListWelcomeScreen extends StatelessWidget {
                   ),
                 ),
 
-                SizedBox(height: bottomInset > 0 ? bottomInset + 16 : 24),
+                SizedBox(height: bottomInset > 0 ? bottomInset + 8 : 12),
               ],
             ),
           ),

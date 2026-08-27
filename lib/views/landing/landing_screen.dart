@@ -19,7 +19,29 @@ class LandingScreen extends ConsumerStatefulWidget {
   ConsumerState<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends ConsumerState<LandingScreen> {
+class _LandingScreenState extends ConsumerState<LandingScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _bobbingAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+    _bobbingAnim = Tween<double>(begin: -6.0, end: 6.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
   void _onGetStarted() {
     HapticFeedback.heavyImpact();
     showModalBottomSheet(
@@ -86,43 +108,135 @@ class _LandingScreenState extends ConsumerState<LandingScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // A few quiet career cues give the opening screen personality
-            // without competing with the decision to begin.
+            // Restore the expressive first-install career collage.
             Positioned.fill(
               bottom: size.height * 0.40,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 30,
-                    left: 28,
-                    child: _buildCategoryPill(
-                      text: 'CARI KERJA',
-                      bgColor: const Color(0xFFD8F2CA),
-                      textColor: const Color(0xFF1A3311),
-                      rotation: -8,
-                    ),
-                  ),
-                  Positioned(
-                    top: 54,
-                    right: 30,
-                    child: _buildCategoryPill(
-                      text: 'SIAP INTERVIEW',
-                      bgColor: const Color(0xFFDED2F9),
-                      textColor: const Color(0xFF281E48),
-                      rotation: 7,
-                    ),
-                  ),
-                  Positioned(
-                    top: 150,
-                    left: size.width * 0.14,
-                    child: _buildCategoryPill(
-                      text: 'LAMAR DENGAN RAPI',
-                      bgColor: const Color(0xFFFDE4C8),
-                      textColor: const Color(0xFF38230F),
-                      rotation: -3,
-                    ),
-                  ),
-                ],
+              child: AnimatedBuilder(
+                animation: _animController,
+                builder: (context, _) {
+                  final dy = _bobbingAnim.value;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        top: 20 + dy * .4,
+                        left: 20,
+                        child: _buildAccent(
+                          size: const Size(38, 38),
+                          radius: 8,
+                        ),
+                      ),
+                      Positioned(
+                        top: 80 - dy * .5,
+                        left: 18,
+                        child: _buildAccent(
+                          size: const Size(32, 32),
+                          circle: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: 40 - dy * .3,
+                        left: size.width * .36,
+                        child: _buildAccent(
+                          size: const Size(24, 10),
+                          radius: 10,
+                        ),
+                      ),
+                      Positioned(
+                        top: 155 + dy * .4,
+                        left: size.width * .28,
+                        child: _buildAccent(
+                          size: const Size(24, 10),
+                          radius: 10,
+                        ),
+                      ),
+                      Positioned(
+                        top: 8 + dy * .5,
+                        left: size.width * .38,
+                        child: _buildCategoryPill(
+                          text: 'UI/UX DESIGNER',
+                          bgColor: const Color(0xFFD8F2CA),
+                          textColor: const Color(0xFF1A3311),
+                          rotation: -18,
+                        ),
+                      ),
+                      Positioned(
+                        top: 24 - dy * .4,
+                        right: 8,
+                        child: _buildCategoryPill(
+                          text: 'FINANCE &\nACCOUNTING',
+                          bgColor: const Color(0xFFDED2F9),
+                          textColor: const Color(0xFF281E48),
+                          rotation: 18,
+                          isMultiLine: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: 68 + dy * .7,
+                        left: 56,
+                        child: _buildCategoryPill(
+                          text: 'PRODUCT\nMANAGER',
+                          bgColor: const Color(0xFFFDE4C8),
+                          textColor: const Color(0xFF38230F),
+                          rotation: 12,
+                          isMultiLine: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: 100 - dy * .6,
+                        right: 4,
+                        child: _buildCategoryPill(
+                          text: 'HR SPECIALIST',
+                          bgColor: const Color(0xFFFDE4C8),
+                          textColor: const Color(0xFF38230F),
+                          rotation: -14,
+                        ),
+                      ),
+                      Positioned(
+                        top: 125 - dy * .5,
+                        left: 6,
+                        child: _buildCategoryPill(
+                          text: 'DIGITAL\nMARKETING',
+                          bgColor: const Color(0xFFDED2F9),
+                          textColor: const Color(0xFF281E48),
+                          rotation: -16,
+                          isMultiLine: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: 132 + dy * .5,
+                        left: size.width * .36,
+                        child: _buildCategoryPill(
+                          text: 'DATA ANALYST',
+                          bgColor: const Color(0xFFDED2F9),
+                          textColor: const Color(0xFF281E48),
+                          rotation: -14,
+                        ),
+                      ),
+                      Positioned(
+                        top: 168 - dy * .5,
+                        right: 18,
+                        child: _buildCategoryPill(
+                          text: 'ADMIN\nOPERASIONAL',
+                          bgColor: const Color(0xFFD8F2CA),
+                          textColor: const Color(0xFF1A3311),
+                          rotation: 16,
+                          isMultiLine: true,
+                        ),
+                      ),
+                      Positioned(
+                        top: 196 + dy * .4,
+                        left: 70,
+                        child: _buildCategoryPill(
+                          text: 'FLUTTER DEV',
+                          bgColor: const Color(0xFFFDE4C8),
+                          textColor: const Color(0xFF38230F),
+                          rotation: 5,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -278,6 +392,20 @@ class _LandingScreenState extends ConsumerState<LandingScreen> {
       ),
     );
   }
+
+  Widget _buildAccent({
+    required Size size,
+    double radius = 0,
+    bool circle = false,
+  }) => Container(
+    width: size.width,
+    height: size.height,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      shape: circle ? BoxShape.circle : BoxShape.rectangle,
+      borderRadius: circle ? null : BorderRadius.circular(radius),
+    ),
+  );
 }
 
 class OnboardingTutorialSheet extends StatefulWidget {

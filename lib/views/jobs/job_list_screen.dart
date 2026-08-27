@@ -663,6 +663,33 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  if (Navigator.canPop(context)) ...[
+                    FluidBounceButton(
+                      onTap: () => Navigator.of(context).pop(),
+                      semanticLabel: 'Kembali ke profil',
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF242428)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : const Color(0xFFE5E0D5),
+                          ),
+                        ),
+                        child: Icon(
+                          CupertinoIcons.chevron_back,
+                          size: 18,
+                          color: txtPri,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 220),

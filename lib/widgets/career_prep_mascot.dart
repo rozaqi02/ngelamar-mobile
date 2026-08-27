@@ -33,6 +33,12 @@ class _CareerPrepMascotState extends State<CareerPrepMascot>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return CustomPaint(
+        size: Size(widget.width, widget.height),
+        painter: _CareerPrepPainter(progress: 0),
+      );
+    }
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
