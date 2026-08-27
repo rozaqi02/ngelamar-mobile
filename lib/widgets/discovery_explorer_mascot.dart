@@ -26,7 +26,7 @@ class _DiscoveryExplorerMascotState extends State<DiscoveryExplorerMascot>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1900),
     )..repeat();
   }
 

@@ -32,7 +32,7 @@ class _RunningEnvelopeMascotState extends State<RunningEnvelopeMascot>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 780), // Natural, lively jog tempo
+      duration: const Duration(milliseconds: 920), // Natural, lively jog tempo
     );
     if (widget.animate) {
       _controller.repeat();

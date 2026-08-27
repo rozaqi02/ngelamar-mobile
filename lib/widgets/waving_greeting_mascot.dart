@@ -30,7 +30,7 @@ class _WavingGreetingMascotState extends State<WavingGreetingMascot>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(
-        milliseconds: 1600,
+        milliseconds: 2200,
       ), // Smooth greeting wave cycle
     );
     if (widget.animate) {
