@@ -2,7 +2,7 @@ name: ngelamar
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 2.28.0+245
+version: 2.29.0+247
 
 environment:
   sdk: ^3.11.5
@@ -32,6 +32,7 @@ dependencies:
   supabase_flutter: ^2.10.0
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,11 +8,11 @@ import '../../providers/job_provider.dart';
 import '../../services/prefs_service.dart';
 import '../../services/salary_evaluator_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/rupiah_input_formatter.dart';
 import '../../widgets/welcome_screen_route.dart';
-import '../../widgets/career_prep_mascot.dart';
 import '../../widgets/delight_celebration.dart';
 import '../subscription/subscription_screen.dart';
 import 'career_prep_welcome_screen.dart';
@@ -376,104 +377,88 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final isDark = AppTheme.isDark(context);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    final bgGradient = isDark
-        ? const [Color(0xFF0F1B14), Color(0xFF132219), Color(0xFF0D1410)]
-        : const [Color(0xFFE8F5E9), Color(0xFFF1F8F1), Color(0xFFFAFDF9)];
+    final pageColor = isDark
+        ? const Color(0xFF121614)
+        : const Color(0xFFFAF9F6);
+
+    final checkedDocsCount = _checkedCount;
+    final totalDocsCount = _docs.length;
 
     final cardConfigs = [
       {
         'index': 0,
         'title': 'Checklist Berkas',
-        'subtitle': '$_checkedCount/${_docs.length} Berkas Siap Dikirim',
-        'color': isDark ? const Color(0xFF261F12) : const Color(0xFFFEEAA2),
-        'borderColor': isDark
-            ? const Color(0xFF523F1C)
-            : const Color(0xFFF7DE88),
-        'dotColor': const Color(0xFFF59E0B),
-        'textColor': isDark ? const Color(0xFFFEF3C7) : const Color(0xFF1E1805),
+        'desc': checkedDocsCount > 0
+            ? '$checkedDocsCount dari $totalDocsCount berkas selesai'
+            : 'CV & portofolio',
+        'color': isDark ? const Color(0xFF242018) : const Color(0xFFFFF6DA),
+        'textColor': isDark ? const Color(0xFFFEF3C7) : const Color(0xFF1F1B12),
         'builder': () => _buildChecklistTab(context, isDark),
       },
       {
         'index': 1,
-        'title': 'Simulasi Gaji UMR',
-        'subtitle': 'Evaluator Take Home Pay & Living Cost',
-        'color': isDark ? const Color(0xFF281320) : const Color(0xFFFDC8E5),
-        'borderColor': isDark
-            ? const Color(0xFF561E42)
-            : const Color(0xFFF9A8D4),
-        'dotColor': const Color(0xFFEC4899),
-        'textColor': isDark ? const Color(0xFFFCE7F3) : const Color(0xFF260D1D),
+        'title': 'Simulasi Gaji',
+        'desc': 'UMP/UMK & gaji',
+        'color': isDark ? const Color(0xFF261922) : const Color(0xFFFFEDF5),
+        'textColor': isDark ? const Color(0xFFFCE7F3) : const Color(0xFF24131E),
         'builder': () => _buildSalaryTab(context, isDark),
       },
       {
         'index': 2,
         'title': 'Latihan Interview',
-        'subtitle': 'Metode STAR & Pertanyaan HR Terpilih',
-        'color': isDark ? const Color(0xFF101F2E) : const Color(0xFFBEE7FC),
-        'borderColor': isDark
-            ? const Color(0xFF183C5C)
-            : const Color(0xFF7DD3FC),
-        'dotColor': const Color(0xFF0EA5E9),
-        'textColor': isDark ? const Color(0xFFE0F2FE) : const Color(0xFF0A1F30),
+        'desc': 'Pertanyaan kerja',
+        'color': isDark ? const Color(0xFF16222E) : const Color(0xFFEAF5FE),
+        'textColor': isDark ? const Color(0xFFE0F2FE) : const Color(0xFF101E2B),
         'builder': () => _buildInterviewTab(context, isDark),
       },
       {
         'index': 3,
-        'title': 'Templat Pesan HRD',
-        'subtitle': 'Email Melamar & Follow-Up WhatsApp',
-        'color': isDark ? const Color(0xFF132417) : const Color(0xFFC6F89E),
-        'borderColor': isDark
-            ? const Color(0xFF1C4D25)
-            : const Color(0xFFA3E635),
-        'dotColor': const Color(0xFF22C55E),
-        'textColor': isDark ? const Color(0xFFDCFCE7) : const Color(0xFF0E2413),
+        'title': 'Pesan ke HRD',
+        'desc': 'Follow-up & pesan',
+        'color': isDark ? const Color(0xFF16261A) : const Color(0xFFECF8EE),
+        'textColor': isDark ? const Color(0xFFDCFCE7) : const Color(0xFF122215),
         'builder': () => _buildTemplatesTab(context, isDark),
       },
     ];
 
-    final content = Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: bgGradient,
-          stops: const [0.0, 0.4, 1.0],
-        ),
-      ),
+    final content = ColoredBox(
+      color: pageColor,
       child: SafeArea(
         top: !widget.embedded,
         bottom: false,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // ── TOP HEADER SECTION (IDENTIK FOTO: TITLE + SPARKLES + SUBTITLE + CIRCLE BUTTON) ──
+            // ── TOP HEADER SECTION ──
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  24,
+                  28,
                   widget.embedded ? 8 : 20,
-                  24,
-                  16,
+                  28,
+                  10,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header mengikuti pola menu Portal dan Daftar Lamaran.
+                    // Header Title + Help Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          'SIAPKAN\nKARIRMU',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: txtPri,
-                            letterSpacing: -1.2,
-                            height: 1.0,
+                        Expanded(
+                          child: Text(
+                            'SIAPKAN\nKARIRMU',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: txtPri,
+                              letterSpacing: -1.2,
+                              height: 1.0,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
@@ -511,233 +496,189 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     const SizedBox(height: 12),
 
                     // Subtitle
-                    Padding(
-                      padding: EdgeInsets.zero,
-                      child: Text(
-                        'Berkas, interview, gaji, dan pesan HRD dalam satu tempat.',
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          color: txtSec,
-                          height: 1.45,
-                          fontWeight: FontWeight.w500,
+                    Text(
+                      'Berkas, interview, gaji, dan pesan HRD dalam satu tempat.',
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: txtSec,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── PREPARATION MENU ──
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(28, 10, 28, 18),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  children: List.generate(cardConfigs.length, (i) {
+                    final config = cardConfigs[i];
+                    final isExpanded = _selectedSegment == i;
+                    final cardBg = config['color'] as Color;
+                    final cardTextColor = config['textColor'] as Color;
+                    final title = config['title'] as String;
+                    final desc = config['desc'] as String;
+                    final builder = config['builder'] as Widget Function();
+
+                    return Semantics(
+                      button: true,
+                      expanded: isExpanded,
+                      label: '$title. ${isExpanded ? 'Terbuka' : 'Tertutup'}.',
+                      child: AppleBouncyCard(
+                        scaleFactor: 0.985,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _selectedSegment = isExpanded ? -1 : i;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 380),
+                          curve: Curves.fastOutSlowIn,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.16 : 0.035,
+                                ),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header Row
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  18,
+                                  16,
+                                  16,
+                                  16,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Title + one-line description
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              color: cardTextColor,
+                                              letterSpacing: -0.35,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            desc,
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w500,
+                                              color: cardTextColor.withValues(
+                                                alpha: 0.62,
+                                              ),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+
+                                    // Accordion Toggle Icon
+                                    AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 240,
+                                      ),
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (isDark
+                                                    ? Colors.white
+                                                    : Colors.black)
+                                                .withValues(
+                                                  alpha: isExpanded
+                                                      ? 0.12
+                                                      : 0.055,
+                                                ),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: AnimatedRotation(
+                                          turns: isExpanded ? 0.5 : 0.0,
+                                          duration: const Duration(
+                                            milliseconds: 320,
+                                          ),
+                                          curve: Curves.easeInOutCubic,
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: cardTextColor,
+                                            size: 21,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Expanded Content
+                              ClipRect(
+                                child: AnimatedSize(
+                                  duration: const Duration(milliseconds: 380),
+                                  curve: Curves.easeInOutCubicEmphasized,
+                                  alignment: Alignment.topCenter,
+                                  child: isExpanded
+                                      ? RepaintBoundary(
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              18,
+                                              0,
+                                              18,
+                                              24,
+                                            ),
+                                            child: builder(),
+                                          ),
+                                        )
+                                      : const SizedBox(
+                                          width: double.infinity,
+                                          height: 0,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 14),
-                  ],
+                    );
+                  }),
                 ),
               ),
             ),
 
-            // ── STACKED CARDS DECK WITH DOODLE LOOP BACKGROUND ──
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(0, 6, 0, 18),
-              sliver: SliverToBoxAdapter(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // 4 Overlapping Cascading Stacked Cards
-                    Column(
-                      children: List.generate(cardConfigs.length, (i) {
-                        final config = cardConfigs[i];
-                        final isExpanded = _selectedSegment == i;
-                        final cardBg = config['color'] as Color;
-                        final dotColor = config['dotColor'] as Color;
-                        final cardTextColor = config['textColor'] as Color;
-                        final title = config['title'] as String;
-                        final subtitle = config['subtitle'] as String;
-                        final builder = config['builder'] as Widget Function();
-
-                        return Semantics(
-                          button: true,
-                          expanded: isExpanded,
-                          label:
-                              '$title, ${isExpanded ? 'terbuka' : 'tertutup'}',
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _selectedSegment = isExpanded ? -1 : i;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 420),
-                              curve: Curves.easeInOutCubicEmphasized,
-                              margin: EdgeInsets.only(top: i == 0 ? 0 : -22),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.vertical(
-                                  top: const Radius.circular(32),
-                                  bottom:
-                                      i == cardConfigs.length - 1 || isExpanded
-                                      ? const Radius.circular(32)
-                                      : Radius.zero,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.22 : 0.10,
-                                    ),
-                                    blurRadius: 14,
-                                    offset: Offset(0, i == 0 ? 4 : -2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Card Header Slice: Title + Colored Dot
-                                  AnimatedPadding(
-                                    duration: const Duration(milliseconds: 380),
-                                    curve: Curves.easeInOutCubic,
-                                    padding: EdgeInsets.fromLTRB(
-                                      22,
-                                      18,
-                                      22,
-                                      isExpanded ? 16 : 34,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                title,
-                                                style: TextStyle(
-                                                  fontSize: 19,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: cardTextColor,
-                                                  letterSpacing: -0.35,
-                                                ),
-                                              ),
-                                              AnimatedSize(
-                                                duration: const Duration(
-                                                  milliseconds: 320,
-                                                ),
-                                                curve: Curves.easeInOutCubic,
-                                                child: isExpanded
-                                                    ? Padding(
-                                                        padding:
-                                                            const EdgeInsets.only(
-                                                              top: 3,
-                                                            ),
-                                                        child: Text(
-                                                          subtitle,
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color: cardTextColor
-                                                                .withValues(
-                                                                  alpha: 0.68,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : const SizedBox.shrink(),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 260,
-                                          ),
-                                          width: 38,
-                                          height: 38,
-                                          decoration: BoxDecoration(
-                                            color: cardTextColor.withValues(
-                                              alpha: isExpanded ? 0.14 : 0.09,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: AnimatedRotation(
-                                            turns: isExpanded ? 0.5 : 0,
-                                            duration: const Duration(
-                                              milliseconds: 360,
-                                            ),
-                                            curve: Curves.easeInOutCubic,
-                                            child: Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              color: dotColor,
-                                              size: 24,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // AnimatedSize changes only the vertical
-                                  // extent, so content never slides or fades.
-                                  ClipRect(
-                                    child: AnimatedSize(
-                                      duration: const Duration(
-                                        milliseconds: 440,
-                                      ),
-                                      curve: Curves.easeInOutCubicEmphasized,
-                                      alignment: Alignment.topCenter,
-                                      child: isExpanded
-                                          ? RepaintBoundary(
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                      22,
-                                                      0,
-                                                      22,
-                                                      32,
-                                                    ),
-                                                child: builder(),
-                                              ),
-                                            )
-                                          : const SizedBox(
-                                              width: double.infinity,
-                                              height: 0,
-                                            ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
-                ),
-              ),
-            ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  4,
-                  20,
-                  120 + (bottomInset > 0 ? bottomInset : 0),
-                ),
-                child: Column(
-                  children: [
-                    const ReadingBookMascot(width: 240, height: 178),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Belajar pelan-pelan, tumbuh setiap hari.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: txtSec,
-                        letterSpacing: -0.15,
-                      ),
-                    ),
-                  ],
-                ),
+              child: SizedBox(
+                height: AppLayoutMetrics.contentBottomClearance(context) + 20,
               ),
             ),
           ],
@@ -756,6 +697,13 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
   Widget _buildChecklistTab(BuildContext context, bool isDark) {
     final percent = _readinessPercent;
     final cardBg = isDark ? const Color(0xFF1E1E22) : Colors.white;
+    final summaryColor = isDark
+        ? const Color(0xFF24242A)
+        : const Color(0xFFF7F5EE);
+    final summaryText = isDark ? Colors.white : const Color(0xFF19191B);
+    final mutedText = isDark
+        ? const Color(0xFFAFAFB7)
+        : const Color(0xFF66656A);
 
     return Column(
       key: const ValueKey('tab_checklist'),
@@ -763,13 +711,16 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF19191B),
+            color: summaryColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
+            border: Border.all(
+              color: isDark ? const Color(0xFF3A3A42) : const Color(0xFFE5E0D5),
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.035),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -779,12 +730,12 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Kesiapan Berkas',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: summaryText,
                       letterSpacing: -0.4,
                     ),
                   ),
@@ -794,15 +745,17 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: AppTheme.cardPurple.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '$_checkedCount/${_docs.length} Siap',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: isDark
+                            ? const Color(0xFFE8E1FF)
+                            : AppTheme.cardPurple,
                       ),
                     ),
                   ),
@@ -817,9 +770,11 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   builder: (context, val, _) => LinearProgressIndicator(
                     value: val,
                     minHeight: 10,
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    backgroundColor: isDark
+                        ? const Color(0xFF3A3A42)
+                        : const Color(0xFFE5E0D5),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.white,
+                      AppTheme.cardPurple,
                     ),
                   ),
                 ),
@@ -829,10 +784,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 percent < 1.0
                     ? 'Centang berkas yang sudah Anda siapkan untuk memantau kesiapan.'
                     : 'Semua berkas karirmu sudah lengkap!',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: mutedText, fontSize: 13),
               ),
             ],
           ),
@@ -1121,7 +1073,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Total UMR Daerah Dituju',
+                        'Standar UMP/UMK Daerah',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -1133,7 +1085,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       Text(
                         _useCustomUmr
                             ? 'Input Manual Aktif'
-                            : 'Standar Resmi 2024',
+                            : 'Standar Resmi 2025/2026',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? const Color(0xFFA0A0A8) : Colors.grey,
@@ -1158,7 +1110,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Sesuaikan Nilai UMR Manual',
+                    'Sesuaikan Nilai UMP/UMK Manual',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -1196,7 +1148,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                       fontSize: 14,
                       color: Color(0xFF5C44E4),
                     ),
-                    hintText: 'Masukkan UMR manual...',
+                    hintText: 'Masukkan UMP/UMK manual...',
                     hintStyle: TextStyle(
                       color: isDark ? const Color(0xFF888892) : Colors.grey,
                     ),
@@ -1361,7 +1313,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     : Colors.white,
               ),
               _buildEvalRow(
-                'Standar UMR Daerah',
+                'Standar UMP/UMK Daerah',
                 SalaryEvaluatorService.formatRupiah(targetUmr),
                 textColor: eval.estimatedNetSavings >= 0
                     ? const Color(0xFF19191B)
@@ -1596,7 +1548,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF282830) : const Color(0xFF19191B),
+                    color: isDark
+                        ? const Color(0xFF282830)
+                        : const Color(0xFF19191B),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(
@@ -2109,10 +2063,67 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                tpl['text'] as String,
-                style: TextStyle(fontSize: 12.5, color: subColor, height: 1.45),
-              ),
+              if (isLocked)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          (tpl['text'] as String).length > 90
+                              ? '${(tpl['text'] as String).substring(0, 90)}... [Teks Terkunci Eksklusif PRO]'
+                              : tpl['text'] as String,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: subColor,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            color: isDark
+                                ? Colors.black.withValues(alpha: 0.35)
+                                : Colors.white.withValues(alpha: 0.35),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.lock_rounded,
+                                  size: 14,
+                                  color: titleColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Buka Ngelamar PRO untuk membaca lengkap',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: titleColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Text(
+                  tpl['text'] as String,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: subColor,
+                    height: 1.45,
+                  ),
+                ),
               const SizedBox(height: 14),
               Row(
                 children: [

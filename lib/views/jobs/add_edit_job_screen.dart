@@ -15,11 +15,13 @@ import '../../services/salary_evaluator_service.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/app_motion.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/rupiah_input_formatter.dart';
+import 'job_detail_screen.dart';
 
 /// Screen: Tambah & Edit Catatan Lamaran Kerja.
 /// Didesain 100% presisi mengikuti referensi visual mockup:
@@ -83,6 +85,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   bool _quickMode = false;
 
   final List<String> _statusOptions = [
+    'Tersimpan',
+    'Draft',
     'Dikirim',
     'Tes / Psikotes',
     'Interview HR',
@@ -90,6 +94,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     'Offering',
     'Diterima',
     'Ditolak',
+    'Dibatalkan',
   ];
 
   final List<String> _workTypeOptions = ['WFO', 'WFH', 'Hybrid'];
@@ -127,7 +132,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
     _labelsController = TextEditingController(text: j?.labels.join(', ') ?? '');
 
-    if (j != null) {
+    if (j == null) {
+      _status = 'Tersimpan';
+    } else {
       _status = j.status == 'HR Screening' ? 'Interview HR' : j.status;
       _workType = j.workType;
       _jobSource = j.jobSource ?? 'LinkedIn';
@@ -241,6 +248,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         return;
       }
 
+      final confirmed = await _showExtractionPreviewModal(context, result);
+      if (confirmed != true || !mounted) return;
+
       setState(() {
         if (result.companyName.isNotEmpty) {
           _companyController.text = result.companyName;
@@ -266,11 +276,16 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         } else if (text.startsWith('http://') || text.startsWith('https://')) {
           _urlController.text = text;
         }
-        _workType = result.workType;
+        if (result.workType.isNotEmpty) {
+          _workType = result.workType;
+        }
         _sourcePlatform = result.sourcePlatform;
         if (result.sourcePlatform != 'Manual' &&
             _sourceOptions.contains(result.sourcePlatform)) {
           _jobSource = result.sourcePlatform;
+        }
+        if (widget.jobToEdit == null) {
+          _status = 'Tersimpan';
         }
       });
 
@@ -296,6 +311,207 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     } finally {
       if (mounted) setState(() => _isExtracting = false);
     }
+  }
+
+  Future<bool?> _showExtractionPreviewModal(
+    BuildContext context,
+    ParsedJobData result,
+  ) {
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color:
+                      isDark ? const Color(0xFF383842) : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5C44E4).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.auto_fix_high_rounded,
+                    color: Color(0xFF5C44E4),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pratinjau Ekstraksi Pintar',
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                        ),
+                      ),
+                      Text(
+                        'Periksa informasi yang berhasil dideteksi',
+                        style: TextStyle(fontSize: 12, color: txtSec),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildPreviewRow(
+              'Posisi',
+              result.position.isNotEmpty ? result.position : '-',
+              txtPri,
+              txtSec,
+            ),
+            _buildPreviewRow(
+              'Perusahaan',
+              result.companyName.isNotEmpty ? result.companyName : '-',
+              txtPri,
+              txtSec,
+            ),
+            _buildPreviewRow(
+              'Gaji',
+              result.salary ?? 'Belum dicantumkan',
+              txtPri,
+              txtSec,
+            ),
+            _buildPreviewRow(
+              'Mode Kerja',
+              result.workType,
+              txtPri,
+              txtSec,
+            ),
+            if (result.location != null && result.location!.isNotEmpty)
+              _buildPreviewRow(
+                'Lokasi',
+                result.location!,
+                txtPri,
+                txtSec,
+              ),
+            if (result.hrContact != null && result.hrContact!.isNotEmpty)
+              _buildPreviewRow(
+                'Kontak HR',
+                result.hrContact!,
+                txtPri,
+                txtSec,
+              ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF383842)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: txtPri,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5C44E4),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Gunakan Data Ini',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewRow(
+    String label,
+    String value,
+    Color txtPri,
+    Color txtSec,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: txtSec,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: txtPri,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Unggah Logo / Foto Perusahaan
@@ -580,12 +796,15 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   Future<void> _pickAppliedDate() async {
     HapticFeedback.selectionClick();
     final isDark = AppTheme.isDark(context);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final initial = _appliedDate.isAfter(today) ? now : _appliedDate;
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: _appliedDate,
+      initialDate: initial,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      lastDate: today,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -1044,13 +1263,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
   }
 
-  String? _duplicateJobMessage(Object error) {
-    if (error is DuplicateJobException) {
-      return '${error.existingJob.position} di ${error.existingJob.companyName} sudah tercatat.';
-    }
-    return null;
-  }
-
   bool _hasUnsavedChanges() {
     if (widget.jobToEdit != null) {
       final j = widget.jobToEdit!;
@@ -1194,6 +1406,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       position: _positionController.text.trim(),
       status: isSampleData ? (widget.jobToEdit?.status ?? _status) : _status,
       appliedDate: _appliedDate,
+      savedAt: _status == 'Tersimpan'
+          ? (widget.jobToEdit?.savedAt ?? DateTime.now())
+          : widget.jobToEdit?.savedAt,
       salaryOffered: salaryText.isEmpty ? null : salaryText,
       minSalary: salaryRange.min > 0 ? salaryRange.min.toInt() : null,
       maxSalary: salaryRange.max > 0 ? salaryRange.max.toInt() : null,
@@ -1265,11 +1480,115 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      final duplicateMessage = _duplicateJobMessage(error);
-      if (duplicateMessage != null) {
-        AppleToast.warning(context, duplicateMessage);
+      if (error is DuplicateJobException) {
+        await _showDuplicateResolutionDialog(error, newJob, isEdit);
       } else {
         AppleToast.error(context, 'Lamaran gagal disimpan.');
+      }
+    }
+  }
+
+  Future<void> _showDuplicateResolutionDialog(
+    DuplicateJobException duplicateError,
+    JobApplication candidate,
+    bool isEdit,
+  ) async {
+    final existing = duplicateError.existingJob;
+    final isDark = AppTheme.isDark(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? Colors.white70 : const Color(0xFF6B6B70);
+
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E24) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Kemungkinan Lamaran Serupa Ditemukan',
+                style: TextStyle(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w800,
+                  color: txtPri,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Posisi "${existing.position}" di "${existing.companyName}" sudah pernah dicatat dengan status "${existing.status}".\n\nApa yang ingin kamu lakukan?',
+          style: TextStyle(fontSize: 13.5, color: txtSec, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: Text('Batal', style: TextStyle(color: txtSec)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'open_existing'),
+            child: const Text(
+              'Buka Data Lama',
+              style: TextStyle(
+                color: Color(0xFF5C44E4),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'save_anyway'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5C44E4),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text('Tetap Simpan'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (action == 'open_existing') {
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        AppMotion.detailDockRoute(
+          builder: (_) => JobDetailScreen(job: existing),
+        ),
+      );
+    } else if (action == 'save_anyway') {
+      setState(() => _isSaving = true);
+      try {
+        final uniqueJob = candidate.copyWith(
+          id: isEdit
+              ? candidate.id
+              : 'job_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        if (isEdit) {
+          await ref
+              .read(jobProvider.notifier)
+              .updateJob(uniqueJob, allowDuplicate: true);
+        } else {
+          await ref
+              .read(jobProvider.notifier)
+              .addJob(uniqueJob, allowDuplicate: true);
+        }
+        if (!mounted) return;
+        setState(() => _isSaveComplete = true);
+        await Future<void>.delayed(const Duration(milliseconds: 320));
+        if (!mounted) return;
+        Navigator.pop(context, uniqueJob);
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          AppleToast.error(context, 'Gagal menyimpan: $e');
+        }
       }
     }
   }

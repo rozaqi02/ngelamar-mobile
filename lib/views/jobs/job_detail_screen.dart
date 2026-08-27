@@ -18,7 +18,6 @@ import '../../widgets/apple_toast.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
-import '../../widgets/container_morph_route.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
 import 'add_edit_job_screen.dart';
@@ -44,10 +43,12 @@ class JobDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   late AnimationController _bookmarkAnimController;
   late Animation<double> _bookmarkScaleAnim;
+  late AnimationController _logoBounceController;
+  late Animation<double> _logoBounceAnim;
 
   double _scrollOffset = 0.0;
   int? _expandedInfoBubbleIndex;
@@ -86,6 +87,52 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       ),
     ]).animate(_bookmarkAnimController);
 
+    _logoBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 460),
+    );
+    _logoBounceAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.18,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.18,
+          end: 0.94,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.94,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 35,
+      ),
+    ]).animate(_logoBounceController);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final route = ModalRoute.of(context);
+      if (route != null) {
+        void listener(AnimationStatus status) {
+          if (status == AnimationStatus.completed && mounted) {
+            _logoBounceController.forward(from: 0.0);
+            route.animation?.removeStatusListener(listener);
+          }
+        }
+
+        if (route.animation?.isCompleted ?? false) {
+          _logoBounceController.forward(from: 0.0);
+        } else {
+          route.animation?.addStatusListener(listener);
+        }
+      }
+    });
+
     _scrollController.addListener(() {
       setState(() {
         _scrollOffset = _scrollController.offset.clamp(0.0, 300.0);
@@ -95,6 +142,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   @override
   void dispose() {
+    _logoBounceController.dispose();
     _bookmarkAnimController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -153,9 +201,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   void _openEditJob(JobApplication currentJob) async {
     HapticFeedback.selectionClick();
-    final result = await MorphSheetRoute.openMorphingSheet<JobApplication>(
-      context: context,
-      child: AddEditJobScreen(jobToEdit: currentJob),
+    final result = await Navigator.of(context).push<JobApplication>(
+      AppMotion.editorRoute<JobApplication>(
+        builder: (_) => AddEditJobScreen(jobToEdit: currentJob),
+      ),
     );
     if (result != null && mounted) {
       if (result.status != currentJob.status) {
@@ -502,7 +551,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Follow-Up HR Cerdas',
+                            'Follow Up HR',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
@@ -614,7 +663,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           Row(
                             children: [
                               Expanded(
-                                child: ElevatedButton.icon(
+                                child: OutlinedButton.icon(
                                   onPressed: () {
                                     Clipboard.setData(
                                       ClipboardData(text: tpl.body),
@@ -628,10 +677,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                     Icons.copy_rounded,
                                     size: 15,
                                   ),
-                                  label: const Text('Salin Pesan'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF19191B),
-                                    foregroundColor: Colors.white,
+                                  label: const Text('Salin'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF19191B),
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF484852)
+                                          : const Color(0xFFDCD8CE),
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
@@ -641,12 +696,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                   ),
                                 ),
                               ),
-                              if (currentJob.hrContact != null &&
-                                  currentJob.hrContact!.isNotEmpty) ...[
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton.icon(
                                   onPressed: () async {
-                                    final contact = currentJob.hrContact!;
+                                    final contact = currentJob.hrContact ?? '';
                                     try {
                                       if (tpl.type == FollowupType.whatsapp) {
                                         final cleanNum = contact.replaceAll(
@@ -656,9 +711,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                         final encoded = Uri.encodeComponent(
                                           tpl.body,
                                         );
-                                        final uri = Uri.parse(
-                                          'https://wa.me/$cleanNum?text=$encoded',
-                                        );
+                                        final uri = cleanNum.isNotEmpty
+                                            ? Uri.parse(
+                                                'https://wa.me/$cleanNum?text=$encoded',
+                                              )
+                                            : Uri.parse(
+                                                'https://wa.me/?text=$encoded',
+                                              );
                                         final launched = await launchUrl(
                                           uri,
                                           mode: LaunchMode.externalApplication,
@@ -681,12 +740,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                       }
                                     } catch (_) {
                                       await Clipboard.setData(
-                                        ClipboardData(text: contact),
+                                        ClipboardData(text: tpl.body),
                                       );
                                       if (context.mounted) {
                                         AppleToast.info(
                                           context,
-                                          'Kontak disalin (Aplikasi tidak ditemukan)',
+                                          'Pesan disalin ke clipboard',
                                         );
                                       }
                                     }
@@ -699,8 +758,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                   ),
                                   label: Text(
                                     tpl.type == FollowupType.whatsapp
-                                        ? 'Kirim WA'
-                                        : 'Kirim Email',
+                                        ? 'Kirim ke WhatsApp'
+                                        : 'Buka Email',
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor:
@@ -713,11 +772,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 10,
-                                      horizontal: 14,
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ],
@@ -1076,26 +1134,31 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: kIsWeb ||
-                                        currentJob.screenshotPath!
-                                            .startsWith('http') ||
-                                        currentJob.screenshotPath!
-                                            .startsWith('blob:')
+                                child:
+                                    kIsWeb ||
+                                        currentJob.screenshotPath!.startsWith(
+                                          'http',
+                                        ) ||
+                                        currentJob.screenshotPath!.startsWith(
+                                          'blob:',
+                                        )
                                     ? Image.network(
                                         currentJob.screenshotPath!,
                                         height: 180,
                                         width: double.infinity,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            const SizedBox.shrink(),
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const SizedBox.shrink(),
                                       )
                                     : Image.file(
                                         File(currentJob.screenshotPath!),
                                         height: 180,
                                         width: double.infinity,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            const SizedBox.shrink(),
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const SizedBox.shrink(),
                                       ),
                               ),
                             ),
@@ -1478,15 +1541,19 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ),
                         ),
 
-                        // Center Company Logo Badge with scroll shrink animation
-                        Hero(
-                          tag: 'company_logo_${currentJob.id}',
-                          createRectTween: companyLogoRectTween,
-                          flightShuttleBuilder: companyLogoFlightShuttle,
-                          child: CompanyLogoBadge(
-                            companyName: currentJob.companyName,
-                            size: logoSize,
-                            customImagePath: currentJob.companyLogoPath,
+                        // Center Company Logo Badge with landing bounce & scroll shrink animation
+                        ScaleTransition(
+                          scale: _logoBounceAnim,
+                          child: Hero(
+                            tag: 'company_logo_${currentJob.id}',
+                            createRectTween: companyLogoRectTween,
+                            flightShuttleBuilder: companyLogoFlightShuttle,
+                            placeholderBuilder: companyLogoHeroPlaceholder,
+                            child: CompanyLogoBadge(
+                              companyName: currentJob.companyName,
+                              size: logoSize,
+                              customImagePath: currentJob.companyLogoPath,
+                            ),
                           ),
                         ),
 
@@ -1720,55 +1787,68 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
                         const SizedBox(height: 18),
 
-                        // Three fixed bubbles. Details expand below this row,
-                        // never sideways, so no horizontal scroll or overlay
-                        // can be displaced by an offset.
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final salaryBubble = _buildInfoBubble(
+                              icon: const Icon(
+                                Icons.payments_rounded,
+                                size: 17,
+                                color: Color(0xFFB45309),
+                              ),
+                              label: salaryText,
+                              index: 0,
+                            );
+                            final workTypeBubble = _buildInfoBubble(
+                              icon: const Icon(
+                                Icons.home_work_rounded,
+                                size: 17,
+                                color: Color(0xFF5C44E4),
+                              ),
+                              label: currentJob.workType,
+                              index: 1,
+                            );
+                            final statusBubble = StatusPulse(
+                              status: currentJob.status,
                               child: _buildInfoBubble(
                                 icon: const Icon(
-                                  Icons.payments_rounded,
+                                  Icons.work_outline_rounded,
                                   size: 17,
-                                  color: Color(0xFFB45309),
+                                  color: Color(0xFF1E8E3E),
                                 ),
-                                label: salaryText,
-                                index: 0,
+                                label: experienceText,
+                                index: 2,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 3,
-                              child: _buildInfoBubble(
-                                icon: const Icon(
-                                  Icons.home_work_rounded,
-                                  size: 17,
-                                  color: Color(0xFF5C44E4),
-                                ),
-                                label: currentJob.workType == 'WFO'
-                                    ? 'On-site'
-                                    : currentJob.workType,
-                                index: 1,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 3,
-                              child: StatusPulse(
-                                status: currentJob.status,
-                                child: _buildInfoBubble(
-                                  icon: const Icon(
-                                    Icons.work_outline_rounded,
-                                    size: 17,
-                                    color: Color(0xFF1E8E3E),
+                            );
+
+                            if (constraints.maxWidth < 340) {
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: salaryBubble,
                                   ),
-                                  label: experienceText,
-                                  index: 2,
-                                ),
-                              ),
-                            ),
-                          ],
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(child: workTypeBubble),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: statusBubble),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(flex: 2, child: salaryBubble),
+                                const SizedBox(width: 8),
+                                Expanded(child: workTypeBubble),
+                                const SizedBox(width: 8),
+                                Expanded(child: statusBubble),
+                              ],
+                            );
+                          },
                         ),
 
                         AnimatedSize(
@@ -1843,18 +1923,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           const SizedBox(height: 10),
                         ],
 
-                        // Option 1: Timeline & Riwayat Seleksi with Hero Morph
+                        // Timeline is the single entry point for stages and
+                        // interview guidance, avoiding duplicate destinations.
                         _buildOptionCard(
                           icon: Icons.timeline_rounded,
                           iconColor: const Color(0xFF5C44E4),
-                          title: 'Timeline & Riwayat Tahapan',
+                          title: 'Timeline & Riwayat',
                           subtitle:
                               'Status saat ini: ${currentJob.status} • ${currentJob.recruitmentEvents.length} riwayat',
-                          trailingBadge: currentJob.status,
-                          badgeColor: AppTheme.getStatusColor(
-                            currentJob.status,
-                          ),
-                          heroTag: 'job_status_pill_${currentJob.id}',
                           onTap: () {
                             HapticFeedback.selectionClick();
                             Navigator.push(
@@ -1869,28 +1945,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
                         const SizedBox(height: 10),
 
-                        // Option 2: Panduan & Tips Interview
-                        _buildOptionCard(
-                          icon: Icons.psychology_rounded,
-                          iconColor: const Color(0xFF19191B),
-                          title: 'Panduan & Tips Interview',
-                          subtitle:
-                              'Cheat-sheet jawaban dan strategi wawancara',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    InterviewStagesScreen(job: currentJob),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Option 3: Kontak HR & Template Follow-Up
+                        // Kontak HR & Template Follow-Up
                         _buildOptionCard(
                           icon: Icons.send_rounded,
                           iconColor: const Color(0xFF25D366),
@@ -1902,6 +1957,22 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               : 'Kirim pesan follow-up via WhatsApp / Email',
                           onTap: () => _showFollowupSheet(context, currentJob),
                         ),
+
+                        if (currentJob.status == 'Offering' ||
+                            currentJob.offerDetails != null) ...[
+                          const SizedBox(height: 10),
+                          _buildOptionCard(
+                            icon: Icons.local_offer_rounded,
+                            iconColor: const Color(0xFFE11D48),
+                            title: 'Rincian & Komparasi Penawaran',
+                            subtitle:
+                                'Bandingkan komponen gaji, benefit, dan masa probation',
+                            trailingBadge: 'Offering',
+                            badgeColor: const Color(0xFFE11D48),
+                            onTap: () =>
+                                _showOfferComparisonSheet(context, currentJob),
+                          ),
+                        ],
 
                         const SizedBox(height: 10),
 
@@ -2209,7 +2280,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       1 => (
         Icons.home_work_rounded,
         'Mode kerja',
-        '${job.workType == 'WFO' ? 'On-site' : job.workType}${job.location?.trim().isNotEmpty == true ? ' di ${job.location!.trim()}' : ''}',
+        '${job.workType}${job.location?.trim().isNotEmpty == true ? ' di ${job.location!.trim()}' : ''}',
       ),
       _ => (
         Icons.work_outline_rounded,
@@ -2338,7 +2409,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 borderRadius: BorderRadius.circular(17),
               ),
               child: const Text(
-                'Kualifikasi minimum',
+                'Deskripsi',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
               ),
             ),
@@ -2395,6 +2466,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 children: [
                   Text(
                     title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
@@ -2410,7 +2483,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           ? const Color(0xFFA0A0A8)
                           : const Color(0xFF707074),
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -2481,6 +2554,320 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           ],
         ),
       ),
+    );
+  }
+
+  void _showOfferComparisonSheet(
+    BuildContext context,
+    JobApplication currentJob,
+  ) {
+    HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+    final cardBg = isDark ? const Color(0xFF282830) : const Color(0xFFF7F5F0);
+
+    final otherOfferingJobs = ref
+        .read(jobProvider)
+        .jobs
+        .where(
+          (j) =>
+              !j.isSampleData &&
+              j.status == 'Offering' &&
+              j.id != currentJob.id,
+        )
+        .toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          MediaQuery.of(ctx).padding.bottom + 24,
+        ),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF383842)
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE11D48).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.local_offer_rounded,
+                      color: Color(0xFFE11D48),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rincian Penawaran Kerja',
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w900,
+                            color: txtPri,
+                          ),
+                        ),
+                        Text(
+                          '${currentJob.position} di ${currentJob.companyName}',
+                          style: TextStyle(fontSize: 12, color: txtSec),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Offer breakdown card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  children: [
+                    _buildOfferRow(
+                      'Gaji Ditawarkan',
+                      currentJob.salaryOffered?.trim().isNotEmpty == true
+                          ? currentJob.salaryOffered!
+                          : 'Belum dicantumkan',
+                      txtPri,
+                      txtSec,
+                      isHighlighted: true,
+                    ),
+                    const Divider(height: 16),
+                    _buildOfferRow(
+                      'Mode Kerja',
+                      '${currentJob.workType}${currentJob.location != null ? " • ${currentJob.location}" : ""}',
+                      txtPri,
+                      txtSec,
+                    ),
+                    const Divider(height: 16),
+                    _buildOfferRow(
+                      'Kontak Perekrut',
+                      currentJob.hrContact ?? 'Tidak ada kontak tersimpan',
+                      txtPri,
+                      txtSec,
+                    ),
+                    if (currentJob.offerDetails?.decisionDeadline != null) ...[
+                      const Divider(height: 16),
+                      _buildOfferRow(
+                        'Tenggat Konfirmasi',
+                        _formatTimelineDate(
+                          currentJob.offerDetails!.decisionDeadline!,
+                        ),
+                        txtPri,
+                        txtSec,
+                      ),
+                    ],
+                    if (currentJob.offerDetails?.startDate != null) ...[
+                      const Divider(height: 16),
+                      _buildOfferRow(
+                        'Tanggal Masuk',
+                        _formatTimelineDate(
+                          currentJob.offerDetails!.startDate!,
+                        ),
+                        txtPri,
+                        txtSec,
+                      ),
+                    ],
+                    if (currentJob.offerDetails?.compensationNotes.isNotEmpty ==
+                        true) ...[
+                      const Divider(height: 16),
+                      _buildOfferRow(
+                        'Catatan Paket',
+                        currentJob.offerDetails!.compensationNotes,
+                        txtPri,
+                        txtSec,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Comparison section
+              if (otherOfferingJobs.isNotEmpty) ...[
+                Text(
+                  'PENASARAN DENGAN TAWARAN LAIN?',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    color: isDark
+                        ? const Color(0xFFA78BFA)
+                        : const Color(0xFF5C44E4),
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...otherOfferingJobs.map(
+                  (other) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${other.position} • ${other.companyName}',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: txtPri,
+                                ),
+                              ),
+                              Text(
+                                other.salaryOffered ?? 'Gaji belum diisi',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFE11D48),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF5C44E4,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            other.workType,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF5C44E4),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5C44E4).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        size: 16,
+                        color: Color(0xFF5C44E4),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Saat ada lebih dari satu lowongan berstatus Offering, perbandingan komparasi gaji akan otomatis ditampilkan di sini.',
+                          style: TextStyle(fontSize: 11, color: txtSec),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5C44E4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Tutup',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfferRow(
+    String label,
+    String value,
+    Color txtPri,
+    Color txtSec, {
+    bool isHighlighted = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12.5, color: txtSec)),
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: isHighlighted ? 14 : 12.5,
+              fontWeight: isHighlighted ? FontWeight.w900 : FontWeight.w700,
+              color: isHighlighted ? const Color(0xFFE11D48) : txtPri,
+            ),
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

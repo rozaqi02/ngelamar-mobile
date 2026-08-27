@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import '../../constants/app_version.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/backup_service.dart';
@@ -55,8 +56,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _aboutController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
-  static const String _appVersion = '2.25.5';
-  static const String _buildNumber = '242';
+  static String get _appVersion => AppVersion.version;
+  static String get _buildNumber => AppVersion.buildNumber;
 
   List<String> _userInterests = [];
   bool? _notificationsEnabled;
@@ -921,6 +922,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         bytes,
         password: password,
       );
+      if (!mounted) return;
+      final confirmed = await _showRestorePreviewModal(
+        context: context,
+        title: 'Cloud (${selected.objectPath.split('/').last})',
+        jobsCount: payload.jobs.length,
+        attachmentsCount: payload.extractedAttachmentPaths.length,
+        isLegacy: false,
+      );
+      if (confirmed != true || !mounted) return;
+
       final importResult = await ref
           .read(jobProvider.notifier)
           .importJobs(payload.jobs);
@@ -1021,6 +1032,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         bytes,
         password: password,
       );
+      if (!mounted) return;
+      final confirmed = await _showRestorePreviewModal(
+        context: context,
+        title: selected.name,
+        jobsCount: payload.jobs.length,
+        attachmentsCount: payload.extractedAttachmentPaths.length,
+        isLegacy: BackupService.isLegacyJsonBackup(bytes),
+      );
+      if (confirmed != true || !mounted) return;
+
       final importResult = await ref
           .read(jobProvider.notifier)
           .importJobs(payload.jobs);
@@ -1048,6 +1069,207 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         AppToast.error(context, 'Backup belum dapat dipulihkan.');
       }
     }
+  }
+
+  Future<bool?> _showRestorePreviewModal({
+    required BuildContext context,
+    required String title,
+    required int jobsCount,
+    required int attachmentsCount,
+    required bool isLegacy,
+  }) {
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF383842)
+                      : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E8E3E).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.settings_backup_restore_rounded,
+                    color: Color(0xFF1E8E3E),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Konfirmasi Pemulihan Data',
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                        ),
+                      ),
+                      Text(
+                        'Ringkasan data cadangan yang akan dipulihkan',
+                        style: TextStyle(fontSize: 12, color: txtSec),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF282830)
+                    : const Color(0xFFF7F5F0),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Sumber Cadangan',
+                        style: TextStyle(fontSize: 12.5, color: txtSec),
+                      ),
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: txtPri,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Jumlah Lamaran',
+                        style: TextStyle(fontSize: 12.5, color: txtSec),
+                      ),
+                      Text(
+                        '$jobsCount lowongan',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF5C44E4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Lampiran Terhubung',
+                        style: TextStyle(fontSize: 12.5, color: txtSec),
+                      ),
+                      Text(
+                        isLegacy
+                            ? 'Format JSON Lama (tanpa file)'
+                            : '$attachmentsCount file berkas',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: txtPri,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF383842)
+                            : const Color(0xFFE5E0D5),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: txtPri,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E8E3E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Pulihkan Data',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<String?> _requestBackupPassword({required bool isRestoring}) async {
@@ -1279,7 +1501,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Tanpa Tracking & Tanpa Iklan Pihak Ketiga',
+                          'Transparansi Data & Layanan Cloud',
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13.5,
@@ -1291,7 +1513,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Ngelamar tidak mengumpulkan, menjual, atau mentransfer data pribadi Anda ke server analitik pihak ketiga manapun.',
+                    'Database lamaran disimpan secara lokal dengan enkripsi AES-256. Layanan cloud (Supabase) digunakan untuk autentikasi, backup terenkripsi, sinkronisasi profil, dan pengumuman. Firebase (FCM) digunakan semata-mata untuk mengantarkan pengingat jadwal seleksi. Data Anda tidak pernah dijual ke pengiklan pihak ketiga.',
                     style: TextStyle(fontSize: 12, color: txtSec, height: 1.4),
                   ),
                   const SizedBox(height: 12),
@@ -1305,7 +1527,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Koneksi Opsional untuk Pencarian',
+                          'Koneksi Jaringan & Kontrol Penuh',
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13.5,
@@ -1317,7 +1539,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Koneksi hanya terjadi saat Anda membuka portal loker atau meminta isi otomatis dari tautan HTTPS portal yang didukung. Data lamaran Anda tidak dikirim untuk fitur tersebut.',
+                    'Koneksi internet digunakan saat sinkronisasi, backup cloud, atau membuka portal loker eksternal. Anda memiliki kontrol penuh untuk mengekspor data atau menghapus data cloud kapan saja dari menu Pengaturan.',
                     style: TextStyle(fontSize: 12, color: txtSec, height: 1.4),
                   ),
                 ],
@@ -1768,79 +1990,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                     const SizedBox(height: 18),
 
-                    // A small career pulse makes the profile feel like part
-                    // of the applicant journey, not a generic settings page.
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF282438)
-                            : const Color(0xFFF0EAFF),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF4B426F)
-                              : const Color(0xFFD9CDF8),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF5C44E4),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.auto_graph_rounded,
-                              size: 19,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  activeApplications == 0
-                                      ? 'Mulai peta kariermu'
-                                      : '$activeApplications lamaran sedang berjalan',
-                                  style: TextStyle(
-                                    color: txtPri,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Profilmu sudah $profilePercent% siap untuk melamar.',
-                                  style: TextStyle(
-                                    color: txtSec,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 11.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            CupertinoIcons.sparkles,
-                            size: 17,
-                            color: isDark
-                                ? const Color(0xFFC4B5FD)
-                                : const Color(0xFF5C44E4),
-                          ),
-                        ],
+                    const SizedBox(height: 10),
+                    Text(
+                      activeApplications == 0
+                          ? 'Lengkapi profilmu agar lebih siap saat melamar.'
+                          : '$activeApplications lamaran sedang berjalan • profil $profilePercent% siap.',
+                      style: TextStyle(
+                        color: txtSec,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11.5,
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
                     // Two high-contrast actions, matching Home's primary/green CTA pair.
                     Row(
@@ -2232,7 +2394,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               final result =
                                   await Navigator.push<JobApplication>(
                                     context,
-                                    CupertinoPageRoute(
+                                    AppMotion.editorRoute<JobApplication>(
                                       builder: (_) =>
                                           AddEditJobScreen(jobToEdit: job),
                                     ),
@@ -2658,6 +2820,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ? const Color(0xFF2E2E38)
                             : const Color(0xFFE6E0D5),
                       ),
+
+                      if (state.hasSampleData) ...[
+                        _buildSettingTile(
+                          icon: CupertinoIcons.trash_circle_fill,
+                          color: const Color(0xFFEF4444),
+                          title: 'Hapus Semua Data Contoh',
+                          subtitle:
+                              'Bersihkan data simulasi tutorial dari perangkat',
+                          onTap: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Hapus Data Contoh?'),
+                                content: const Text(
+                                  'Semua lowongan contoh bawaan tutorial akan dihapus dari tracker. Lamaran asli Anda tetap aman.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Batal'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFEF4444),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Hapus Data Contoh'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm != true || !mounted) return;
+                            final count = await ref
+                                .read(jobProvider.notifier)
+                                .deleteSampleJobs();
+                            if (!mounted) return;
+                            AppleToast.success(
+                              this.context,
+                              '$count data contoh berhasil dibersihkan.',
+                            );
+                          },
+                        ),
+                        Divider(
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: isDark
+                              ? const Color(0xFF2E2E38)
+                              : const Color(0xFFE6E0D5),
+                        ),
+                      ],
 
                       // Notifikasi Interview
                       _buildNotificationStatusCard(state, isDark),

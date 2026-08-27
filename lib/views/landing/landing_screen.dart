@@ -19,30 +19,7 @@ class LandingScreen extends ConsumerStatefulWidget {
   ConsumerState<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends ConsumerState<LandingScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _bobbingAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    )..repeat(reverse: true);
-
-    _bobbingAnim = Tween<double>(begin: -6.0, end: 6.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeInOutSine),
-    );
-  }
-
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
+class _LandingScreenState extends ConsumerState<LandingScreen> {
   void _onGetStarted() {
     HapticFeedback.heavyImpact();
     showModalBottomSheet(
@@ -109,153 +86,43 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
         bottom: false,
         child: Stack(
           children: [
-            // ── TOP SCATTERED FLOATING SKILL / CATEGORY PILLS ──
+            // A few quiet career cues give the opening screen personality
+            // without competing with the decision to begin.
             Positioned.fill(
               bottom: size.height * 0.40,
-              child: AnimatedBuilder(
-                animation: _animController,
-                builder: (context, child) {
-                  final dy = _bobbingAnim.value;
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Hexagon Top-Left
-                      Positioned(
-                        top: 20 + dy * 0.4,
-                        left: 20,
-                        child: _buildHexagon(size: 38),
-                      ),
-
-                      // Circle Left
-                      Positioned(
-                        top: 80 - dy * 0.5,
-                        left: 18,
-                        child: _buildCircle(size: 32),
-                      ),
-
-                      // White Triangle
-                      Positioned(
-                        top: 60 + dy * 0.6,
-                        left: size.width * 0.52,
-                        child: _buildPlayTriangle(size: 40),
-                      ),
-
-                      // White Dot Pill
-                      Positioned(
-                        top: 40 - dy * 0.3,
-                        left: size.width * 0.36,
-                        child: _buildPillDot(),
-                      ),
-
-                      // White Dot Pill 2
-                      Positioned(
-                        top: 155 + dy * 0.4,
-                        left: size.width * 0.28,
-                        child: _buildPillDot(),
-                      ),
-
-                      // 1. UI/UX DESIGNER (Tech/Design - Top Center)
-                      Positioned(
-                        top: 8 + dy * 0.5,
-                        left: size.width * 0.38,
-                        child: _buildCategoryPill(
-                          text: 'UI/UX DESIGNER',
-                          bgColor: const Color(0xFFD8F2CA),
-                          textColor: const Color(0xFF1A3311),
-                          rotation: -18,
-                        ),
-                      ),
-
-                      // 2. FINANCE & ACCOUNTING (Finance - Top Right)
-                      Positioned(
-                        top: 24 - dy * 0.4,
-                        right: 8,
-                        child: _buildCategoryPill(
-                          text: 'FINANCE &\nACCOUNTING',
-                          bgColor: const Color(0xFFDED2F9),
-                          textColor: const Color(0xFF281E48),
-                          rotation: 18,
-                          isMultiLine: true,
-                        ),
-                      ),
-
-                      // 3. PRODUCT MANAGER (Management - Upper Left)
-                      Positioned(
-                        top: 68 + dy * 0.7,
-                        left: 56,
-                        child: _buildCategoryPill(
-                          text: 'PRODUCT\nMANAGER',
-                          bgColor: const Color(0xFFFDE4C8),
-                          textColor: const Color(0xFF38230F),
-                          rotation: 12,
-                          isMultiLine: true,
-                        ),
-                      ),
-
-                      // 4. HR SPECIALIST (HR/Operations - Upper Right)
-                      Positioned(
-                        top: 100 - dy * 0.6,
-                        right: 4,
-                        child: _buildCategoryPill(
-                          text: 'HR SPECIALIST',
-                          bgColor: const Color(0xFFFDE4C8),
-                          textColor: const Color(0xFF38230F),
-                          rotation: -14,
-                        ),
-                      ),
-
-                      // 5. DIGITAL MARKETING (Marketing - Left Middle)
-                      Positioned(
-                        top: 125 - dy * 0.5,
-                        left: 6,
-                        child: _buildCategoryPill(
-                          text: 'DIGITAL\nMARKETING',
-                          bgColor: const Color(0xFFDED2F9),
-                          textColor: const Color(0xFF281E48),
-                          rotation: -16,
-                          isMultiLine: true,
-                        ),
-                      ),
-
-                      // 6. DATA ANALYST (Tech - Center Middle)
-                      Positioned(
-                        top: 132 + dy * 0.5,
-                        left: size.width * 0.36,
-                        child: _buildCategoryPill(
-                          text: 'DATA ANALYST',
-                          bgColor: const Color(0xFFDED2F9),
-                          textColor: const Color(0xFF281E48),
-                          rotation: -14,
-                        ),
-                      ),
-
-                      // 7. ADMIN OPERASIONAL (Operations - Right Middle)
-                      Positioned(
-                        top: 168 - dy * 0.5,
-                        right: 18,
-                        child: _buildCategoryPill(
-                          text: 'ADMIN\nOPERASIONAL',
-                          bgColor: const Color(0xFFD8F2CA),
-                          textColor: const Color(0xFF1A3311),
-                          rotation: 16,
-                          isMultiLine: true,
-                        ),
-                      ),
-
-                      // 8. FLUTTER DEV (Tech - Lower Left)
-                      Positioned(
-                        top: 196 + dy * 0.4,
-                        left: 70,
-                        child: _buildCategoryPill(
-                          text: 'FLUTTER DEV',
-                          bgColor: const Color(0xFFFDE4C8),
-                          textColor: const Color(0xFF38230F),
-                          rotation: 5,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 30,
+                    left: 28,
+                    child: _buildCategoryPill(
+                      text: 'CARI KERJA',
+                      bgColor: const Color(0xFFD8F2CA),
+                      textColor: const Color(0xFF1A3311),
+                      rotation: -8,
+                    ),
+                  ),
+                  Positioned(
+                    top: 54,
+                    right: 30,
+                    child: _buildCategoryPill(
+                      text: 'SIAP INTERVIEW',
+                      bgColor: const Color(0xFFDED2F9),
+                      textColor: const Color(0xFF281E48),
+                      rotation: 7,
+                    ),
+                  ),
+                  Positioned(
+                    top: 150,
+                    left: size.width * 0.14,
+                    child: _buildCategoryPill(
+                      text: 'LAMAR DENGAN RAPI',
+                      bgColor: const Color(0xFFFDE4C8),
+                      textColor: const Color(0xFF38230F),
+                      rotation: -3,
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -411,70 +278,6 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
       ),
     );
   }
-
-  Widget _buildHexagon({required double size}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.rectangle,
-        borderRadius: BorderRadius.all(Radius.circular(8)),
-      ),
-    );
-  }
-
-  Widget _buildCircle({required double size}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-
-  Widget _buildPlayTriangle({required double size}) {
-    return Transform.rotate(
-      angle: 15 * (math.pi / 180),
-      child: CustomPaint(
-        size: Size(size, size * 0.86),
-        painter: _TrianglePainter(),
-      ),
-    );
-  }
-
-  Widget _buildPillDot() {
-    return Container(
-      width: 24,
-      height: 10,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-    );
-  }
-}
-
-class _TrianglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, size.height / 2)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class OnboardingTutorialSheet extends StatefulWidget {
@@ -935,10 +738,14 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF5C44E4).withValues(alpha: 0.08),
+                              color: const Color(
+                                0xFF5C44E4,
+                              ).withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF5C44E4).withValues(alpha: 0.25),
+                                color: const Color(
+                                  0xFF5C44E4,
+                                ).withValues(alpha: 0.25),
                               ),
                             ),
                             child: const Row(
@@ -1705,10 +1512,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
       ),
       child: Row(
         children: [
-          CompanyLogoBadge(
-            companyName: company,
-            size: 32,
-          ),
+          CompanyLogoBadge(companyName: company, size: 32),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

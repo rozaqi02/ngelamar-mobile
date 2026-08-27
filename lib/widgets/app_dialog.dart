@@ -19,10 +19,13 @@ class AppDialog {
     bool barrierDismissible = true,
   }) {
     HapticFeedback.selectionClick();
-    return showDialog<T>(
+    return showGeneralDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      builder: (ctx) {
+      barrierLabel: 'Tutup dialog',
+      barrierColor: Colors.black.withValues(alpha: 0.38),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (ctx, animation, secondaryAnimation) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
 
         Widget actionButton({required bool primary}) {
@@ -198,6 +201,23 @@ class AppDialog {
                 ],
               ),
             ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+          return child;
+        }
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.97, end: 1).animate(curved),
+            child: child,
           ),
         );
       },

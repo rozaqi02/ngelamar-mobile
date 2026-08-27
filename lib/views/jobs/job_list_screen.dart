@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
+import '../../services/job_search_service.dart';
 import '../../services/prefs_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
@@ -34,8 +35,6 @@ class JobListScreen extends ConsumerStatefulWidget {
 class _JobListScreenState extends ConsumerState<JobListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ScrollController _tabScrollController = ScrollController();
-  late final List<GlobalKey> _tabKeys;
   final TextEditingController _searchController = TextEditingController();
   final GlobalKey _addBtnKey = GlobalKey();
   Timer? _debounce;
@@ -47,6 +46,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
   final List<String> _tabs = const [
     'Semua',
+    'Tersimpan',
+    'Draft',
     'Dikirim',
     'Tes / Psikotes',
     'Interview HR',
@@ -54,20 +55,17 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     'Offering',
     'Diterima',
     'Ditolak',
+    'Dibatalkan',
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
-    _tabKeys = List.generate(_tabs.length, (_) => GlobalKey());
     _tabController.addListener(() {
       if (mounted && _lastTabIndex != _tabController.index) {
         _lastTabIndex = _tabController.index;
         setState(() {});
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _scrollToActiveTab(),
-        );
         if (!_tabController.indexIsChanging) {
           unawaited(
             PrefsService.setJobListStatusTab(_tabs[_tabController.index]),
@@ -104,17 +102,6 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
             : 'List menjadi tampilan pilihanmu.',
       );
     }
-  }
-
-  void _scrollToActiveTab() {
-    final tabContext = _tabKeys[_tabController.index].currentContext;
-    if (tabContext == null) return;
-    Scrollable.ensureVisible(
-      tabContext,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   void _showSortModal(BuildContext context) {
@@ -242,35 +229,277 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     );
   }
 
+  void _showFilterModal(BuildContext context, JobState state) {
+    HapticFeedback.selectionClick();
+    var pendingStatus = _tabs[_tabController.index];
+    var pendingWorkType = state.selectedWorkTypeFilter;
+    var pendingFavorites = state.onlyFavoritesFilter;
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          top: false,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+            ),
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Filter Lamaran',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: txtPri,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tampilkan hanya lamaran yang ingin kamu lihat.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? Colors.white60 : const Color(0xFF707074),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'STATUS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.7,
+                      color: isDark ? Colors.white54 : const Color(0xFF77777A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _tabs.map((status) {
+                      final selected = pendingStatus == status;
+                      return ChoiceChip(
+                        label: Text(_displayStatus(status)),
+                        selected: selected,
+                        showCheckmark: false,
+                        onSelected: (_) =>
+                            setSheetState(() => pendingStatus = status),
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : (isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF343438)),
+                        ),
+                        selectedColor: const Color(0xFF19191B),
+                        backgroundColor: isDark
+                            ? const Color(0xFF282830)
+                            : const Color(0xFFF4F1EA),
+                        side: BorderSide(
+                          color: selected
+                              ? const Color(0xFF19191B)
+                              : (isDark
+                                    ? const Color(0xFF3A3A42)
+                                    : const Color(0xFFE5E0D5)),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'TIPE KERJA',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.7,
+                      color: isDark ? Colors.white54 : const Color(0xFF77777A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['Semua', 'WFH', 'Hybrid', 'WFO'].map((workType) {
+                      final selected = pendingWorkType == workType;
+                      return ChoiceChip(
+                        label: Text(
+                          workType == 'Semua' ? 'Semua tipe' : workType,
+                        ),
+                        selected: selected,
+                        showCheckmark: false,
+                        onSelected: (_) =>
+                            setSheetState(() => pendingWorkType = workType),
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : (isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF343438)),
+                        ),
+                        selectedColor: const Color(0xFF5C44E4),
+                        backgroundColor: isDark
+                            ? const Color(0xFF282830)
+                            : const Color(0xFFF4F1EA),
+                        side: BorderSide(
+                          color: selected
+                              ? const Color(0xFF5C44E4)
+                              : (isDark
+                                    ? const Color(0xFF3A3A42)
+                                    : const Color(0xFFE5E0D5)),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  SwitchListTile.adaptive(
+                    value: pendingFavorites,
+                    onChanged: (value) =>
+                        setSheetState(() => pendingFavorites = value),
+                    contentPadding: EdgeInsets.zero,
+                    activeTrackColor: const Color(0xFF5C44E4),
+                    title: Text(
+                      'Hanya favorit',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: txtPri,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Tampilkan lamaran yang sudah ditandai.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark
+                            ? Colors.white54
+                            : const Color(0xFF707074),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setSheetState(() {
+                            pendingStatus = 'Semua';
+                            pendingWorkType = 'Semua';
+                            pendingFavorites = false;
+                          }),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: txtPri,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF3A3A42)
+                                  : const Color(0xFFDCD8CE),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text(
+                            'Reset',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final current = ref.read(jobProvider);
+                            final notifier = ref.read(jobProvider.notifier);
+                            notifier.setWorkTypeFilter(pendingWorkType);
+                            if (current.onlyFavoritesFilter !=
+                                pendingFavorites) {
+                              notifier.toggleOnlyFavoritesFilter();
+                            }
+                            if (current.onlyWfhFilter) {
+                              notifier.toggleOnlyWfhFilter();
+                            }
+                            final statusIndex = _tabs.indexOf(pendingStatus);
+                            if (statusIndex >= 0) {
+                              _tabController.animateTo(statusIndex);
+                            }
+                            Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF19191B),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: const Text(
+                            'Terapkan',
+                            style: TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
-    _tabScrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
     final result = await Navigator.of(ctx).push<JobApplication>(
-      PageRouteBuilder<JobApplication>(
-        transitionDuration: const Duration(milliseconds: 380),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const AddEditJobScreen(startQuickMode: true),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curvedAnim = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutQuart,
-            reverseCurve: Curves.easeInCubic,
-          );
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1.0),
-              end: Offset.zero,
-            ).animate(curvedAnim),
-            child: child,
-          );
-        },
+      AppMotion.editorRoute<JobApplication>(
+        builder: (_) => const AddEditJobScreen(startQuickMode: true),
       ),
     );
 
@@ -311,28 +540,14 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     String category,
     JobState state,
   ) {
-    final filtered = jobs.where((job) {
-      final q = state.searchQuery.trim().toLowerCase();
-      final matchesSearch =
-          q.isEmpty ||
-          job.position.toLowerCase().contains(q) ||
-          job.companyName.toLowerCase().contains(q) ||
-          (job.location?.toLowerCase().contains(q) ?? false) ||
-          (job.notes?.toLowerCase().contains(q) ?? false) ||
-          (job.hrContact?.toLowerCase().contains(q) ?? false) ||
-          job.jobDescription.toLowerCase().contains(q);
-
-      if (!matchesSearch) return false;
-      if (state.onlyFavoritesFilter && !job.isFavorite) return false;
-      if (state.onlyWfhFilter &&
-          job.workType != 'WFH' &&
-          !job.jobDescription.toLowerCase().contains('remote')) {
-        return false;
-      }
-
-      if (category == 'Semua') return true;
-      return job.status == category;
-    }).toList();
+    final filtered = JobSearchService.filterJobs(
+      jobs,
+      query: state.searchQuery,
+      status: category,
+      workType: state.selectedWorkTypeFilter,
+      onlyFavorites: state.onlyFavoritesFilter,
+      onlyWfh: state.onlyWfhFilter,
+    );
 
     // Sort logic
     switch (_sortBy) {
@@ -344,8 +559,18 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
         break;
       case 'Deadline Terdekat':
         filtered.sort((a, b) {
-          final aDate = a.interviewDate ?? a.testDate ?? DateTime(2099);
-          final bDate = b.interviewDate ?? b.testDate ?? DateTime(2099);
+          final aDate =
+              a.interviewDate ??
+              a.testDate ??
+              a.nextActionAt ??
+              a.applicationDeadline ??
+              DateTime(2099);
+          final bDate =
+              b.interviewDate ??
+              b.testDate ??
+              b.nextActionAt ??
+              b.applicationDeadline ??
+              DateTime(2099);
           return aDate.compareTo(bDate);
         });
         break;
@@ -363,6 +588,30 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
     }
 
     return filtered;
+  }
+
+  String _displayStatus(String status) {
+    switch (status) {
+      case 'Tes / Psikotes':
+        return 'Tes & Psikotes';
+      case 'Interview HR':
+        return 'Wawancara HR';
+      case 'Interview User':
+        return 'Wawancara User';
+      case 'Offering':
+        return 'Penawaran';
+      default:
+        return status;
+    }
+  }
+
+  Color _getListCardColor(BuildContext context, JobApplication job) {
+    final base = AppTheme.getCompanyCardColor(job.companyName, job.status);
+    if (AppTheme.isDark(context)) return base;
+
+    // Keep each company recognisable without turning the list into a wall of
+    // high-saturation banners.
+    return Color.lerp(base, AppTheme.warmBackground, 0.52)!;
   }
 
   @override
@@ -414,7 +663,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                               'DAFTAR LAMARANKU',
                               key: const ValueKey('compact_title'),
                               style: TextStyle(
-                                fontSize: 18.5,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w900,
                                 color: txtPri,
                                 letterSpacing: -0.6,
@@ -546,7 +795,8 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
               ),
             ),
 
-            // Search Box & Quick Filter Pills
+            // Search and three contextual controls. Detailed options stay in
+            // the filter sheet so the list remains calm on narrow devices.
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
               child: Column(
@@ -569,241 +819,47 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     },
                   ),
                   const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        children: [
-                          _buildCompactControl(
-                            isDark: isDark,
-                            active: state.onlyFavoritesFilter,
-                            icon: state.onlyFavoritesFilter
-                                ? Icons.bookmark_rounded
-                                : Icons.bookmark_border_rounded,
-                            count: state.favoriteCount,
-                            tooltip: 'Bookmark',
-                            onTap: () => ref
-                                .read(jobProvider.notifier)
-                                .toggleOnlyFavoritesFilter(),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildCompactControl(
-                            isDark: isDark,
-                            active: _sortBy != 'Terbaru',
-                            icon: Icons.sort_rounded,
-                            tooltip: 'Urutan: $_sortBy',
-                            onTap: () => _showSortModal(context),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildCompactControl(
-                            isDark: isDark,
-                            icon: _viewMode == 'grid'
-                                ? Icons.grid_view_rounded
-                                : Icons.view_agenda_outlined,
-                            tooltip: _viewMode == 'grid'
-                                ? 'Ubah ke tampilan list'
-                                : 'Ubah ke tampilan grid',
-                            onTap: () => _setViewMode(
-                              _viewMode == 'grid' ? 'list' : 'grid',
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Container(
-                            width: 1,
-                            height: 20,
-                            color: isDark
-                                ? const Color(0xFF383842)
-                                : const Color(0xFFE5E0D5),
-                          ),
-                          const SizedBox(width: 10),
-                          ...['Semua', 'WFH', 'Hybrid', 'WFO'].map((wt) {
-                            final isSelected =
-                                state.selectedWorkTypeFilter == wt;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  ref
-                                      .read(jobProvider.notifier)
-                                      .setWorkTypeFilter(wt);
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 7,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? (isDark
-                                              ? const Color(0xFF5C44E4)
-                                              : const Color(0xFF19191B))
-                                        : (isDark
-                                              ? const Color(0xFF24242C)
-                                              : Colors.white),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? Colors.transparent
-                                          : (isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFE5E0D5)),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    wt == 'Semua' ? 'Semua Tipe' : wt,
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : (isDark
-                                                ? Colors.white70
-                                                : const Color(0xFF555558)),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      _buildCompactControl(
+                        isDark: isDark,
+                        active: _sortBy != 'Terbaru',
+                        icon: Icons.sort_rounded,
+                        tooltip: 'Urutan: $_sortBy',
+                        onTap: () => _showSortModal(context),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      _buildCompactControl(
+                        isDark: isDark,
+                        icon: _viewMode == 'grid'
+                            ? Icons.grid_view_rounded
+                            : Icons.view_agenda_outlined,
+                        tooltip: _viewMode == 'grid'
+                            ? 'Ubah ke tampilan list'
+                            : 'Ubah ke tampilan grid',
+                        onTap: () =>
+                            _setViewMode(_viewMode == 'grid' ? 'list' : 'grid'),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCompactControl(
+                        isDark: isDark,
+                        active:
+                            _tabController.index != 0 ||
+                            state.selectedWorkTypeFilter != 'Semua' ||
+                            state.onlyFavoritesFilter ||
+                            state.onlyWfhFilter,
+                        icon: Icons.tune_rounded,
+                        tooltip: 'Filter lamaran',
+                        onTap: () => _showFilterModal(context, state),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            // Horizontal Status Tab Bar
-            SizedBox(
-              height: 44,
-              child: SingleChildScrollView(
-                controller: _tabScrollController,
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: List.generate(_tabs.length, (i) {
-                    final tabName = _tabs[i];
-                    final isSelected = _tabController.index == i;
-                    final count = jobsByTab[tabName]!.length;
-
-                    return Padding(
-                      key: _tabKeys[i],
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FluidBounceButton(
-                        semanticLabel:
-                            'Tampilkan status $tabName, $count lamaran',
-                        selected: isSelected,
-                        onTap: () {
-                          setState(() {
-                            _tabController.animateTo(i);
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF19191B)
-                                : (isDark
-                                      ? const Color(0xFF242428)
-                                      : Colors.white),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF19191B)
-                                  : (isDark
-                                        ? const Color(0xFF333338)
-                                        : const Color(0xFFE5E0D5)),
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (tabName != 'Semua') ...[
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.getStatusColor(tabName),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                              ],
-                              Text(
-                                tabName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : (isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF333338)),
-                                ),
-                              ),
-                              if (count > 0) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? Colors.white.withValues(alpha: 0.25)
-                                        : (isDark
-                                              ? const Color(0xFF333338)
-                                              : const Color(0xFFF0EBE0)),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '$count',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : (isDark
-                                                ? Colors.white70
-                                                : const Color(0xFF555558)),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
 
             // TabBarView List of Jobs with Swipe-to-Delete
             Expanded(
@@ -824,7 +880,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 },
                 child: TabBarView(
                   controller: _tabController,
-                  physics: const BouncingScrollPhysics(),
+                  physics: const NeverScrollableScrollPhysics(),
                   children: List.generate(_tabs.length, (tabIdx) {
                     final category = _tabs[tabIdx];
                     final jobs = jobsByTab[category]!;
@@ -878,6 +934,9 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                     if (state.searchQuery.isNotEmpty ||
                                         state.onlyFavoritesFilter ||
                                         state.onlyWfhFilter ||
+                                        state.selectedWorkTypeFilter !=
+                                            'Semua' ||
+                                        _tabController.index != 0 ||
                                         _sortBy != 'Terbaru') ...[
                                       OutlinedButton.icon(
                                         onPressed: () {
@@ -885,6 +944,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                                           ref
                                               .read(jobProvider.notifier)
                                               .resetFilters();
+                                          _tabController.animateTo(0);
                                           setState(() => _sortBy = 'Terbaru');
                                         },
                                         icon: const Icon(
@@ -984,10 +1044,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                         itemCount: jobs.length,
                         itemBuilder: (context, i) {
                           final job = jobs[i];
-                          final cardColor = AppTheme.getCompanyCardColor(
-                            job.companyName,
-                            job.status,
-                          );
+                          final cardColor = _getListCardColor(context, job);
                           final isDarkText = !AppTheme.isDarkCard(cardColor);
                           return StaggeredReveal(
                             index: i,
@@ -1014,10 +1071,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       itemCount: jobs.length,
                       itemBuilder: (context, i) {
                         final job = jobs[i];
-                        final cardColor = AppTheme.getCompanyCardColor(
-                          job.companyName,
-                          job.status,
-                        );
+                        final cardColor = _getListCardColor(context, job);
                         final isDarkText = !AppTheme.isDarkCard(cardColor);
 
                         return Padding(
@@ -1150,6 +1204,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   tag: 'company_logo_${job.id}',
                   createRectTween: companyLogoRectTween,
                   flightShuttleBuilder: companyLogoFlightShuttle,
+                  placeholderBuilder: companyLogoHeroPlaceholder,
                   child: CompanyLogoBadge(
                     companyName: job.companyName,
                     size: 42,
@@ -1255,24 +1310,38 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 ],
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 7,
+                    vertical: 3.5,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.getStatusColor(
-                      job.status,
-                    ).withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDarkText
+                        ? Colors.black.withValues(alpha: 0.07)
+                        : Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(
-                    job.status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppTheme.getStatusColor(job.status),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 5.5,
+                        height: 5.5,
+                        decoration: BoxDecoration(
+                          color: AppTheme.getStatusColor(job.status),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _displayStatus(job.status),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: titleColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1314,25 +1383,26 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                 ),
                 decoration: BoxDecoration(
                   color: active
-                      ? const Color(0xFF5C44E4)
-                      : (isDark
-                            ? const Color(0xFF28243A)
-                            : const Color(0xFFF4F0FF)),
+                      ? (isDark
+                            ? const Color(0xFFEEEAFB)
+                            : const Color(0xFF1C1C1E))
+                      : (isDark ? const Color(0xFF282830) : Colors.white),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: active
-                        ? const Color(0xFF5C44E4)
+                        ? (isDark
+                              ? const Color(0xFFEEEAFB)
+                              : const Color(0xFF1C1C1E))
                         : (isDark
-                              ? const Color(0xFF4B426F)
-                              : const Color(0xFFD9CDF8)),
+                              ? const Color(0xFF383842)
+                              : const Color(0xFFE6E1D8)),
                   ),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: const Color(
-                              0xFF5C44E4,
-                            ).withValues(alpha: 0.24),
+                            color: Colors.black.withValues(alpha: 0.16),
                             blurRadius: 7,
+                            offset: const Offset(0, 2),
                           ),
                         ]
                       : null,
@@ -1345,7 +1415,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                       icon,
                       size: 16,
                       color: active
-                          ? Colors.white
+                          ? (isDark ? const Color(0xFF1C1C1E) : Colors.white)
                           : (isDark ? Colors.white70 : const Color(0xFF5C5360)),
                     ),
                     if (count != null) ...[
@@ -1356,7 +1426,9 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           color: active
-                              ? Colors.white
+                              ? (isDark
+                                    ? const Color(0xFF1C1C1E)
+                                    : Colors.white)
                               : (isDark
                                     ? Colors.white70
                                     : const Color(0xFF5C5360)),
@@ -1413,6 +1485,7 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                   tag: 'company_logo_${job.id}',
                   createRectTween: companyLogoRectTween,
                   flightShuttleBuilder: companyLogoFlightShuttle,
+                  placeholderBuilder: companyLogoHeroPlaceholder,
                   child: CompanyLogoBadge(
                     companyName: job.companyName,
                     size: 40,
@@ -1573,21 +1646,35 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
-                        vertical: 4,
+                        vertical: 4.5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.getStatusColor(
-                          job.status,
-                        ).withValues(alpha: 0.16),
+                        color: isDarkText
+                            ? Colors.black.withValues(alpha: 0.07)
+                            : Colors.white.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        job.status,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.getStatusColor(job.status),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6.5,
+                            height: 6.5,
+                            decoration: BoxDecoration(
+                              color: AppTheme.getStatusColor(job.status),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _displayStatus(job.status),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: titleColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

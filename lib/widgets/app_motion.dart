@@ -1,21 +1,22 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Motion language shared by the Ngelamar screens.
 ///
-/// Durations intentionally stay short: motion should explain continuity and
-/// state changes, never make an application tracker feel slower to use.
+/// Durations provide expressive continuity and clear, delightful transitions
+/// without introducing lag or duplicate hero artifacts.
 abstract final class AppMotion {
-  static const Duration tabFade = Duration(milliseconds: 100);
-  static const Duration micro = Duration(milliseconds: 160);
-  static const Duration standard = Duration(milliseconds: 260);
-  static const Duration detailDock = Duration(milliseconds: 420);
+  static const Duration tabFade = Duration(milliseconds: 120);
+  static const Duration micro = Duration(milliseconds: 180);
+  static const Duration standard = Duration(milliseconds: 320);
+  static const Duration detailDock = Duration(milliseconds: 520);
 
   static String companyLogoTag(String jobId) => 'company_logo_$jobId';
 
   static PageRoute<T> fadeScaleRoute<T>({required WidgetBuilder builder}) {
     return PageRouteBuilder<T>(
       transitionDuration: standard,
-      reverseTransitionDuration: const Duration(milliseconds: 210),
+      reverseTransitionDuration: const Duration(milliseconds: 260),
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curve = CurvedAnimation(
@@ -34,36 +35,65 @@ abstract final class AppMotion {
     );
   }
 
-  /// Full-screen detail route that rises from the bottom with the confidence of
-  /// a docked surface.  It is deliberately opaque: the primary navigation is
-  /// never visible above or through a job-detail page.
-  static PageRoute<T> detailDockRoute<T>({required WidgetBuilder builder}) {
+  /// A calm, full-screen route for adding or editing an application. It gives
+  /// forms a clear forward direction without the abrupt flash or oversized
+  /// morph used by the old edit transition.
+  static PageRoute<T> editorRoute<T>({required WidgetBuilder builder}) {
     return PageRouteBuilder<T>(
       opaque: true,
-      transitionDuration: detailDock,
-      reverseTransitionDuration: const Duration(milliseconds: 320),
+      transitionDuration: const Duration(milliseconds: 300),
+      reverseTransitionDuration: const Duration(milliseconds: 240),
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final reduceMotion =
             MediaQuery.maybeOf(context)?.disableAnimations ?? false;
         if (reduceMotion) return child;
-        final slide = CurvedAnimation(
+
+        final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
           reverseCurve: Curves.easeInCubic,
         );
-        final fade = CurvedAnimation(
-          parent: animation,
-          curve: const Interval(0, 0.72, curve: Curves.easeOut),
-          reverseCurve: Curves.easeIn,
-        );
         return FadeTransition(
-          opacity: fade,
+          opacity: Tween<double>(begin: 0.96, end: 1).animate(curved),
           child: SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0, 1),
+              begin: const Offset(0, 0.045),
               end: Offset.zero,
-            ).animate(slide),
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Full-screen detail route that rises gracefully with rich ease-out curves
+  /// and clear hero trajectory.
+  static PageRoute<T> detailDockRoute<T>({required WidgetBuilder builder}) {
+    return PageRouteBuilder<T>(
+      opaque: true,
+      transitionDuration: const Duration(milliseconds: 520),
+      reverseTransitionDuration: const Duration(milliseconds: 440),
+      pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final reduceMotion =
+            MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+        if (reduceMotion) return child;
+
+        final curvedAnim = CurvedAnimation(
+          parent: animation,
+          curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+          reverseCurve: const Cubic(0.4, 0.0, 0.2, 1.0),
+        );
+
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.90),
+            end: Offset.zero,
+          ).animate(curvedAnim),
+          child: FadeTransition(
+            opacity: Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnim),
             child: child,
           ),
         );
@@ -72,12 +102,12 @@ abstract final class AppMotion {
   }
 }
 
-/// Shared hero configuration for a company badge.  The arc makes the change
-/// from a compact card/logo into the detail header easy to notice without
-/// competing with the page's upward transition.
+/// Shared hero configuration for a company badge. The arc makes the path
+/// from the card logo to the detail header smooth, organic, and graceful.
 RectTween companyLogoRectTween(Rect? begin, Rect? end) =>
-    MaterialRectCenterArcTween(begin: begin, end: end);
+    MaterialRectArcTween(begin: begin, end: end);
 
+/// Rich animated flight shuttle with dynamic elevation and zero-flicker landing.
 Widget companyLogoFlightShuttle(
   BuildContext flightContext,
   Animation<double> animation,
@@ -85,11 +115,54 @@ Widget companyLogoFlightShuttle(
   BuildContext fromHeroContext,
   BuildContext toHeroContext,
 ) {
-  final hero = flightDirection == HeroFlightDirection.push
-      ? toHeroContext.widget as Hero
-      : fromHeroContext.widget as Hero;
-  return Material(type: MaterialType.transparency, child: hero.child);
+  final destinationHero = toHeroContext.widget as Hero;
+  final curvedAnimation = CurvedAnimation(
+    parent: animation,
+    curve: const Cubic(0.2, 0.85, 0.25, 1.08),
+    reverseCurve: const Cubic(0.35, 0.0, 0.25, 1.0),
+  );
+
+  return AnimatedBuilder(
+    animation: curvedAnimation,
+    builder: (context, _) {
+      final t = curvedAnimation.value.clamp(0.0, 1.0);
+      final flightIntensity = math.sin(t * math.pi);
+      final scale = 1.0 + (flightIntensity * 0.08);
+      final extraAlpha = flightIntensity * 0.10;
+      final extraElevation = flightIntensity * 12.0;
+
+      return Transform.scale(
+        scale: scale,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: extraAlpha > 0.005
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: extraAlpha),
+                      blurRadius: 10 + extraElevation,
+                      offset: Offset(0, 3 + (extraElevation * 0.4)),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: destinationHero.child,
+          ),
+        ),
+      );
+    },
+  );
 }
+
+/// Zero-ghost hero placeholder: reserves the layout space without rendering a
+/// duplicate visible badge at the origin during mid-air flight.
+Widget companyLogoHeroPlaceholder(
+  BuildContext context,
+  Size heroSize,
+  Widget child,
+) => SizedBox.fromSize(size: heroSize);
 
 /// A small, accessibility-aware reveal for content that changes in place.
 class MotionReveal extends StatelessWidget {

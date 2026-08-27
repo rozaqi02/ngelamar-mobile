@@ -260,6 +260,12 @@ class _NotificationCenterScreenState
                 _selectedCategoryIndex == 0 || _selectedCategoryIndex == 3;
 
             final totalNoticesCount = notices.length + inboxMessages.length;
+            final actionNeeded = notices
+                .where(_needsActionSoon)
+                .toList(growable: false);
+            final upcoming = notices
+                .where((notice) => !_needsActionSoon(notice))
+                .toList(growable: false);
 
             return RefreshIndicator(
               onRefresh: _refresh,
@@ -585,20 +591,20 @@ class _NotificationCenterScreenState
                       ),
                     ),
                   ],
-                  if (showJobNotices && notices.isNotEmpty) ...[
+                  if (showJobNotices && actionNeeded.isNotEmpty) ...[
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(22, 6, 22, 10),
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.work_history_rounded,
+                              Icons.priority_high_rounded,
                               size: 15,
-                              color: Color(0xFF15803D),
+                              color: Color(0xFFB45309),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'NOTIFIKASI LAMARAN (${notices.length})',
+                              'PERLU DITINDAKLANJUTI (${actionNeeded.length})',
                               style: TextStyle(
                                 color: txtSec,
                                 fontSize: 11,
@@ -618,12 +624,72 @@ class _NotificationCenterScreenState
                         AppLayoutMetrics.contentBottomClearance(context),
                       ),
                       sliver: SliverList.separated(
-                        itemCount: notices.length,
+                        itemCount: actionNeeded.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          final notice = notices[index];
+                          final notice = actionNeeded[index];
                           return StaggeredReveal(
                             index: index,
+                            child: _MaterialJobNoticeCard(
+                              notice: notice,
+                              isDark: isDark,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.push(
+                                  context,
+                                  AppMotion.detailDockRoute(
+                                    builder: (_) =>
+                                        JobDetailScreen(job: notice.job),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  if (showJobNotices && upcoming.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 16, 22, 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 15,
+                              color: txtSec,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              actionNeeded.isEmpty
+                                  ? 'JADWAL MENDATANG (${upcoming.length})'
+                                  : 'BERIKUTNYA (${upcoming.length})',
+                              style: TextStyle(
+                                color: txtSec,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        0,
+                        20,
+                        AppLayoutMetrics.contentBottomClearance(context),
+                      ),
+                      sliver: SliverList.separated(
+                        itemCount: upcoming.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final notice = upcoming[index];
+                          return StaggeredReveal(
+                            index: index + actionNeeded.length,
                             child: _MaterialJobNoticeCard(
                               notice: notice,
                               isDark: isDark,
@@ -702,6 +768,16 @@ class _NotificationCenterScreenState
     if (dated.isEmpty) return 'Semua jadwal lamaranmu sedang aman.';
     dated.sort((a, b) => a.date!.compareTo(b.date!));
     return 'Jadwal terdekat: ${DateFormat('dd MMM, HH:mm', 'id_ID').format(dated.first.date!)}';
+  }
+
+  bool _needsActionSoon(_CareerNotice notice) {
+    if (notice.title.startsWith('Waktunya Follow-Up') ||
+        notice.title.startsWith('Tawaran Gaji')) {
+      return true;
+    }
+    final date = notice.date;
+    if (date == null) return false;
+    return !date.isAfter(DateTime.now().add(const Duration(days: 2)));
   }
 
   List<_CareerNotice> _createNotices(List<JobApplication> jobs) {
