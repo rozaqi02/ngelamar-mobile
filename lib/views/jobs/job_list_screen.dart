@@ -498,8 +498,25 @@ class _JobListScreenState extends ConsumerState<JobListScreen>
 
   void _openAddJob(BuildContext ctx, [GlobalKey? key]) async {
     final result = await Navigator.of(ctx).push<JobApplication>(
-      AppMotion.editorRoute<JobApplication>(
-        builder: (_) => const AddEditJobScreen(startQuickMode: true),
+      PageRouteBuilder<JobApplication>(
+        transitionDuration: const Duration(milliseconds: 380),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AddEditJobScreen(startQuickMode: true),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curvedAnim = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutQuart,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1.0),
+              end: Offset.zero,
+            ).animate(curvedAnim),
+            child: child,
+          );
+        },
       ),
     );
 
