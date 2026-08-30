@@ -1,8 +1,8 @@
 name: ngelamar
-description: "A new Flutter project."
+description: "Ngelamar - tracker lamaran kerja dan pendamping persiapan karier personal."
 publish_to: 'none'
 
-version: 2.29.0+247
+version: 2.30.0+248
 
 environment:
   sdk: ^3.11.5
@@ -33,9 +33,12 @@ dependencies:
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
   package_info_plus: ^9.0.1
+  universal_html: ^2.3.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
@@ -47,3 +50,4 @@ flutter:
     - ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
     - android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
     - assets/portal_logos/
+    - assets/google_fonts/

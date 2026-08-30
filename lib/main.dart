@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'providers/job_provider.dart';
 import 'theme/app_theme.dart';
+import 'services/prefs_service.dart';
 import 'views/splash_screen.dart';
 import 'services/inbox_service.dart';
 import 'services/notification_service.dart';
@@ -14,12 +15,14 @@ import 'services/analytics_service.dart';
 import 'services/remote_config_service.dart';
 import 'services/push_notification_service.dart';
 
+import 'services/app_version_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppVersionService.initialize();
   await Hive.initFlutter();
   await SupabaseService.initialize();
   await NotificationService.init();
-  await PushNotificationService.initialize();
   try {
     await initializeDateFormatting('id_ID', null);
   } catch (e) {
@@ -42,11 +45,19 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(SupabaseService.markUserActive(force: true));
+    _initializeServicesDeferred();
+  }
+
+  Future<void> _initializeServicesDeferred() async {
+    final isOnboardingDone = await PrefsService.isOnboardingDone();
+    if (isOnboardingDone) {
+      unawaited(PushNotificationService.initialize());
+      unawaited(SupabaseService.markUserActive(force: true));
+      unawaited(AnalyticsService.track('app_open'));
+      unawaited(InboxService.fetch());
+      InboxService.initRealtimeListener();
+    }
     unawaited(RemoteConfigService.refresh());
-    unawaited(AnalyticsService.track('app_open'));
-    unawaited(InboxService.fetch());
-    InboxService.initRealtimeListener();
   }
 
   @override
@@ -58,9 +69,13 @@ class _NgelamarAppState extends ConsumerState<NgelamarApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(SupabaseService.markUserActive());
+      PrefsService.isOnboardingDone().then((done) {
+        if (done) {
+          unawaited(SupabaseService.markUserActive());
+          unawaited(InboxService.fetch());
+        }
+      });
       unawaited(RemoteConfigService.refresh());
-      unawaited(InboxService.fetch());
     }
   }
 

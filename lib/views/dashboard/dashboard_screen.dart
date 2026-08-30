@@ -27,8 +27,9 @@ import '../notifications/notification_center_screen.dart';
 /// Screen 1: Jelajahi Lowongan (Priority Overlapping Deck & Smart Alerts).
 class DashboardScreen extends ConsumerStatefulWidget {
   final ValueChanged<int>? onNavigateTab;
+  final VoidCallback? onOpenCareerHub;
 
-  const DashboardScreen({super.key, this.onNavigateTab});
+  const DashboardScreen({super.key, this.onNavigateTab, this.onOpenCareerHub});
 
   @override
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
@@ -97,7 +98,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         message: 'Satu langkah lebih dekat ke karier impian!',
         accent: const Color(0xFFF8BA38),
         icon: Icons.rocket_launch_rounded,
-        preset: DelightPreset.homeSave,
+        preset: DelightPreset.trackerSave,
       );
       AppToast.success(
         context,
@@ -673,7 +674,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             children: [
               // ── TOP PROFILE & GREETING BAR ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  AppLayoutMetrics.headerTopInsideSafeArea(context),
+                  20,
+                  0,
+                ),
                 child: Row(
                   children: [
                     // Profile Avatar with Navigation to Tab 4 (Settings)
@@ -701,6 +707,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           child: SafeAvatarImage(
                             imagePath: state.userProfilePhoto,
                             size: 44,
+                            displayName: displayName,
                           ),
                         ),
                       ),
@@ -811,7 +818,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ),
                         const SizedBox(width: 8),
 
-                        // Circular Search Button
+                        // Circular Search Button — compact outlined glyph in
+                        // the same scale as the visual reference.
                         GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
@@ -826,8 +834,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             });
                           },
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               color: bg,
                               shape: BoxShape.circle,
@@ -850,8 +858,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             child: Icon(
                               _isSearchActive
                                   ? Icons.close_rounded
-                                  : Icons.search_rounded,
-                              size: 21,
+                                  : CupertinoIcons.search,
+                              size: 20,
                               color: txtPri,
                             ),
                           ),
@@ -898,7 +906,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     : const SizedBox.shrink(),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
 
               // Primary heading with vertical icon-only action buttons (Ringkasan over Filter) on the right
               Padding(
@@ -909,17 +917,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     Expanded(
                       child: Semantics(
                         header: true,
-                        label: 'Lihat lamaranmu',
+                        label: 'Periksa lamaranmu',
                         child: Text(
-                          'LIHAT\nLAMARANMU',
+                          'PERIKSA\nLAMARANMU',
                           maxLines: 2,
                           softWrap: false,
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 30,
                             fontWeight: FontWeight.w900,
                             color: txtPri,
-                            letterSpacing: -1.4,
-                            height: 0.96,
+                            letterSpacing: -1.15,
+                            height: 0.99,
                           ),
                         ),
                       ),
@@ -1016,9 +1024,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
 
               // Urgent Action Strip (1 compact line ONLY IF URGENT, 0 height otherwise)
-              _buildUrgentActionStrip(state.realJobs, isDark),
+              _buildUrgentActionStrip(state.jobs, isDark),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
 
               // ── FULL-WIDTH EDGE-TO-EDGE OVERLAPPING CARD STACK ──
               if (displayJobs.isEmpty)
@@ -1109,62 +1117,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             FluidBounceButton(
                               key: _addBtnKey,
                               onTap: () => _openAddJob(context),
-                              child: Hero(
-                                tag: 'add_job_action_button',
-                                flightShuttleBuilder:
-                                    (
-                                      flightContext,
-                                      animation,
-                                      flightDirection,
-                                      fromHeroContext,
-                                      toHeroContext,
-                                    ) => Material(
-                                      type: MaterialType.transparency,
-                                      child: toHeroContext.widget,
+                              child: Container(
+                                width: double.infinity,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF5C44E4)
+                                      : const Color(0xFF19191B),
+                                  borderRadius: BorderRadius.circular(28),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.16,
+                                      ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 5),
                                     ),
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? const Color(0xFF5C44E4)
-                                        : const Color(0xFF19191B),
-                                    borderRadius: BorderRadius.circular(28),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.16,
-                                        ),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_rounded,
+                                  ],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      color: Colors.white,
+                                      size: 21,
+                                    ),
+                                    SizedBox(width: 9),
+                                    Text(
+                                      'Catat Lamaran',
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        size: 21,
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
                                       ),
-                                      SizedBox(width: 9),
-                                      Text(
-                                        'Catat Lamaran',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                             const SizedBox(height: 11),
                             FluidBounceButton(
-                              onTap: () => widget.onNavigateTab?.call(3),
+                              onTap: widget.onOpenCareerHub,
                               child: Container(
                                 width: double.infinity,
                                 height: 56,
@@ -1221,7 +1215,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs) {
     final screenHeight = MediaQuery.of(context).size.height;
     final cardMinHeight = math.max(320.0, screenHeight * 0.44);
-    const collapsedStep = 66.0;
+    // A wider reveal between cards gives the deck the calmer breathing room
+    // of the reference while preserving its compact layered interaction.
+    const collapsedStep = 80.0;
     const expandedStep = 150.0;
 
     // Calculate Y offsets for each card in the stack
@@ -1257,9 +1253,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 job.companyName,
                 job.status,
               );
-              final cardColor = AppTheme.isDark(context)
-                  ? rawCardColor
-                  : Color.lerp(rawCardColor, AppTheme.warmBackground, 0.52)!;
+              // Beranda dan Daftar Lamaran memakai kekuatan warna yang sama
+              // di mode terang. Pada mode gelap palet ini sudah menjadi
+              // versi yang nyaman dibaca, sehingga tidak diubah lagi.
+              final cardColor = rawCardColor;
               final isDarkText = !AppTheme.isDarkCard(cardColor);
               final titleColor = isDarkText
                   ? const Color(0xFF121214)
@@ -1449,18 +1446,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                             ),
                                           );
                                         },
-                                        child: Container(
-                                          width: 38,
-                                          height: 38,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.arrow_outward_rounded,
-                                              size: 18,
-                                              color: Color(0xFF121214),
+                                        child: Hero(
+                                          tag: statusActionHeroTag(job.id),
+                                          createRectTween:
+                                              statusActionRectTween,
+                                          flightShuttleBuilder:
+                                              statusActionFlightShuttle,
+                                          placeholderBuilder:
+                                              statusActionHeroPlaceholder,
+                                          child: StatusActionHeroMetadata(
+                                            isExpanded: false,
+                                            backgroundColor: Colors.white,
+                                            foregroundColor: const Color(
+                                              0xFF121214,
+                                            ),
+                                            child: Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.arrow_outward_rounded,
+                                                  size: 18,
+                                                  color: Color(0xFF121214),
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1570,31 +1583,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // Pick top urgent item
     final urgentItem = actionItems.first;
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
-    final isUrgentRed = urgentItem.category == 'Terlambat';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? (isUrgentRed
-                    ? const Color(0xFF2B1919)
-                    : const Color(0xFF1E1E24))
-              : (isUrgentRed
-                    ? const Color(0xFFFEF2F2)
-                    : const Color(0xFFF5F3FF)),
+          color: isDark ? const Color(0xFF2A2824) : const Color(0xFFE7DED0),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark
-                ? (isUrgentRed
-                      ? const Color(0xFF591C1C)
-                      : const Color(0xFF383842))
-                : (isUrgentRed
-                      ? const Color(0xFFFECACA)
-                      : const Color(0xFFDDD6FE)),
-            width: 1.2,
-          ),
         ),
         child: Row(
           children: [
@@ -1637,10 +1633,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.12)
-                      : (isUrgentRed
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF5C44E4)),
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : const Color(0xFF19191B),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text(
@@ -1667,9 +1661,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final weekEnd = todayStart.add(const Duration(days: 7));
 
     final items = <_ActionItem>[];
-    final realJobs = jobs.where((j) => !j.isSampleData && !j.isClosed).toList();
+    final activeJobs = jobs.where((j) => !j.isClosed).toList();
 
-    for (final job in realJobs) {
+    for (final job in activeJobs) {
       final interviewAt = job.interviewDate ?? job.testDate;
       if (interviewAt != null) {
         if (interviewAt.isBefore(now)) {
@@ -1865,11 +1859,11 @@ class _WeeklyRecapSheet extends StatelessWidget {
       now.month,
       now.day,
     ).subtract(Duration(days: now.weekday - 1));
-    final realJobs = jobs.where((job) => !job.isSampleData).toList();
-    final weekly = realJobs
+    final activeJobs = jobs.toList();
+    final weekly = activeJobs
         .where((job) => job.isApplied && !job.appliedDate.isBefore(start))
         .toList();
-    final interview = realJobs.where((job) {
+    final interview = activeJobs.where((job) {
       final schedule = job.interviewDate ?? job.testDate;
       if (schedule != null && !schedule.isBefore(start)) return true;
       return job.recruitmentEvents.any(
@@ -1878,8 +1872,8 @@ class _WeeklyRecapSheet extends StatelessWidget {
             (e.type == 'interview' || e.type == 'test'),
       );
     }).length;
-    final followup = realJobs.where((job) => job.needsFollowup).length;
-    final accepted = realJobs
+    final followup = activeJobs.where((job) => job.needsFollowup).length;
+    final accepted = activeJobs
         .where(
           (job) => job.status == 'Diterima' && !job.updatedAt.isBefore(start),
         )

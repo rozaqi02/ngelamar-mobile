@@ -27,7 +27,9 @@ class WelcomeScreenRoute<T> extends PageRouteBuilder<T> {
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: FractionallySizedBox(
                   widthFactor: 1,
-                  heightFactor: 0.52,
+                  // The sheet remains compact, but gives the enlarged
+                  // mascot illustration ample room to look prominent and lively.
+                  heightFactor: 0.64,
                   child: _WelcomeDismissibleSheet(child: child),
                 ),
               ),
@@ -127,15 +129,17 @@ class _WelcomeDismissibleSheetState extends State<_WelcomeDismissibleSheet>
             children: [
               widget.child,
               Positioned(
-                top: 10,
+                top: 12,
                 left: 0,
                 right: 0,
                 child: Center(
                   child: Container(
-                    width: 44,
+                    width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.30),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.38)
+                          : const Color(0xFF7A7063).withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),

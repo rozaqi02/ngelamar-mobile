@@ -11,7 +11,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
-  <img src="https://img.shields.io/badge/Version-2.28.0-2E7D32?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-2.29.0-2E7D32?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-000000?style=for-the-badge" alt="Platforms" />
 </p>
@@ -22,22 +22,23 @@
 
 **Ngelamar** adalah aplikasi *Personal Career CRM* dan *Job Tracker* berbasis *offline-first* yang dirancang untuk membantu para pencari kerja (jobseeker), fresh graduate, maupun profesional dalam mengelola seluruh proses pencarian kerja secara terstruktur, privat, dan efisien.
 
-Dengan Ngelamar, Anda tidak akan lagi melewatkan jadwal interview, lupa status follow-up HRD, atau bingung mengevaluasi penawaran kerja (*offering*).
+Dengan Ngelamar, Anda dapat menyimpan lowongan, menyiapkan draft lamaran, memantau aksi harian, melacak timeline wawancara, dan mengevaluasi tawaran kerja secara akurat.
 
 ---
 
 ## ✨ Fitur Unggulan
 
 ### 1. 📋 Smart Job Tracker & Status Management
-- **Manajemen Status Lengkap:** Lacak status lamaran mulai dari *Tersimpan*, *Terkirim*, *Interview & Tes*, *Offering*, hingga *Diterima* atau *Ditolak*.
-- **Filter Cepat & Pencarian Real-time:** Filter berdasarkan status, tipe kerja (WFO, WFH, Hybrid), serta pencarian nama posisi dan perusahaan.
-- **Deteksi Duplikasi Otomatis:** Mencegah Anda melamar ke posisi atau perusahaan yang sama dua kali tanpa sengaja.
+- **Manajemen Status Lengkap:** Lacak status lamaran mulai dari *Tersimpan*, *Draft*, *Dikirim*, *Tes / Psikotes*, *Interview HR & User*, *Offering*, hingga *Diterima*, *Ditolak*, atau *Dibatalkan*.
+- **Timeline Kronologis Rekrutmen:** Catat histori setiap wawancara, tes teknis, dan catatan rekrutmen tanpa menimpa data sebelumnya.
+- **Filter Cepat & Pencarian Multi-Atribut:** Filter status, tipe kerja (WFO, WFH, Hybrid), serta pencarian posisi, perusahaan, atau lokasi secara instan.
+- **Deteksi Duplikasi Cerdas:** Memberikan peringatan saat menemukan posisi/perusahaan serupa dengan opsi membuka data lama atau tetap menyimpan.
 
-### 2. 🧠 Career Flight Deck & AI Matrix
-- **AI Readiness Index (0–100%):** Evaluasi kesiapan lamaran Anda secara real-time berdasarkan kelengkapan berkas dan persiapan interview.
-- **Skill Gap Checklist:** Checklist interaktif untuk memetakan skill yang dibutuhkan vs skill yang dimiliki.
-- **Evaluator Gaji & UMR:** Bandingkan ekspektasi gaji yang ditawarkan dengan standar UMR wilayah setempat.
-- **Offer Comparison Sheet:** Perbandingan berdampingan (*side-by-side*) jika Anda menerima lebih dari satu tawaran kerja.
+### 2. 🧠 Pusat Persiapan Karier & Simulasi Gaji
+- **Kesiapan Karier & Matriks Kualifikasi:** Evaluasi kelengkapan berkas lamaran, CV, dan persiapan interview.
+- **Skill Gap & Interview Checklist:** Checklist interaktif untuk memetakan skill yang dibutuhkan dan template persiapan wawancara.
+- **Simulasi Gaji & UMR (2025/2026):** Bandingkan estimasi take-home pay dengan standar UMR wilayah terbaru beserta estimasi PPh 21 TER dan BPJS.
+- **Komparasi Penawaran Kerja (Offer Comparison):** Bandingkan tawaran kerja secara komprehensif berdasarkan gaji, tunjangan, dan lokasi.
 
 ### 3. 🌐 Career Hub & Portal Discovery
 - **Akses Cepat Portal Terkemuka:** Terintegrasi dengan portal loker resmi seperti **LinkedIn, Jobstreet, Glints, Indeed, Kalibrr, dan KitaLulus**.
@@ -57,7 +58,7 @@ Dengan Ngelamar, Anda tidak akan lagi melewatkan jadwal interview, lupa status f
 ## 📲 Cara Instalasi
 
 ### 🤖 Pengguna Android (.apk)
-1. Unduh file **`ngelamar-v2.28.0-release.apk`** yang berada di root repository ini.
+1. Unduh APK dengan versi terbaru yang tercantum pada halaman rilis repository.
 2. Buka file APK melalui aplikasi **Pengelola File (File Manager)** ponsel Anda.
 3. Jika muncul peringatan keamanan, izinkan **"Install aplikasi dari sumber tidak dikenal"** di Pengaturan.
 4. Tekan **Install** dan tunggu hingga selesai.

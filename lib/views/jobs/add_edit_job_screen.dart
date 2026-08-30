@@ -21,6 +21,7 @@ import '../../widgets/apple_toast.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/rupiah_input_formatter.dart';
+import '../../widgets/app_layout_metrics.dart';
 import 'job_detail_screen.dart';
 
 /// Screen: Tambah & Edit Catatan Lamaran Kerja.
@@ -37,12 +38,16 @@ class AddEditJobScreen extends ConsumerStatefulWidget {
   final JobApplication? jobToEdit;
   final bool autoFocusPaste;
   final bool startQuickMode;
+  final String actionHeroTag;
+  final String? initialSharedText;
 
   const AddEditJobScreen({
     super.key,
     this.jobToEdit,
     this.autoFocusPaste = false,
     this.startQuickMode = false,
+    this.actionHeroTag = 'main_nav_action_button',
+    this.initialSharedText,
   });
 
   @override
@@ -116,7 +121,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     super.initState();
     final j = widget.jobToEdit;
     _quickMode = widget.startQuickMode && j == null;
-    _linkOrTextController = TextEditingController();
+    _linkOrTextController = TextEditingController(
+      text: widget.initialSharedText?.trim() ?? '',
+    );
     _companyController = TextEditingController(text: j?.companyName ?? '');
     _positionController = TextEditingController(text: j?.position ?? '');
     _urlController = TextEditingController(text: j?.jobUrl ?? '');
@@ -134,6 +141,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
     if (j == null) {
       _status = 'Tersimpan';
+      // Catat cepat tidak menanyakan mode kerja; selalu belum ditentukan.
+      _workType = 'Belum ditentukan';
     } else {
       _status = j.status == 'HR Screening' ? 'Interview HR' : j.status;
       _workType = j.workType;
@@ -148,6 +157,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _priority = j.priority;
       _nextActionType = j.nextActionType ?? 'Tindak lanjut';
       _nextActionAt = j.nextActionAt;
+    }
+    if (j == null && widget.initialSharedText?.trim().isNotEmpty == true) {
+      _showSmartImport = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _extractFromLinkOrText();
+      });
     }
   }
 
@@ -276,7 +291,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         } else if (text.startsWith('http://') || text.startsWith('https://')) {
           _urlController.text = text;
         }
-        if (result.workType.isNotEmpty) {
+        if (result.workType.isNotEmpty && !_quickMode) {
           _workType = result.workType;
         }
         _sourcePlatform = result.sourcePlatform;
@@ -1010,36 +1025,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             style: TextStyle(fontSize: 11.5, color: txtSec, height: 1.35),
           ),
           const SizedBox(height: 14),
-          Text(
-            'Mode kerja',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
-          ),
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['Belum ditentukan', 'WFO', 'WFH', 'Hybrid'].map((type) {
-              final selected = _workType == type;
-              return ChoiceChip(
-                label: Text(type),
-                selected: selected,
-                showCheckmark: false,
-                onSelected: (_) => setState(() => _workType = type),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Nama Perusahaan *',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
+          _buildFieldLabel(
+            'Nama Perusahaan',
+            isRequired: true,
+            isDark: isDark,
+            textColor: txtSec,
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -1062,13 +1052,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 : null,
           ),
           const SizedBox(height: 12),
-          Text(
-            'Posisi / Pekerjaan *',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
+          _buildFieldLabel(
+            'Posisi / Pekerjaan',
+            isRequired: true,
+            isDark: isDark,
+            textColor: txtSec,
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -1091,13 +1079,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                 : null,
           ),
           const SizedBox(height: 12),
-          Text(
-            'URL / Tautan Lowongan (Opsional)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
+          _buildFieldLabel(
+            'URL / Tautan Lowongan',
+            isRequired: false,
+            isDark: isDark,
+            textColor: txtSec,
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -1129,13 +1115,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Tanggal Melamar *',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
+          _buildFieldLabel(
+            'Tanggal Melamar',
+            isRequired: true,
+            isDark: isDark,
+            textColor: txtSec,
           ),
           const SizedBox(height: 6),
           FluidBounceButton(
@@ -1178,112 +1162,24 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Dokumen PDF CV (Opsional)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: txtSec,
-            ),
-          ),
-          const SizedBox(height: 6),
-          if (_pdfCvPath != null && _pdfCvPath!.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF282830)
-                    : const Color(0xFFF9F7F2),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF383842)
-                      : const Color(0xFFE5E0D5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.picture_as_pdf_rounded,
-                    color: Color(0xFFE53935),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _pdfCvPath!.split(Platform.pathSeparator).last,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: txtPri,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() => _pdfCvPath = null),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: OutlinedButton.icon(
-              onPressed: _pickPdfCv,
-              icon: const Icon(
-                Icons.picture_as_pdf_rounded,
-                size: 16,
-                color: Color(0xFFE53935),
-              ),
-              label: Text(
-                _pdfCvPath != null
-                    ? 'Ganti File PDF CV'
-                    : 'Lampirkan Dokumen PDF CV',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF383842)
-                      : const Color(0xFFDCD8CE),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                foregroundColor: txtPri,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   bool _hasUnsavedChanges() {
+    if (_isSaveComplete) return false;
     if (widget.jobToEdit != null) {
       final j = widget.jobToEdit!;
-      return _companyController.text != j.companyName ||
-          _positionController.text != j.position ||
-          _salaryController.text != (j.salaryOffered ?? '') ||
-          _locationController.text != (j.location ?? '') ||
-          _descriptionController.text != j.jobDescription ||
-          _hrContactController.text != (j.hrContact ?? '') ||
-          _notesController.text != (j.notes ?? '') ||
-          _nextActionNoteController.text != (j.nextActionNote ?? '') ||
-          _labelsController.text != j.labels.join(', ') ||
+      return _companyController.text.trim() != j.companyName ||
+          _positionController.text.trim() != j.position ||
+          _salaryController.text.trim() != (j.salaryOffered ?? '') ||
+          _locationController.text.trim() != (j.location ?? '') ||
+          _descriptionController.text.trim() != j.jobDescription ||
+          _hrContactController.text.trim() != (j.hrContact ?? '') ||
+          _notesController.text.trim() != (j.notes ?? '') ||
+          _nextActionNoteController.text.trim() != (j.nextActionNote ?? '') ||
+          _labelsController.text.trim() != j.labels.join(', ') ||
           _status != j.status ||
           _workType != j.workType ||
           _jobSource != (j.jobSource ?? 'LinkedIn') ||
@@ -1298,17 +1194,18 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           _companyLogoPath != j.companyLogoPath ||
           _pdfCvPath != j.pdfCvPath;
     }
-    return _companyController.text.isNotEmpty ||
-        _positionController.text.isNotEmpty ||
-        _salaryController.text.isNotEmpty ||
-        _locationController.text.isNotEmpty ||
-        _descriptionController.text.isNotEmpty ||
-        _hrContactController.text.isNotEmpty ||
-        _notesController.text.isNotEmpty ||
-        _nextActionNoteController.text.isNotEmpty ||
-        _labelsController.text.isNotEmpty ||
-        _status != 'Dikirim' ||
-        _workType != 'WFO' ||
+    return _companyController.text.trim().isNotEmpty ||
+        _positionController.text.trim().isNotEmpty ||
+        _salaryController.text.trim().isNotEmpty ||
+        _locationController.text.trim().isNotEmpty ||
+        _descriptionController.text.trim().isNotEmpty ||
+        _hrContactController.text.trim().isNotEmpty ||
+        _notesController.text.trim().isNotEmpty ||
+        _nextActionNoteController.text.trim().isNotEmpty ||
+        _labelsController.text.trim().isNotEmpty ||
+        _urlController.text.trim().isNotEmpty ||
+        _status != 'Tersimpan' ||
+        _workType != 'Belum ditentukan' ||
         _jobSource != 'LinkedIn' ||
         _jobUrl != null ||
         _interviewDate != null ||
@@ -1413,7 +1310,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       id: id,
       companyName: _companyController.text.trim(),
       position: _positionController.text.trim(),
-      status: isSampleData ? (widget.jobToEdit?.status ?? _status) : _status,
+      status: _status,
       appliedDate: _appliedDate,
       savedAt: _status == 'Tersimpan'
           ? (widget.jobToEdit?.savedAt ?? DateTime.now())
@@ -1421,7 +1318,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       salaryOffered: salaryText.isEmpty ? null : salaryText,
       minSalary: salaryRange.min > 0 ? salaryRange.min.toInt() : null,
       maxSalary: salaryRange.max > 0 ? salaryRange.max.toInt() : null,
-      workType: _workType,
+      workType: _quickMode ? 'Belum ditentukan' : _workType,
       location: _locationController.text.trim().isEmpty
           ? null
           : _locationController.text.trim(),
@@ -1470,25 +1367,33 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       }
 
       _releaseDraftAttachmentsAfterSave();
-      if (((newJob.interviewDate != null && _hasSelectionStatus) ||
-              newJob.nextActionAt != null) &&
-          mounted) {
-        NotificationService.promptPermissionIfNeeded(context).catchError((
-          Object error,
-        ) {
-          debugPrint('Permintaan izin notifikasi gagal: $error');
-          return false;
-        });
+
+      // Ensure notification permission is requested via OS prompt without opening Flutter bottom sheets on top of Navigator
+      if ((newJob.interviewDate != null && _hasSelectionStatus) ||
+          newJob.nextActionAt != null) {
+        NotificationService.areNotificationsEnabled()
+            .then((enabled) {
+              if (!enabled) {
+                NotificationService.requestPermission();
+              }
+            })
+            .catchError((_) {});
       }
 
       if (!mounted) return;
-      setState(() => _isSaveComplete = true);
-      await Future<void>.delayed(const Duration(milliseconds: 320));
+      setState(() {
+        _isSaving = false;
+        _isSaveComplete = true;
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 260));
       if (!mounted) return;
       Navigator.pop(context, newJob);
     } catch (error) {
       if (!mounted) return;
-      setState(() => _isSaving = false);
+      setState(() {
+        _isSaving = false;
+        _isSaveComplete = false;
+      });
       if (error is DuplicateJobException) {
         await _showDuplicateResolutionDialog(error, newJob, isEdit);
       } else {
@@ -1572,7 +1477,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         ),
       );
     } else if (action == 'save_anyway') {
-      setState(() => _isSaving = true);
+      setState(() {
+        _isSaving = true;
+        _isSaveComplete = false;
+      });
       try {
         final uniqueJob = candidate.copyWith(
           id: isEdit
@@ -1589,13 +1497,19 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               .addJob(uniqueJob, allowDuplicate: true);
         }
         if (!mounted) return;
-        setState(() => _isSaveComplete = true);
-        await Future<void>.delayed(const Duration(milliseconds: 320));
+        setState(() {
+          _isSaving = false;
+          _isSaveComplete = true;
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 260));
         if (!mounted) return;
         Navigator.pop(context, uniqueJob);
       } catch (e) {
         if (mounted) {
-          setState(() => _isSaving = false);
+          setState(() {
+            _isSaving = false;
+            _isSaveComplete = false;
+          });
           AppleToast.error(context, 'Gagal menyimpan: $e');
         }
       }
@@ -1681,10 +1595,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
   void _showStatusPicker() {
     HapticFeedback.selectionClick();
-    if (widget.jobToEdit?.isSampleData ?? false) {
-      AppleToast.info(context, 'Status dikunci karena ini data contoh.');
-      return;
-    }
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
@@ -1771,8 +1681,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final canvasBg = isDark ? const Color(0xFF141418) : const Color(0xFFF6F1E8);
     final pillCream = isDark
-        ? const Color(0xFF26262E)
-        : const Color(0xFFFDE7A8);
+        ? const Color(0xFF2A2824)
+        : const Color(0xFFE7DED0);
     final cardBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
     final cardBorder = isDark
         ? const Color(0xFF33333C)
@@ -1808,6 +1718,9 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       },
       child: Scaffold(
         backgroundColor: canvasBg,
+        // The CTA floats above the scrolling form instead of reserving a
+        // separate footer panel below it.
+        extendBody: true,
         body: SafeArea(
           bottom: false,
           child: Column(
@@ -1817,7 +1730,17 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                   physics: const BouncingScrollPhysics(),
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(20, 10, 20, 28 + bottomInset),
+                  // Keep the final fields reachable above the floating CTA
+                  // while their background continues beneath its soft veil.
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    AppLayoutMetrics.headerTopInsideSafeArea(
+                      context,
+                      extra: 10,
+                    ),
+                    20,
+                    118 + bottomInset,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -2260,7 +2183,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                           decoration: BoxDecoration(
                             color: pillCream,
                             borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: cardBorder),
                           ),
                           child: Text(
                             displayPosition,
@@ -2383,7 +2305,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     decoration: BoxDecoration(
                                       color: pillCream,
                                       borderRadius: BorderRadius.circular(28),
-                                      border: Border.all(color: cardBorder),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -2422,7 +2343,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     decoration: BoxDecoration(
                                       color: pillCream,
                                       borderRadius: BorderRadius.circular(28),
-                                      border: Border.all(color: cardBorder),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -2494,13 +2414,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     // Form Input: Nama Perusahaan
-                                    Text(
-                                      'Nama Perusahaan *',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'Nama Perusahaan',
+                                      isRequired: true,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     TextFormField(
@@ -2529,13 +2447,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     const SizedBox(height: 14),
 
                                     // Form Input: Posisi Lowongan
-                                    Text(
-                                      'Posisi / Pekerjaan *',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'Posisi / Pekerjaan',
+                                      isRequired: true,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     TextFormField(
@@ -2564,13 +2480,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     const SizedBox(height: 14),
 
                                     // Form Input: URL Lowongan
-                                    Text(
-                                      'URL / Tautan Lowongan (Opsional)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'URL / Tautan Lowongan',
+                                      isRequired: false,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     TextFormField(
@@ -2885,13 +2799,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     // application can carry one explicit next
                                     // move, rather than relying on a vague
                                     // note that is easy to forget.
-                                    Text(
-                                      'Tindakan Berikutnya (opsional)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'Tindakan Berikutnya',
+                                      isRequired: false,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     Row(
@@ -3029,13 +2941,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
 
                                     const SizedBox(height: 14),
 
-                                    Text(
-                                      'Prioritas & Label (opsional)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'Prioritas & Label',
+                                      isRequired: false,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     Row(
@@ -3095,13 +3005,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     const SizedBox(height: 14),
 
                                     // Form Input: Kontak HR
-                                    Text(
+                                    _buildFieldLabel(
                                       'Kontak HR (WhatsApp / Email)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                      isRequired: false,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     TextFormField(
@@ -3123,13 +3031,11 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     const SizedBox(height: 14),
 
                                     // Form Input: Deskripsi / Kualifikasi
-                                    Text(
-                                      'Kualifikasi & Deskripsi Singkat',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
+                                    _buildFieldLabel(
+                                      'Kualifikasi & Deskripsi',
+                                      isRequired: false,
+                                      isDark: isDark,
+                                      textColor: txtSec,
                                     ),
                                     const SizedBox(height: 6),
                                     TextFormField(
@@ -3424,12 +3330,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                 decoration: BoxDecoration(
                                   color: pillCream,
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF5C44E4)
-                                        : const Color(0xFFF8BA38),
-                                    width: 1.5,
-                                  ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(
@@ -3502,40 +3402,33 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
             decoration: BoxDecoration(
-              color: canvasBg,
-              border: Border(
-                top: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF303038)
-                      : const Color(0xFFE7E0D4),
-                ),
+              // A transparent veil anchors the action while letting the form
+              // remain visually continuous underneath—never a solid footer.
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [
+                        const Color(0xFF141418).withValues(alpha: 0.0),
+                        const Color(0xFF141418).withValues(alpha: 0.05),
+                        const Color(0xFF141418).withValues(alpha: 0.24),
+                      ]
+                    : [
+                        const Color(0xFFF6F1E8).withValues(alpha: 0.0),
+                        const Color(0xFFF6F1E8).withValues(alpha: 0.04),
+                        const Color(0xFFF6F1E8).withValues(alpha: 0.22),
+                      ],
+                stops: const [0.0, 0.52, 1.0],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, -4),
-                ),
-              ],
             ),
             child: SizedBox(
               width: double.infinity,
               height: 56,
               child: Hero(
-                tag: 'add_job_action_button',
-                flightShuttleBuilder:
-                    (
-                      flightContext,
-                      animation,
-                      flightDirection,
-                      fromHeroContext,
-                      toHeroContext,
-                    ) {
-                      return Material(
-                        type: MaterialType.transparency,
-                        child: toHeroContext.widget,
-                      );
-                    },
+                tag: widget.actionHeroTag,
+                createRectTween: actionButtonRectTween,
+                flightShuttleBuilder: actionButtonFlightShuttle,
+                placeholderBuilder: actionButtonHeroPlaceholder,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveJob,
                   style: ElevatedButton.styleFrom(
@@ -3587,11 +3480,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                       : 'Catat Lamaran Sekarang',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                  ),
+                                  style: actionButtonLabelTextStyle(),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -3609,6 +3498,51 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFieldLabel(
+    String label, {
+    required bool isRequired,
+    required bool isDark,
+    required Color textColor,
+  }) {
+    final chipColor = isRequired
+        ? (isDark ? const Color(0xFF4A2028) : const Color(0xFFFFE5E7))
+        : (isDark ? const Color(0xFF302A4A) : const Color(0xFFEDE9FE));
+    final chipTextColor = isRequired
+        ? (isDark ? const Color(0xFFFFA8B0) : const Color(0xFFC62838))
+        : (isDark ? const Color(0xFFC4B5FD) : const Color(0xFF5C44E4));
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: chipColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            isRequired ? 'Wajib' : 'Opsional',
+            style: TextStyle(
+              color: chipTextColor,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

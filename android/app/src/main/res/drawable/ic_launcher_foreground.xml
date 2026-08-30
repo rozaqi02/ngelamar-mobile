@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground matching the in-app AppMascotIcon artwork.
+     Coordinate space is the same 100x100 canvas used by the Flutter
+     painter, scaled into the 108dp adaptive viewport. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Safe-zone: artwork lives inside the center ~72dp circle -->
+    <group
+        android:scaleX="0.72"
+        android:scaleY="0.72"
+        android:translateX="15.12"
+        android:translateY="15.12">
+
+        <!-- Soft envelope drop shadow -->
+        <path
+            android:fillColor="#3319191B"
+            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z" />
+
+        <!-- Envelope body border -->
+        <path
+            android:fillColor="#19191B"
+            android:pathData="M12,38 Q12,24 26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 Z M15.5,39.5 Q15.5,27.5 27.5,27.5 L72.5,27.5 Q84.5,27.5 84.5,39.5 L84.5,64.5 Q84.5,76.5 72.5,76.5 L27.5,76.5 Q15.5,76.5 15.5,64.5 Z"
+            android:fillType="evenOdd" />
+
+        <!-- Envelope body fill -->
+        <path
+            android:fillColor="#FAF9F6"
+            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z" />
+
+        <!-- Flap fold line -->
+        <path
+            android:strokeColor="#E2DBD0"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M14,28 L50,56 L86,28" />
+
+        <!-- Left sparkling eye -->
+        <path
+            android:fillColor="#19191B"
+            android:pathData="M41.5,51 A5.5,5.5 0 1,1 30.5,51 A5.5,5.5 0 1,1 41.5,51 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M36.2,49.2 A2,2 0 1,1 32.2,49.2 A2,2 0 1,1 36.2,49.2 Z" />
+
+        <!-- Right joyful wink -->
+        <path
+            android:strokeColor="#19191B"
+            android:strokeWidth="3.0"
+            android:strokeLineCap="round"
+            android:pathData="M60,52 Q64,45 68,52" />
+
+        <!-- Rosy cheeks -->
+        <path
+            android:fillColor="#A6FF8A80"
+            android:pathData="M25.5,58 C25.5,56.62 27.52,55.5 30,55.5 C32.48,55.5 34.5,56.62 34.5,58 C34.5,59.38 32.48,60.5 30,60.5 C27.52,60.5 25.5,59.38 25.5,58 Z M65.5,58 C65.5,56.62 67.52,55.5 70,55.5 C72.48,55.5 74.5,56.62 74.5,58 C74.5,59.38 72.48,60.5 70,60.5 C67.52,60.5 65.5,59.38 65.5,58 Z" />
+
+        <!-- Cute smile -->
+        <path
+            android:strokeColor="#19191B"
+            android:strokeWidth="2.6"
+            android:strokeLineCap="round"
+            android:pathData="M48,57 Q50,61 52,57" />
+
+        <!-- Peek waving glove hand -->
+        <path
+            android:fillColor="#19191B"
+            android:pathData="M92.25,40 A6.25,6.25 0 1,1 79.75,40 A6.25,6.25 0 1,1 92.25,40 Z" />
+        <path
+            android:fillColor="#FAF9F6"
+            android:pathData="M90.5,40 A4.5,4.5 0 1,1 81.5,40 A4.5,4.5 0 1,1 90.5,40 Z" />
+    </group>
+</vector>

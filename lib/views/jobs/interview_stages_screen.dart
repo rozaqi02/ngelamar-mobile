@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_back_policy.dart';
 import '../../widgets/app_toast.dart';
 
 /// Screen: Tahapan Seleksi & Interview.
@@ -196,172 +197,175 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
 
     final bg = isDark ? const Color(0xFF121214) : AppTheme.warmBackground;
 
-    return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Top Navigation Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Circular Back Button
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: btnBg,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: btnBorder, width: 1.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
+    return AppBackScope(
+      child: Scaffold(
+        backgroundColor: bg,
+        body: SafeArea(
+          bottom: false,
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Top Navigation Bar
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Circular Back Button
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: btnBg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: btnBorder, width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.04,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: Icon(
+                            CupertinoIcons.chevron_back,
+                            size: 20,
+                            color: txtPri,
+                          ),
                         ),
-                        child: Icon(
-                          CupertinoIcons.chevron_back,
-                          size: 20,
+                      ),
+
+                      // Middle Title "Tahapan Seleksi"
+                      Text(
+                        'Tahapan Seleksi',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                           color: txtPri,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                    ),
 
-                    // Middle Title "Tahapan Seleksi"
-                    Text(
-                      'Tahapan Seleksi',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: txtPri,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-
-                    // Circular Options Button (⋮)
-                    GestureDetector(
-                      onTap: () => _showStageOptions(context, currentJob),
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: btnBg,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: btnBorder, width: 1.2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
+                      // Circular Options Button (⋮)
+                      GestureDetector(
+                        onTap: () => _showStageOptions(context, currentJob),
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: btnBg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: btnBorder, width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.04,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
                               ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          CupertinoIcons.ellipsis_vertical,
-                          size: 18,
-                          color: txtPri,
+                            ],
+                          ),
+                          child: Icon(
+                            CupertinoIcons.ellipsis_vertical,
+                            size: 18,
+                            color: txtPri,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Large Title Header with Status Pill Morph
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.getStatusColor(
-                          currentJob.status,
-                        ).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+              // Large Title Header with Status Pill Morph
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
                           color: AppTheme.getStatusColor(
                             currentJob.status,
-                          ).withValues(alpha: 0.4),
-                          width: 1.2,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.getStatusColor(
+                              currentJob.status,
+                            ).withValues(alpha: 0.4),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: AppTheme.getStatusColor(
+                                  currentJob.status,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Status Saat Ini: ${currentJob.status}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.getStatusColor(
+                                  currentJob.status,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: AppTheme.getStatusColor(currentJob.status),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Status Saat Ini: ${currentJob.status}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.getStatusColor(currentJob.status),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 10),
+                      Text(
+                        currentJob.companyName,
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: txtPri,
+                          letterSpacing: -0.8,
+                          height: 1.15,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      currentJob.companyName,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: txtPri,
-                        letterSpacing: -0.8,
-                        height: 1.15,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Panduan & cheat sheet 5 tahapan seleksi ${currentJob.position}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: txtSec,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Panduan & cheat sheet 5 tahapan seleksi ${currentJob.position}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: txtSec,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // Actual, user-owned history. The guides below remain useful, but
-            // this section is the source of truth for this particular
-            // application and survives status changes or restores.
-            if (currentJob.recruitmentEvents.isNotEmpty ||
-                currentJob.labels.isNotEmpty ||
-                currentJob.hasNextAction)
+              // Actual, user-owned history. The guides below remain useful, but
+              // Actual, user-owned history. The guides below remain useful, but
+              // this section is the source of truth for this particular
+              // application and survives status changes or restores.
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
@@ -376,23 +380,76 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(
-                              Icons.history_rounded,
-                              color: Color(0xFF5C44E4),
-                              size: 18,
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.history_rounded,
+                                  color: Color(0xFF5C44E4),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Riwayat Lamaran Ini',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: txtPri,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Riwayat Lamaran Ini',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: txtPri,
+                            InkWell(
+                              onTap: () =>
+                                  _showAddEventDialog(context, currentJob),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF5C44E4,
+                                  ).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.add_rounded,
+                                      size: 14,
+                                      color: Color(0xFF5C44E4),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Tambah',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF5C44E4),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
+                        if (currentJob.recruitmentEvents.isEmpty &&
+                            !currentJob.hasNextAction) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Belum ada tahapan seleksi khusus yang dicatat. Ketuk tombol Tambah di atas untuk mencatat wawancara, tes, atau follow-up.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: txtSec,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
                         if (currentJob.hasNextAction) ...[
                           const SizedBox(height: 12),
                           _buildActualEventRow(
@@ -449,215 +506,218 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                 ),
               ),
 
-            // 5 STAGE CARDS (STYLING PERSIS SAMA DENGAN PERSIAPAN KARIR INTERVIEW)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate((context, idx) {
-                  final stage = _stageItems[idx];
-                  final isExpanded = _expandedStage == idx;
-                  final cardColor = cardColors[idx % cardColors.length];
-                  final isDarkText =
-                      cardColor == AppTheme.cardYellow ||
-                      cardColor == AppTheme.cardGreen;
-                  final titleColor = isDarkText
-                      ? const Color(0xFF121214)
-                      : Colors.white;
-                  final descColor = isDarkText
-                      ? const Color(0xFF333336)
-                      : Colors.white.withValues(alpha: 0.90);
+              // 5 STAGE CARDS (STYLING PERSIS SAMA DENGAN PERSIAPAN KARIR INTERVIEW)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, idx) {
+                    final stage = _stageItems[idx];
+                    final isExpanded = _expandedStage == idx;
+                    final cardColor = cardColors[idx % cardColors.length];
+                    final isDarkText =
+                        cardColor == AppTheme.cardYellow ||
+                        cardColor == AppTheme.cardGreen;
+                    final titleColor = isDarkText
+                        ? const Color(0xFF121214)
+                        : Colors.white;
+                    final descColor = isDarkText
+                        ? const Color(0xFF333336)
+                        : Colors.white.withValues(alpha: 0.90);
 
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _expandedStage = isExpanded ? -1 : idx;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.fastOutSlowIn,
-                      width: double.infinity,
-                      margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusCardLarge,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: AnimatedSize(
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _expandedStage = isExpanded ? -1 : idx;
+                        });
+                      },
+                      child: AnimatedContainer(
                         duration: const Duration(milliseconds: 280),
                         curve: Curves.fastOutSlowIn,
-                        alignment: Alignment.topCenter,
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Top Row: Tag Pill & Expand Icon
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isDarkText
-                                          ? const Color(
-                                              0xFF19191B,
-                                            ).withValues(alpha: 0.12)
-                                          : Colors.white.withValues(
-                                              alpha: 0.22,
-                                            ),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      stage['tag']!,
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w900,
-                                        color: titleColor,
-                                        letterSpacing: 0.4,
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusCardLarge,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: AnimatedSize(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.fastOutSlowIn,
+                          alignment: Alignment.topCenter,
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top Row: Tag Pill & Expand Icon
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isDarkText
+                                            ? const Color(
+                                                0xFF19191B,
+                                              ).withValues(alpha: 0.12)
+                                            : Colors.white.withValues(
+                                                alpha: 0.22,
+                                              ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        stage['tag']!,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: titleColor,
+                                          letterSpacing: 0.4,
+                                        ),
                                       ),
                                     ),
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: isDarkText
+                                            ? const Color(0xFF19191B)
+                                            : Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        isExpanded
+                                            ? CupertinoIcons.chevron_up
+                                            : CupertinoIcons.chevron_down,
+                                        size: 14,
+                                        color: isDarkText
+                                            ? Colors.white
+                                            : cardColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 10),
+
+                                // Focus Subtitle
+                                Text(
+                                  stage['sub']!,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: descColor,
                                   ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                // Stage Title
+                                Text(
+                                  stage['title']!,
+                                  style: TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: titleColor,
+                                    letterSpacing: -0.3,
+                                    height: 1.3,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 6),
+
+                                // Stage Description
+                                Text(
+                                  stage['desc']!,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w500,
+                                    color: descColor,
+                                  ),
+                                ),
+
+                                // Expanded Answer & Strategy Box
+                                if (isExpanded) ...[
+                                  const SizedBox(height: 14),
                                   Container(
-                                    width: 32,
-                                    height: 32,
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: isDarkText
-                                          ? const Color(0xFF19191B)
-                                          : Colors.white,
-                                      shape: BoxShape.circle,
+                                          ? Colors.white.withValues(alpha: 0.95)
+                                          : Colors.black.withValues(
+                                              alpha: 0.20,
+                                            ),
+                                      borderRadius: BorderRadius.circular(18),
                                     ),
-                                    child: Icon(
-                                      isExpanded
-                                          ? CupertinoIcons.chevron_up
-                                          : CupertinoIcons.chevron_down,
-                                      size: 14,
-                                      color: isDarkText
-                                          ? Colors.white
-                                          : cardColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              // Focus Subtitle
-                              Text(
-                                stage['sub']!,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: descColor,
-                                ),
-                              ),
-
-                              const SizedBox(height: 4),
-
-                              // Stage Title
-                              Text(
-                                stage['title']!,
-                                style: TextStyle(
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: titleColor,
-                                  letterSpacing: -0.3,
-                                  height: 1.3,
-                                ),
-                              ),
-
-                              const SizedBox(height: 6),
-
-                              // Stage Description
-                              Text(
-                                stage['desc']!,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
-                                  color: descColor,
-                                ),
-                              ),
-
-                              // Expanded Answer & Strategy Box
-                              if (isExpanded) ...[
-                                const SizedBox(height: 14),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: isDarkText
-                                        ? Colors.white.withValues(alpha: 0.95)
-                                        : Colors.black.withValues(alpha: 0.20),
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.tips_and_updates_outlined,
-                                            size: 14,
-                                            color: isDarkText
-                                                ? const Color(0xFF121214)
-                                                : Colors.white,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Tips Lolos & Checklist Tahapan:',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w900,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.tips_and_updates_outlined,
+                                              size: 14,
                                               color: isDarkText
                                                   ? const Color(0xFF121214)
                                                   : Colors.white,
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        stage['tips']!,
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          height: 1.45,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDarkText
-                                              ? const Color(0xFF222224)
-                                              : Colors.white.withValues(
-                                                  alpha: 0.95,
-                                                ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Tips Lolos & Checklist Tahapan:',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
+                                                color: isDarkText
+                                                    ? const Color(0xFF121214)
+                                                    : Colors.white,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          stage['tips']!,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            height: 1.45,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDarkText
+                                                ? const Color(0xFF222224)
+                                                : Colors.white.withValues(
+                                                    alpha: 0.95,
+                                                  ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }, childCount: _stageItems.length),
+                    );
+                  }, childCount: _stageItems.length),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -721,6 +781,250 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showAddEventDialog(
+    BuildContext context,
+    JobApplication currentJob,
+  ) async {
+    final isDark = AppTheme.isDark(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+    final dialogBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+
+    final stageTypes = [
+      'Screening CV / Berkas',
+      'Tes Teknis / Psikotes',
+      'Interview HR',
+      'Interview User',
+      'Interview Final',
+      'Follow-up HR',
+      'Offering Letter',
+      'Negosiasi Gaji',
+      'Catatan Khusus',
+    ];
+
+    String selectedType = stageTypes[2];
+    final titleController = TextEditingController(text: selectedType);
+    final notesController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: dialogBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF383842)
+                        : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Catat Tahap Seleksi Baru',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: txtPri,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tambahkan rekam jejak untuk ${currentJob.companyName}',
+                style: TextStyle(fontSize: 12.5, color: txtSec),
+              ),
+              const SizedBox(height: 16),
+
+              // Dropdown Jenis Tahap
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF282830)
+                      : const Color(0xFFF7F5F0),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedType,
+                    isExpanded: true,
+                    dropdownColor: dialogBg,
+                    items: stageTypes.map((t) {
+                      return DropdownMenuItem(
+                        value: t,
+                        child: Text(
+                          t,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: txtPri,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() {
+                          selectedType = val;
+                          titleController.text = val;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Tanggal Picker Row
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) {
+                    setModalState(() {
+                      selectedDate = DateTime(
+                        picked.year,
+                        picked.month,
+                        picked.day,
+                        selectedDate.hour,
+                        selectedDate.minute,
+                      );
+                    });
+                  }
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF282830)
+                        : const Color(0xFFF7F5F0),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today_rounded,
+                        size: 16,
+                        color: Color(0xFF5C44E4),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _formatEventDate(selectedDate),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: txtPri,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Catatan Tambahan
+              TextField(
+                controller: notesController,
+                maxLines: 2,
+                style: TextStyle(fontSize: 13, color: txtPri),
+                decoration: InputDecoration(
+                  hintText:
+                      'Catatan tambahan (hasil, pewawancara, pertanyaan penting)...',
+                  hintStyle: TextStyle(fontSize: 12.5, color: txtSec),
+                  filled: true,
+                  fillColor: isDark
+                      ? const Color(0xFF282830)
+                      : const Color(0xFFF7F5F0),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (titleController.text.trim().isEmpty) return;
+                    HapticFeedback.selectionClick();
+                    final event = RecruitmentEvent(
+                      id: 'evt_${DateTime.now().millisecondsSinceEpoch}',
+                      type: selectedType.toLowerCase().replaceAll(' ', '_'),
+                      title: titleController.text.trim(),
+                      occurredAt: selectedDate,
+                      notes: notesController.text.trim().isNotEmpty
+                          ? notesController.text.trim()
+                          : null,
+                    );
+                    await ref
+                        .read(jobProvider.notifier)
+                        .addRecruitmentEvent(currentJob.id, event);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      AppToast.success(
+                        context,
+                        'Tahapan seleksi berhasil ditambahkan!',
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5C44E4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Simpan Tahapan',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

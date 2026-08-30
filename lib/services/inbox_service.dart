@@ -117,13 +117,11 @@ class InboxService {
     }
   }
 
-  static Timer? _backgroundPollTimer;
-
-  /// Inisialisasi listener realtime dan periodic polling untuk menerima pesan inbox secara instan
+  /// Inisialisasi listener realtime untuk menerima pesan broadcast inbox secara instan
   static void initRealtimeListener() {
     if (kIsWeb) return;
     try {
-      // 1. Supabase Realtime Stream
+      // Supabase Realtime Stream for push broadcast
       _realtimeSubscription ??= SupabaseService.client
           .from('notification_inbox')
           .stream(primaryKey: ['id'])
@@ -138,15 +136,14 @@ class InboxService {
               debugPrint('Realtime inbox stream error: $err');
             },
           );
-
-      // 2. Periodic Polling (Fallback saat WebSocket di-suspend oleh OS di background)
-      _backgroundPollTimer ??= Timer.periodic(
-        const Duration(minutes: 1),
-        (_) => checkNewMessagesSafe(),
-      );
     } catch (e) {
       debugPrint('Gagal menginisialisasi realtime inbox listener: $e');
     }
+  }
+
+  static void dispose() {
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = null;
   }
 }
 

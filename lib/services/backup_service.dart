@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/job_application.dart';
+import 'app_version_service.dart';
 
 class BackupException implements Exception {
   final String message;
@@ -115,6 +116,7 @@ class BackupService {
     final manifest = <String, dynamic>{
       'schemaVersion': schemaVersion,
       'app': 'Ngelamar',
+      'appVersion': AppVersionService.releaseFormat,
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
       'jobs': serializedJobs,
     };

@@ -10,6 +10,8 @@ import 'package:ngelamar/models/job_application.dart';
 import 'package:ngelamar/services/notification_service.dart';
 import 'package:ngelamar/services/android_home_widget_service.dart';
 import 'package:ngelamar/services/pro_verification_service.dart';
+import 'package:ngelamar/services/app_version_service.dart';
+import 'package:ngelamar/services/job_search_service.dart';
 import 'package:ngelamar/providers/job_provider.dart';
 
 void main() {
@@ -443,5 +445,376 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
       expect(restored.jobs, hasLength(1));
       expect(restored.jobs.single.screenshotPath, isNull);
     });
+  });
+
+  group('2026 Audit Fixes Verification', () {
+    test(
+      'JobApplication calculates lastMeaningfulActivityAt and handles Tersimpan status',
+      () {
+        final now = DateTime.now();
+        final oldApplied = now.subtract(const Duration(days: 20));
+        final recentEvent = now.subtract(const Duration(days: 2));
+
+        final savedJob = JobApplication(
+          id: 'job_saved',
+          companyName: 'PT Saved Corp',
+          position: 'QA Engineer',
+          status: 'Tersimpan',
+          appliedDate: now,
+          savedAt: now,
+          workType: 'WFH',
+          jobDescription: 'Testing specs',
+        );
+
+        expect(savedJob.isSaved, isTrue);
+        expect(savedJob.isGhosted, isFalse);
+        expect(savedJob.needsFollowup, isFalse);
+
+        final activeJob = JobApplication(
+          id: 'job_active',
+          companyName: 'PT Active Corp',
+          position: 'Backend Developer',
+          status: 'Dikirim',
+          appliedDate: oldApplied,
+          workType: 'WFO',
+          jobDescription: 'Go, PostgreSQL',
+          recruitmentEvents: [
+            RecruitmentEvent(
+              id: 'evt_1',
+              type: 'interview',
+              title: 'Technical Screen',
+              occurredAt: recentEvent,
+            ),
+          ],
+        );
+
+        expect(activeJob.lastMeaningfulActivityAt, equals(recentEvent));
+        expect(activeJob.isGhosted, isFalse);
+        expect(activeJob.needsFollowup, isFalse);
+      },
+    );
+
+    test('SalaryEvaluatorService 2025/2026 data and progressive deduction', () {
+      final result = SalaryEvaluatorService.evaluateSalary(
+        grossSalary: 10000000,
+        city: 'Jakarta',
+        workType: 'WFO',
+        needsKos: false,
+        bpjsPercent: 4.0,
+        includePph21: true,
+      );
+
+      expect(result.estimatedBpjsDeduction, equals(400000.0));
+      expect(result.estimatedPph21Deduction, equals(500000.0)); // 5% for 10jt
+      expect(result.estimatedNetTakeHomePay, equals(9100000.0));
+      expect(result.effectiveYear, equals('2025/2026'));
+      expect(result.umrAmount, equals(5396761.0));
+    });
+
+    test(
+      'TextParserService preserves legitimate keywords like Recruitment Specialist',
+      () {
+        const title = 'We are hiring: Recruitment Specialist';
+        final parsed = TextParserService.parseJobText(title);
+        expect(parsed.position, contains('Recruitment'));
+      },
+    );
+
+    test('AppVersionService provides semantic version comparison', () {
+      expect(AppVersionService.version, equals('2.28.1'));
+      expect(AppVersionService.buildNumber, equals('246'));
+      expect(
+        AppVersionService.compareVersions('2.28.1', '2.25.5'),
+        greaterThan(0),
+      );
+      expect(
+        AppVersionService.compareVersions('2.25.0', '2.28.1'),
+        lessThan(0),
+      );
+      expect(AppVersionService.compareVersions('2.28.1', '2.28.1'), equals(0));
+      expect(AppVersionService.isVersionSupported('2.28.1', '2.25.0'), isTrue);
+      expect(AppVersionService.isVersionSupported('2.24.0', '2.25.0'), isFalse);
+    });
+
+    test(
+      'JobApplication lifecycle distinguishing Draft, Tersimpan, Dikirim, and Closed',
+      () {
+        final now = DateTime.now();
+
+        final draftJob = JobApplication(
+          id: 'job_draft',
+          companyName: 'PT Draft Corp',
+          position: 'Mobile Engineer',
+          status: 'Draft',
+          appliedDate: now,
+          savedAt: now,
+          workType: 'Hybrid',
+          jobDescription: 'Draft description',
+        );
+        expect(draftJob.isDraft, isTrue);
+        expect(draftJob.isSaved, isFalse);
+        expect(draftJob.isApplied, isFalse);
+        expect(draftJob.appliedAt, isNull);
+        expect(draftJob.daysSinceApplied, equals(0));
+
+        final sentJob = JobApplication(
+          id: 'job_sent',
+          companyName: 'PT Sent Corp',
+          position: 'Mobile Engineer',
+          status: 'Dikirim',
+          appliedDate: now.subtract(const Duration(days: 3)),
+          workType: 'WFO',
+          jobDescription: 'Sent description',
+        );
+        expect(sentJob.isDraft, isFalse);
+        expect(sentJob.isSaved, isFalse);
+        expect(sentJob.isApplied, isTrue);
+        expect(sentJob.appliedAt, isNotNull);
+        expect(sentJob.daysSinceApplied, equals(3));
+
+        final closedJob = sentJob.copyWith(status: 'Diterima', closedAt: now);
+        expect(closedJob.isClosed, isTrue);
+      },
+    );
+
+    test('RecruitmentEvent full serialization round-trip', () {
+      final now = DateTime.now();
+      final event = RecruitmentEvent(
+        id: 'evt_full',
+        type: 'interview_user',
+        title: 'Interview User with VP',
+        occurredAt: now,
+        scheduledAt: now.add(const Duration(days: 2)),
+        completedAt: now.add(const Duration(days: 2, hours: 1)),
+        notes: 'Passed technical questions',
+        outcome: 'Lolos ke tahap Offering',
+        roundNumber: 2,
+        source: 'manual',
+        isDeleted: false,
+      );
+
+      final map = event.toMap();
+      final restored = RecruitmentEvent.fromMap(map);
+
+      expect(restored.id, equals('evt_full'));
+      expect(restored.type, equals('interview_user'));
+      expect(restored.title, equals('Interview User with VP'));
+      expect(restored.roundNumber, equals(2));
+      expect(restored.outcome, equals('Lolos ke tahap Offering'));
+      expect(restored.isDeleted, isFalse);
+      expect(restored.eventDate, equals(event.scheduledAt));
+    });
+
+    test(
+      'JobSearchService normalizes query and matches multi-attribute tokens',
+      () {
+        final jobs = [
+          JobApplication(
+            id: 'job_1',
+            companyName: 'Tokopedia',
+            position: 'Senior Flutter Developer',
+            status: 'Interview HR',
+            appliedDate: DateTime.now(),
+            workType: 'Hybrid',
+            location: 'Jakarta Selatan',
+            jobDescription:
+                'State management with Riverpod and clean architecture',
+          ),
+          JobApplication(
+            id: 'job_2',
+            companyName: 'Gojek',
+            position: 'Backend Go Engineer',
+            status: 'Dikirim',
+            appliedDate: DateTime.now(),
+            workType: 'WFH',
+            location: 'Jakarta Pusat',
+            jobDescription: 'Microservices with gRPC and PostgreSQL',
+          ),
+          JobApplication(
+            id: 'job_3',
+            companyName: 'Shopee',
+            position: 'QA Automation Lead',
+            status: 'Tersimpan',
+            appliedDate: DateTime.now(),
+            workType: 'WFO',
+            location: 'BSD Tangerang',
+            jobDescription: 'Appium, Flutter integration testing',
+          ),
+        ];
+
+        // Multi-token match across position and location
+        final result1 = JobSearchService.filterJobs(
+          jobs,
+          query: 'flutter jakarta',
+        );
+        expect(result1, hasLength(1));
+        expect(result1.first.companyName, equals('Tokopedia'));
+
+        // Punctuation and case-insensitive normalization
+        final result2 = JobSearchService.filterJobs(
+          jobs,
+          query: 'GOJEK, backend!',
+        );
+        expect(result2, hasLength(1));
+        expect(result2.first.id, equals('job_2'));
+
+        // Status filter with query
+        final result3 = JobSearchService.filterJobs(jobs, status: 'Tersimpan');
+        expect(result3, hasLength(1));
+        expect(result3.first.companyName, equals('Shopee'));
+      },
+    );
+
+    test('AndroidHomeWidgetService excludes sample data from projection', () {
+      final now = DateTime.now();
+      final sampleJob = JobApplication(
+        id: 'sample_interview',
+        companyName: 'Sample Corp',
+        position: 'Demo Engineer',
+        status: 'Interview HR',
+        appliedDate: now,
+        interviewDate: now.add(const Duration(days: 1)),
+        isSampleData: true,
+        workType: 'WFO',
+        jobDescription: 'Tutorial mock job',
+      );
+
+      final projection = AndroidHomeWidgetService.buildProjection([
+        sampleJob,
+      ], now: now);
+
+      expect(projection.hasContent, isFalse);
+      expect(projection.activeCount, equals(0));
+    });
+
+    test(
+      'JobApplication fromMap gracefully migrates legacy data without savedAt/closedAt',
+      () {
+        final legacyMap = {
+          'id': 'legacy_001',
+          'companyName': 'PT Lama Sukses',
+          'position': 'System Analyst',
+          'status': 'Dikirim',
+          'appliedDate': '2025-01-15T10:00:00.000',
+          'workType': 'On-site',
+          'jobDescription': 'Analisis sistem ERP',
+          'hrContact': 'hr@lama.co.id',
+        };
+
+        final migrated = JobApplication.fromMap(legacyMap);
+        expect(migrated.id, equals('legacy_001'));
+        expect(migrated.workType, equals('WFO')); // normalized from On-site
+        expect(migrated.isApplied, isTrue);
+        expect(migrated.savedAt, isNull);
+        expect(migrated.closedAt, isNull);
+        expect(
+          migrated.recruiterContacts.map((c) => c.value),
+          contains('hr@lama.co.id'),
+        );
+      },
+    );
+
+    test('Unified nextDueAt and overdueDueAt calculate properly', () {
+      final now = DateTime.now();
+      final futureInterview = now.add(const Duration(days: 3));
+      final futureNextAction = now.add(const Duration(days: 5));
+      final pastTest = now.subtract(const Duration(days: 2));
+
+      final activeJob = JobApplication(
+        id: 'job_due_test',
+        companyName: 'PT Maju Bersama',
+        position: 'Flutter Dev',
+        status: 'Interview HR',
+        appliedDate: now.subtract(const Duration(days: 10)),
+        interviewDate: futureInterview,
+        nextActionAt: futureNextAction,
+        nextActionType: 'Follow-up User',
+        workType: 'WFH',
+        jobDescription: '',
+      );
+
+      // nextDueAt should pick the earliest future date (interview at +3 days)
+      expect(activeJob.nextDueAt, equals(futureInterview));
+      expect(activeJob.overdueDueAt, isNull);
+
+      final overdueJob = JobApplication(
+        id: 'job_overdue_test',
+        companyName: 'PT Telat',
+        position: 'Backend Dev',
+        status: 'Tes / Psikotes',
+        appliedDate: now.subtract(const Duration(days: 10)),
+        testDate: pastTest,
+        workType: 'WFO',
+        jobDescription: '',
+      );
+
+      expect(overdueJob.nextDueAt, isNull);
+      expect(overdueJob.overdueDueAt, equals(pastTest));
+
+      final closedJob = activeJob.copyWith(status: 'Diterima');
+      expect(closedJob.nextDueAt, isNull);
+      expect(closedJob.overdueDueAt, isNull);
+    });
+
+    test(
+      'lastMeaningfulActivityAt considers latest recruitment event for follow-up triggers',
+      () {
+        final now = DateTime.now();
+        final appliedDate = now.subtract(const Duration(days: 14));
+        final recentEventDate = now.subtract(const Duration(days: 2));
+
+        final event = RecruitmentEvent(
+          id: 'evt_interview',
+          type: 'interview_hr',
+          title: 'Interview HR Selesai',
+          occurredAt: recentEventDate,
+          completedAt: recentEventDate,
+        );
+
+        final jobWithEvent = JobApplication(
+          id: 'job_event_activity',
+          companyName: 'PT Startup Baru',
+          position: 'Mobile Engineer',
+          status: 'Dikirim',
+          appliedDate: appliedDate,
+          recruitmentEvents: [event],
+          workType: 'Remote',
+          jobDescription: '',
+        );
+
+        // Even though applied 14 days ago, meaningful activity happened 2 days ago
+        expect(jobWithEvent.lastMeaningfulActivityAt, equals(recentEventDate));
+        expect(jobWithEvent.daysSinceLastActivity, equals(2));
+        expect(jobWithEvent.needsFollowup, isFalse);
+      },
+    );
+
+    test(
+      'NotificationService returns structured NotificationScheduleResult for invalid/sample jobs',
+      () async {
+        final sampleJob = JobApplication(
+          id: 'sample_notification',
+          companyName: 'Sample Corp',
+          position: 'Engineer',
+          status: 'Interview HR',
+          appliedDate: DateTime.now(),
+          isSampleData: true,
+          workType: 'WFO',
+          jobDescription: '',
+        );
+
+        final result = await NotificationService.syncInterviewReminder(
+          sampleJob,
+        );
+        expect(
+          result.state,
+          anyOf(
+            equals(ScheduleState.unsupported), // on Web
+            equals(ScheduleState.skippedClosedOrSample), // on mobile
+          ),
+        );
+        expect(result.isSuccess, isFalse);
+      },
+    );
   });
 }

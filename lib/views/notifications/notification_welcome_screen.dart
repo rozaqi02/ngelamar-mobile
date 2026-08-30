@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,13 +22,6 @@ class NotificationWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF1F1115) : const Color(0xFFFCF2F2);
-    final tonalBtnColor = isDark
-        ? const Color(0xFF381B22)
-        : const Color(0xFFFFDAD6);
-    final tonalIconColor = isDark
-        ? const Color(0xFFFFB3B8)
-        : const Color(0xFF93000A);
-
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFDCC8CA) : const Color(0xFF4B5563);
 
@@ -44,36 +36,13 @@ class NotificationWelcomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 12),
-
-                // Top Bar with Material 3 Tonal Icon Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FluidBounceButton(
-                      onTap: () => _close(context),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: tonalBtnColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.chevron_down,
-                          color: tonalIconColor,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 30),
 
                 const Spacer(),
 
                 // Mascot Canvas
                 const Center(
-                  child: WavingGreetingMascot(width: 126, height: 94),
+                  child: WavingGreetingMascot(width: 220, height: 165),
                 ),
 
                 const Spacer(),

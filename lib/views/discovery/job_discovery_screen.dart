@@ -33,6 +33,7 @@ class JobDiscoveryScreen extends ConsumerStatefulWidget {
 class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<String> _searchHistory = [];
+  List<String> _savedSearches = [];
   Timer? _searchDebounce;
 
   final List<Map<String, dynamic>> _portals = [
@@ -202,10 +203,12 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
 
   Future<void> _loadSearchHistoryAndUserDefault() async {
     final history = await PrefsService.getSearchHistory();
+    final savedSearches = await PrefsService.getSavedSearches();
     final interests = await PrefsService.getUserInterests();
     if (mounted) {
       setState(() {
         _searchHistory = history;
+        _savedSearches = savedSearches;
         if (interests.isNotEmpty && _searchController.text.isEmpty) {
           _searchController.text = interests.first;
         }
@@ -287,7 +290,9 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
     final isDark = AppTheme.isDark(context);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final background = isDark
-        ? const Color(0xFF121214)
+        ? const Color(0xFF0F1B14)
+        : widget.embedded
+        ? const Color(0xFFE8F5E9)
         : const Color(0xFFFAF8F5);
     final visibleQueries = _searchHistory.isEmpty
         ? const ['Fresh graduate', 'Remote', 'Admin', 'UI/UX']
@@ -327,37 +332,72 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                             height: 1.0,
                           ),
                         ),
-                        FluidBounceButton(
-                          onTap: _openWelcomeModal,
-                          semanticLabel: 'Buka panduan Portal Loker Resmi',
-                          child: Container(
-                            padding: const EdgeInsets.all(9),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF242428)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF383842)
-                                    : const Color(0xFFE5E0D5),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.04,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!widget.embedded &&
+                                Navigator.canPop(context)) ...[
+                              FluidBounceButton(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.of(context).pop();
+                                },
+                                semanticLabel: 'Kembali ke Beranda',
+                                child: Container(
+                                  padding: const EdgeInsets.all(9),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF242428)
+                                        : Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF383842)
+                                          : const Color(0xFFE5E0D5),
+                                    ),
                                   ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
+                                  child: Icon(
+                                    CupertinoIcons.back,
+                                    size: 18,
+                                    color: txtPri,
+                                  ),
                                 ),
-                              ],
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            FluidBounceButton(
+                              onTap: _openWelcomeModal,
+                              semanticLabel: 'Buka panduan Portal Loker Resmi',
+                              child: Container(
+                                padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF242428)
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF383842)
+                                        : const Color(0xFFE5E0D5),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: isDark ? 0.2 : 0.04,
+                                      ),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.question_circle_fill,
+                                  size: 18,
+                                  color: Color(0xFF1E8E3E),
+                                ),
+                              ),
                             ),
-                            child: const Icon(
-                              CupertinoIcons.question_circle_fill,
-                              size: 18,
-                              color: Color(0xFF1E8E3E),
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -391,10 +431,98 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                         setState(() {});
                       },
                     ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Simpan kata kunci yang ingin kamu cek lagi.',
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white60
+                                  : const Color(0xFF6B6A70),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _searchController.text.trim().isEmpty
+                              ? null
+                              : () async {
+                                  final query = _searchController.text.trim();
+                                  final saved =
+                                      await PrefsService.toggleSavedSearch(
+                                        query,
+                                      );
+                                  final searches =
+                                      await PrefsService.getSavedSearches();
+                                  if (!mounted) return;
+                                  setState(() => _savedSearches = searches);
+                                  AppleToast.success(
+                                    this.context,
+                                    saved
+                                        ? 'Pencarian disimpan.'
+                                        : 'Pencarian dihapus dari simpanan.',
+                                  );
+                                },
+                          icon: Icon(
+                            _savedSearches.any(
+                                  (item) =>
+                                      item.toLowerCase() ==
+                                      _searchController.text
+                                          .trim()
+                                          .toLowerCase(),
+                                )
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            size: 17,
+                          ),
+                          label: Text(
+                            _savedSearches.any(
+                                  (item) =>
+                                      item.toLowerCase() ==
+                                      _searchController.text
+                                          .trim()
+                                          .toLowerCase(),
+                                )
+                                ? 'Tersimpan'
+                                : 'Simpan',
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
+
+            if (_savedSearches.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _savedSearches
+                        .map(
+                          (query) => ActionChip(
+                            avatar: const Icon(
+                              Icons.bookmark_rounded,
+                              size: 15,
+                            ),
+                            label: Text(query),
+                            onPressed: () => setState(() {
+                              _searchController.text = query;
+                              _searchController.selection =
+                                  TextSelection.collapsed(offset: query.length);
+                            }),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
 
             // ── SEARCH HISTORY CHIPS ──
             SliverToBoxAdapter(

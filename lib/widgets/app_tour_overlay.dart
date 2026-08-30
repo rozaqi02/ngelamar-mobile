@@ -7,7 +7,13 @@ import 'apple_animations.dart';
 
 /// Target area specification for the guided tour spotlight
 class TourTargetRect {
-  final Rect Function(Size screenSize, EdgeInsets padding, double contentLeft, double contentWidth) computeRect;
+  final Rect Function(
+    Size screenSize,
+    EdgeInsets padding,
+    double contentLeft,
+    double contentWidth,
+  )
+  computeRect;
   final BorderRadius borderRadius;
   final bool isCircle;
 
@@ -27,7 +33,8 @@ class AppTourStep {
   final IconData icon;
   final Color accentColor;
   final TourTargetRect targetRect;
-  final bool placeCardBelow; // true: card below target, false: card above target
+  final bool
+  placeCardBelow; // true: card below target, false: card above target
 
   const AppTourStep({
     required this.targetTabIndex,
@@ -45,12 +52,12 @@ class AppTourStep {
 /// Highlights actual UI elements with cutout spotlights and pulse glow rings,
 /// and walks users through every core feature seamlessly with zero offside bugs.
 class AppTourOverlay extends StatefulWidget {
-  final Function(int tabIndex) onSwitchTab;
+  final int tabIndex;
   final VoidCallback onFinish;
 
   const AppTourOverlay({
     super.key,
-    required this.onSwitchTab,
+    required this.tabIndex,
     required this.onFinish,
   });
 
@@ -63,107 +70,203 @@ class AppTourOverlayState extends State<AppTourOverlay>
   int _currentStepIndex = 0;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late List<AppTourStep> _currentSteps;
 
-  static final List<AppTourStep> steps = [
-    // Step 1: Beranda - Tumpukan Kartu Lamaran
-    AppTourStep(
-      targetTabIndex: 0,
-      badgeText: 'Langkah 1/5 • Beranda',
-      title: 'Tumpukan Kartu Lamaran',
-      description:
-          'Semua lowongan yang kamu catat tersusun rapi di sini. Ketuk kartu untuk melihat progres, status seleksi, dan aksi follow-up cepat.',
-      icon: Icons.style_rounded,
-      accentColor: const Color(0xFFF59E0B),
-      placeCardBelow: false,
+  static AppTourStep _step({
+    required int tab,
+    required String badge,
+    required String title,
+    required String description,
+    required IconData icon,
+    required Color color,
+    required double top,
+    required double height,
+    double horizontalInset = 16,
+    bool fromBottom = false,
+    bool cardBelow = true,
+  }) {
+    return AppTourStep(
+      targetTabIndex: tab,
+      badgeText: badge,
+      title: title,
+      description: description,
+      icon: icon,
+      accentColor: color,
+      placeCardBelow: cardBelow,
       targetRect: TourTargetRect(
-        computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 175;
-          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 280);
-        },
-        borderRadius: BorderRadius.circular(28),
-      ),
-    ),
-
-    // Step 2: Beranda - Notifikasi & Cari Cepat
-    AppTourStep(
-      targetTabIndex: 0,
-      badgeText: 'Langkah 2/5 • Notifikasi & Cari',
-      title: 'Notifikasi & Cari Cepat',
-      description:
-          'Akses pengingat interview dan follow-up lewat tombol Lonceng Notifikasi, serta saring lowonganmu lewat tombol Pencarian.',
-      icon: Icons.notifications_active_rounded,
-      accentColor: const Color(0xFF635BFF),
-      placeCardBelow: true,
-      targetRect: TourTargetRect(
-        computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 10;
-          return Rect.fromLTWH(cLeft + cWidth - 110, top, 96, 48);
-        },
-        borderRadius: BorderRadius.circular(24),
-      ),
-    ),
-
-    // Step 3: Siapkan Karir
-    AppTourStep(
-      targetTabIndex: 1,
-      badgeText: 'Langkah 3/5 • Siapkan Karir',
-      title: 'Modul & Checklist Karir',
-      description:
-          'Tingkatkan peluang lolos dengan panduan lengkap fresh graduate: checklist berkas, tips interview, dan template pesan HR.',
-      icon: Icons.school_rounded,
-      accentColor: const Color(0xFF10B981),
-      placeCardBelow: true,
-      targetRect: TourTargetRect(
-        computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 80;
-          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 130);
+        computeRect: (size, pad, contentLeft, contentWidth) {
+          final resolvedTop = fromBottom
+              ? size.height - pad.bottom - top
+              : pad.top + top;
+          return Rect.fromLTWH(
+            contentLeft + horizontalInset,
+            resolvedTop,
+            contentWidth - horizontalInset * 2,
+            height,
+          );
         },
         borderRadius: BorderRadius.circular(24),
       ),
-    ),
+    );
+  }
 
-    // Step 4: Daftar Lamaran - Manajemen Status
-    AppTourStep(
-      targetTabIndex: 2,
-      badgeText: 'Langkah 4/5 • Daftar Lamaran',
-      title: 'Filter & Manajemen Status',
-      description:
-          'Saring lamaran berdasarkan status: Dikirim, Psikotes, Interview, hingga Offering. Tersedia dalam tampilan Daftar atau Grid.',
-      icon: Icons.mail_rounded,
-      accentColor: const Color(0xFF8B5CF6),
-      placeCardBelow: true,
-      targetRect: TourTargetRect(
-        computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 88;
-          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 54);
-        },
-        borderRadius: BorderRadius.circular(22),
-      ),
-    ),
-
-    // Step 5: Portal Karir Resmi
-    AppTourStep(
-      targetTabIndex: 3,
-      badgeText: 'Langkah 5/5 • Portal Karir',
-      title: 'Jelajah Portal Karir Resmi',
-      description:
-          'Buka dan cari lowongan terverifikasi secara langsung di LinkedIn, Glints, Jobstreet, Kalibrr, dan portal karir resmi lainnya.',
-      icon: Icons.travel_explore_rounded,
-      accentColor: const Color(0xFF0284C7),
-      placeCardBelow: true,
-      targetRect: TourTargetRect(
-        computeRect: (size, pad, cLeft, cWidth) {
-          final top = pad.top + 90;
-          return Rect.fromLTWH(cLeft + 16, top, cWidth - 32, 140);
-        },
-        borderRadius: BorderRadius.circular(24),
-      ),
-    ),
-  ];
+  static List<AppTourStep> getStepsForTab(int tabIndex) {
+    const purple = Color(0xFF5C44E4);
+    switch (tabIndex) {
+      case 0:
+        return [
+          _step(
+            tab: 0,
+            badge: 'Panduan Beranda',
+            title: 'Ringkasan Personal',
+            description: 'Lihat sapaan, progres, dan perhatian utama hari ini.',
+            icon: Icons.home_rounded,
+            color: purple,
+            top: 12,
+            height: 105,
+          ),
+          _step(
+            tab: 0,
+            badge: 'Panduan Beranda',
+            title: 'Kartu Lamaran',
+            description: 'Ketuk kartu untuk membuka detail dan status lengkap.',
+            icon: Icons.style_rounded,
+            color: Color(0xFFF59E0B),
+            top: 132,
+            height: 210,
+            cardBelow: false,
+          ),
+          _step(
+            tab: 0,
+            badge: 'Panduan Beranda',
+            title: 'Navigasi Utama',
+            description:
+                'Berpindah menu atau gunakan tombol plus untuk mencatat lamaran.',
+            icon: Icons.add_circle_rounded,
+            color: purple,
+            top: 104,
+            height: 82,
+            horizontalInset: 28,
+            fromBottom: true,
+            cardBelow: false,
+          ),
+        ];
+      case 1:
+      case 2:
+        return [
+          _step(
+            tab: tabIndex,
+            badge: 'Panduan Daftar Lamaran',
+            title: 'Cari Lamaran',
+            description: 'Cari posisi, perusahaan, atau kota dari satu kolom.',
+            icon: Icons.search_rounded,
+            color: purple,
+            top: 70,
+            height: 58,
+          ),
+          _step(
+            tab: tabIndex,
+            badge: 'Panduan Daftar Lamaran',
+            title: 'Urutkan dan Filter',
+            description: 'Atur urutan, bentuk daftar, status, dan tipe kerja.',
+            icon: Icons.tune_rounded,
+            color: Color(0xFF0EA5E9),
+            top: 132,
+            height: 54,
+          ),
+          _step(
+            tab: tabIndex,
+            badge: 'Panduan Daftar Lamaran',
+            title: 'Buka Kartu',
+            description:
+                'Ketuk kartu untuk melihat timeline dan tindakan berikutnya.',
+            icon: Icons.work_rounded,
+            color: Color(0xFFEC4899),
+            top: 195,
+            height: 190,
+            cardBelow: false,
+          ),
+        ];
+      case 3:
+        return [
+          _step(
+            tab: 3,
+            badge: 'Panduan Kalender',
+            title: 'Ringkasan Agenda',
+            description: 'Periksa agenda terdekat dan aktivitas bulan ini.',
+            icon: Icons.event_available_rounded,
+            color: purple,
+            top: 10,
+            height: 132,
+          ),
+          _step(
+            tab: 3,
+            badge: 'Panduan Kalender',
+            title: 'Penanda Berwarna',
+            description:
+                'Warna membedakan lamaran, seleksi, tindak lanjut, dan tenggat.',
+            icon: Icons.calendar_month_rounded,
+            color: Color(0xFF059669),
+            top: 155,
+            height: 330,
+            cardBelow: false,
+          ),
+          _step(
+            tab: 3,
+            badge: 'Panduan Kalender',
+            title: 'Agenda Harian',
+            description:
+                'Pilih tanggal untuk melihat seluruh kegiatan hari tersebut.',
+            icon: Icons.view_agenda_rounded,
+            color: Color(0xFFD97706),
+            top: 500,
+            height: 120,
+            cardBelow: false,
+          ),
+        ];
+      case 4:
+      default:
+        return [
+          _step(
+            tab: 4,
+            badge: 'Panduan Profil',
+            title: 'Identitas Karier',
+            description: 'Kelola foto, nama, minat, dan informasi profesional.',
+            icon: Icons.person_rounded,
+            color: purple,
+            top: 10,
+            height: 150,
+          ),
+          _step(
+            tab: 4,
+            badge: 'Panduan Profil',
+            title: 'Riwayat dan Statistik',
+            description: 'Pantau aktivitas serta ringkasan perjalanan lamaran.',
+            icon: Icons.insights_rounded,
+            color: Color(0xFF0EA5E9),
+            top: 172,
+            height: 190,
+          ),
+          _step(
+            tab: 4,
+            badge: 'Panduan Profil',
+            title: 'Pengaturan Aplikasi',
+            description:
+                'Atur tampilan, notifikasi, backup, bantuan, dan akun.',
+            icon: Icons.settings_rounded,
+            color: Color(0xFFF59E0B),
+            top: 380,
+            height: 190,
+            cardBelow: false,
+          ),
+        ];
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _currentSteps = getStepsForTab(widget.tabIndex);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -172,13 +275,6 @@ class AppTourOverlayState extends State<AppTourOverlay>
     _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-
-    // Initial switch to first step tab
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        widget.onSwitchTab(steps[0].targetTabIndex);
-      }
-    });
   }
 
   @override
@@ -189,10 +285,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
 
   void _nextStep() {
     HapticFeedback.selectionClick();
-    if (_currentStepIndex < steps.length - 1) {
-      final nextIdx = _currentStepIndex + 1;
-      setState(() => _currentStepIndex = nextIdx);
-      widget.onSwitchTab(steps[nextIdx].targetTabIndex);
+    if (_currentStepIndex < _currentSteps.length - 1) {
+      setState(() => _currentStepIndex++);
     } else {
       _finishTour();
     }
@@ -201,16 +295,13 @@ class AppTourOverlayState extends State<AppTourOverlay>
   void _prevStep() {
     HapticFeedback.selectionClick();
     if (_currentStepIndex > 0) {
-      final prevIdx = _currentStepIndex - 1;
-      setState(() => _currentStepIndex = prevIdx);
-      widget.onSwitchTab(steps[prevIdx].targetTabIndex);
+      setState(() => _currentStepIndex--);
     }
   }
 
   void _finishTour() async {
     HapticFeedback.mediumImpact();
-    await PrefsService.setAppTourSeen(true);
-    widget.onSwitchTab(0); // Return to Home
+    await PrefsService.setTabTourSeen(widget.tabIndex, true);
     widget.onFinish();
   }
 
@@ -218,18 +309,28 @@ class AppTourOverlayState extends State<AppTourOverlay>
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final padding = MediaQuery.of(context).padding;
-    final step = steps[_currentStepIndex];
+    final step = _currentSteps[_currentStepIndex];
     final isDark = AppTheme.isDark(context);
 
     // Responsive horizontal bounds matching MainNavigation (maxWidth: 840)
     final contentWidth = math.min(screenSize.width, 840.0);
     final contentLeft = (screenSize.width - contentWidth) / 2;
 
-    final targetRect = step.targetRect.computeRect(
+    final rawTargetRect = step.targetRect.computeRect(
       screenSize,
       padding,
       contentLeft,
       contentWidth,
+    );
+    final safeLeft = contentLeft + 6;
+    final safeRight = contentLeft + contentWidth - 6;
+    final safeTop = padding.top + 4;
+    final safeBottom = screenSize.height - padding.bottom - 4;
+    final targetRect = Rect.fromLTRB(
+      rawTargetRect.left.clamp(safeLeft, safeRight - 24),
+      rawTargetRect.top.clamp(safeTop, safeBottom - 24),
+      rawTargetRect.right.clamp(safeLeft + 24, safeRight),
+      rawTargetRect.bottom.clamp(safeTop + 24, safeBottom),
     );
 
     // Precise Coachmark Card Dimensions & Positioning (Guaranteed zero offside/clipping)
@@ -290,7 +391,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
                     0,
                     step.placeCardBelow
                         ? (_pulseAnimation.value - 1.0) * 8
-                        : -( _pulseAnimation.value - 1.0) * 8,
+                        : -(_pulseAnimation.value - 1.0) * 8,
                   ),
                   child: Icon(
                     step.placeCardBelow
@@ -315,13 +416,16 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 return FadeTransition(
                   opacity: anim,
                   child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.08),
-                      end: Offset.zero,
-                    ).animate(CurvedAnimation(
-                      parent: anim,
-                      curve: Curves.easeOutCubic,
-                    )),
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.08),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: anim,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
                     child: child,
                   ),
                 );
@@ -459,7 +563,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
                         // Progress Indicator Dots
                         Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: List.generate(steps.length, (idx) {
+                          children: List.generate(_currentSteps.length, (idx) {
                             final isActive = idx == _currentStepIndex;
                             return AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -470,8 +574,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
                                 color: isActive
                                     ? step.accentColor
                                     : (isDark
-                                        ? const Color(0xFF49454F)
-                                        : const Color(0xFFE7E0EC)),
+                                          ? const Color(0xFF49454F)
+                                          : const Color(0xFFE7E0EC)),
                                 borderRadius: BorderRadius.circular(3),
                               ),
                             );
@@ -527,7 +631,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    _currentStepIndex == steps.length - 1
+                                    _currentStepIndex ==
+                                            _currentSteps.length - 1
                                         ? 'Selesai'
                                         : 'Lanjut',
                                     style: const TextStyle(
@@ -538,7 +643,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
                                   ),
                                   const SizedBox(width: 4),
                                   Icon(
-                                    _currentStepIndex == steps.length - 1
+                                    _currentStepIndex ==
+                                            _currentSteps.length - 1
                                         ? Icons.check_circle_rounded
                                         : Icons.arrow_forward_rounded,
                                     size: 15,
@@ -581,9 +687,17 @@ class _SpotlightCutoutPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final safeTarget = Rect.fromLTRB(
+      targetRect.left.clamp(0.0, size.width),
+      targetRect.top.clamp(0.0, size.height),
+      targetRect.right.clamp(0.0, size.width),
+      targetRect.bottom.clamp(0.0, size.height),
+    );
 
     final holeRRect = RRect.fromRectAndCorners(
-      targetRect.inflate(6),
+      (safeTarget.width > 0 && safeTarget.height > 0)
+          ? safeTarget.inflate(6)
+          : targetRect,
       topLeft: borderRadius.topLeft,
       topRight: borderRadius.topRight,
       bottomLeft: borderRadius.bottomLeft,
@@ -596,20 +710,22 @@ class _SpotlightCutoutPainter extends CustomPainter {
       ..addRect(fullRect);
 
     if (isCircle) {
-      scrimPath.addOval(targetRect.inflate(6));
+      scrimPath.addOval(safeTarget.inflate(6));
     } else {
       scrimPath.addRRect(holeRRect);
     }
 
     final backgroundPaint = Paint()
-      ..color = const Color(0xB8000000) // 72% opacity dark scrim
+      ..color =
+          const Color(0xB8000000) // 72% opacity dark scrim
       ..style = PaintingStyle.fill;
 
     canvas.drawPath(scrimPath, backgroundPaint);
 
     // 2. Soft Bright Illumination / Whitening layer inside the spotlight cutout
     final highlightPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18) // Soft translucent white illumination
+      ..color = Colors.white
+          .withValues(alpha: 0.18) // Soft translucent white illumination
       ..style = PaintingStyle.fill;
 
     if (isCircle) {

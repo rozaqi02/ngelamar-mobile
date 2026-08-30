@@ -25,67 +25,96 @@ class PrefsService {
 
   static Future<String?> _readSensitiveString(String key) async {
     final secureKey = '$_securePrefix$key';
-    final secured = await _secureStorage.read(key: secureKey);
-    if (secured != null) return secured;
+    try {
+      final secured = await _secureStorage.read(key: secureKey);
+      if (secured != null) return secured;
+    } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
     final legacyValue = prefs.getString(key);
     if (legacyValue != null) {
-      await _secureStorage.write(key: secureKey, value: legacyValue);
-      await prefs.remove(key);
+      try {
+        await _secureStorage.write(key: secureKey, value: legacyValue);
+        await prefs.remove(key);
+      } catch (_) {}
     }
     return legacyValue;
   }
 
   static Future<void> _writeSensitiveString(String key, String value) async {
     final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.write(key: '$_securePrefix$key', value: value);
-    await prefs.remove(key);
+    try {
+      await _secureStorage.write(key: '$_securePrefix$key', value: value);
+      await prefs.remove(key);
+    } catch (_) {
+      await prefs.setString(key, value);
+    }
   }
 
   static Future<List<String>?> _readSensitiveStringList(String key) async {
     final secureKey = '$_securePrefix$key';
-    final secured = await _secureStorage.read(key: secureKey);
-    if (secured != null) {
-      try {
-        final decoded = jsonDecode(secured);
-        if (decoded is List) return decoded.map((item) => '$item').toList();
-      } on FormatException {
-        await _secureStorage.delete(key: secureKey);
+    try {
+      final secured = await _secureStorage.read(key: secureKey);
+      if (secured != null) {
+        try {
+          final decoded = jsonDecode(secured);
+          if (decoded is List) return decoded.map((item) => '$item').toList();
+        } on FormatException {
+          try {
+            await _secureStorage.delete(key: secureKey);
+          } catch (_) {}
+        }
       }
-    }
+    } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
     final legacyValue = prefs.getStringList(key);
     if (legacyValue != null) {
-      await _secureStorage.write(
-        key: secureKey,
-        value: jsonEncode(legacyValue),
-      );
-      await prefs.remove(key);
+      try {
+        await _secureStorage.write(
+          key: secureKey,
+          value: jsonEncode(legacyValue),
+        );
+        await prefs.remove(key);
+      } catch (_) {}
     }
     return legacyValue;
   }
 
   static Future<void> _writeSensitiveStringList(
     String key,
-    List<String> values,
+    List<String> value,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.write(
-      key: '$_securePrefix$key',
-      value: jsonEncode(values),
-    );
-    await prefs.remove(key);
+    try {
+      await _secureStorage.write(
+        key: '$_securePrefix$key',
+        value: jsonEncode(value),
+      );
+      await prefs.remove(key);
+    } catch (_) {
+      await prefs.setStringList(key, value);
+    }
   }
 
   /// Returns user profile photo file path, or null if not set.
   static Future<String?> getProfilePhoto() async {
+    // Profile images in web builds are data URIs. They can be much larger than
+    // a keychain value, so keep them in browser preferences instead.
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyProfilePhoto);
+    }
     return _readSensitiveString(_keyProfilePhoto);
   }
 
   /// Persists user profile photo file path.
   static Future<void> setProfilePhoto(String path) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyProfilePhoto, path);
+      return;
+    }
     await _writeSensitiveString(_keyProfilePhoto, path);
   }
 
@@ -270,6 +299,7 @@ class PrefsService {
 
   // ── APP FEATURE TOUR OVERLAY FLAG ──
   static const _keyAppTourSeen = 'app_feature_tour_seen_v1';
+  static const _keyTabTourPrefix = 'app_tab_tour_seen_tab_';
 
   /// Returns whether the App Feature Tour has been completed.
   static Future<bool> isAppTourSeen() async {
@@ -281,6 +311,74 @@ class PrefsService {
   static Future<void> setAppTourSeen([bool seen = true]) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyAppTourSeen, seen);
+  }
+
+  /// Returns whether the tutorial for a specific tab menu has been seen.
+  static Future<bool> isTabTourSeen(int tabIndex) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('$_keyTabTourPrefix$tabIndex') ?? false;
+  }
+
+  /// Marks a specific tab menu tutorial as seen.
+  static Future<void> setTabTourSeen(int tabIndex, [bool seen = true]) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('$_keyTabTourPrefix$tabIndex', seen);
+  }
+
+  // ── PORTAL LOKER SEARCH HISTORY ──
+  static const _keyPortalSearchHistory = 'portal_loker_search_history_v1';
+  static const _keyPortalSavedSearches = 'portal_loker_saved_searches_v1';
+
+  /// Returns list of recent search keywords for Portal Loker.
+  static Future<List<String>> getSearchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyPortalSearchHistory) ?? [];
+  }
+
+  /// Adds a search query to Portal Loker history (max 8 items, deduplicated).
+  static Future<void> addSearchHistory(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_keyPortalSearchHistory) ?? <String>[];
+    list.removeWhere((item) => item.toLowerCase() == trimmed.toLowerCase());
+    list.insert(0, trimmed);
+    if (list.length > 8) {
+      list.removeRange(8, list.length);
+    }
+    await prefs.setStringList(_keyPortalSearchHistory, list);
+  }
+
+  /// Clears search history for Portal Loker.
+  static Future<void> clearSearchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyPortalSearchHistory);
+  }
+
+  /// Queries the user deliberately saved, kept separate from ephemeral history.
+  static Future<List<String>> getSavedSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(_keyPortalSavedSearches) ?? [];
+  }
+
+  /// Toggles a saved search and returns its new saved state.
+  static Future<bool> toggleSavedSearch(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_keyPortalSavedSearches) ?? <String>[];
+    final match = list.indexWhere(
+      (item) => item.toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (match >= 0) {
+      list.removeAt(match);
+      await prefs.setStringList(_keyPortalSavedSearches, list);
+      return false;
+    }
+    list.insert(0, trimmed);
+    if (list.length > 8) list.removeRange(8, list.length);
+    await prefs.setStringList(_keyPortalSavedSearches, list);
+    return true;
   }
 
   // ── INITIAL SEED FLAG ──

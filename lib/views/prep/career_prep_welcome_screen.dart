@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/prefs_service.dart';
@@ -22,13 +21,6 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF1D1409) : const Color(0xFFFBF4E8);
-    final tonalBtnColor = isDark
-        ? const Color(0xFF382612)
-        : const Color(0xFFFFE088);
-    final tonalIconColor = isDark
-        ? const Color(0xFFFDE047)
-        : const Color(0xFF452B00);
-
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFDACBB9) : const Color(0xFF4B5563);
 
@@ -43,35 +35,12 @@ class CareerPrepWelcomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 12),
-
-                // Top Bar with Material 3 Tonal Icon Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FluidBounceButton(
-                      onTap: () => _handleClose(context),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: tonalBtnColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.chevron_down,
-                          color: tonalIconColor,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 30),
 
                 const Spacer(),
 
                 // Mascot Canvas
-                const Center(child: CareerPrepMascot(width: 132, height: 96)),
+                const Center(child: CareerPrepMascot(width: 220, height: 160)),
 
                 const Spacer(),
 

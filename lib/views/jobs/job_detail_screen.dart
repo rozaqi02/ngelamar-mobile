@@ -4,24 +4,27 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/job_application.dart';
+import '../../models/career_context.dart';
 import '../../providers/job_provider.dart';
 import '../../services/followup_service.dart';
+import '../../services/next_action_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/app_back_policy.dart';
+import '../../widgets/bookmark_thumbs_up_mascot.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
 import 'add_edit_job_screen.dart';
 import 'interview_stages_screen.dart';
+import '../hub/career_hub_screen.dart';
 
 /// Screen: Job Detail terinspirasi desain modern iOS (sesuai mockup referensi).
 /// Fitur:
@@ -35,8 +38,13 @@ import 'interview_stages_screen.dart';
 /// - Tombol aksi utama sticky di bawah
 class JobDetailScreen extends ConsumerStatefulWidget {
   final JobApplication job;
+  final String? companyLogoHeroTag;
 
-  const JobDetailScreen({super.key, required this.job});
+  const JobDetailScreen({
+    super.key,
+    required this.job,
+    this.companyLogoHeroTag,
+  });
 
   @override
   ConsumerState<JobDetailScreen> createState() => _JobDetailScreenState();
@@ -203,7 +211,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     HapticFeedback.selectionClick();
     final result = await Navigator.of(context).push<JobApplication>(
       AppMotion.editorRoute<JobApplication>(
-        builder: (_) => AddEditJobScreen(jobToEdit: currentJob),
+        builder: (_) => AddEditJobScreen(
+          jobToEdit: currentJob,
+          actionHeroTag: 'edit_job_action_button_${currentJob.id}',
+        ),
       ),
     );
     if (result != null && mounted) {
@@ -217,39 +228,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         );
       }
       AppleToast.success(context, 'Perubahan lamaran berhasil disimpan');
-    }
-  }
-
-  void _pickCompanyLogo(JobApplication currentJob) async {
-    HapticFeedback.selectionClick();
-    final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 600,
-      maxHeight: 600,
-      imageQuality: 85,
-    );
-    if (image == null || !mounted) return;
-
-    try {
-      final appDocDir = await getApplicationDocumentsDirectory();
-      final logosDir = Directory('${appDocDir.path}/logos');
-      if (!await logosDir.exists()) {
-        await logosDir.create(recursive: true);
-      }
-      final savedImage = await File(image.path).copy(
-        '${logosDir.path}/logo_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      if (!mounted) return;
-      final updated = currentJob.copyWith(companyLogoPath: savedImage.path);
-      await ref.read(jobProvider.notifier).updateJob(updated);
-      if (mounted) {
-        AppleToast.success(context, 'Foto perusahaan berhasil diubah!');
-      }
-    } catch (_) {
-      if (mounted) {
-        AppleToast.warning(context, 'Foto perusahaan gagal disimpan.');
-      }
     }
   }
 
@@ -348,12 +326,224 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     }
   }
 
+  Future<void> _showNextActionEditor(
+    BuildContext context,
+    JobApplication currentJob,
+  ) async {
+    final isDark = AppTheme.isDark(context);
+    final noteController = TextEditingController(
+      text: currentJob.nextActionNote ?? '',
+    );
+    var actionType = currentJob.nextActionType ?? 'Tindak lanjut';
+    var actionAt = currentJob.nextActionAt;
+    const actionTypes = [
+      'Tindak lanjut',
+      'Kirim dokumen',
+      'Siapkan tes',
+      'Jadwal interview',
+      'Ambil keputusan',
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final txtPri = AppTheme.getTextPrimary(context);
+          final txtSec = AppTheme.getTextSecondary(context);
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white24
+                            : const Color(0xFFD5CEBF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tindakan Berikutnya',
+                    style: TextStyle(
+                      color: txtPri,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tentukan satu langkah konkret untuk lamaran ini.',
+                    style: TextStyle(color: txtSec, fontSize: 12.5),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: actionType,
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis tindakan',
+                      prefixIcon: Icon(Icons.task_alt_rounded),
+                    ),
+                    items: actionTypes
+                        .map(
+                          (type) =>
+                              DropdownMenuItem(value: type, child: Text(type)),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setSheetState(() => actionType = value ?? actionType),
+                  ),
+                  const SizedBox(height: 12),
+                  FluidBounceButton(
+                    onTap: () async {
+                      final base = actionAt ?? DateTime.now();
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: base,
+                        firstDate: DateTime.now().subtract(
+                          const Duration(days: 1),
+                        ),
+                        lastDate: DateTime.now().add(const Duration(days: 730)),
+                      );
+                      if (date == null || !context.mounted) return;
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(base),
+                      );
+                      if (time == null) return;
+                      setSheetState(() {
+                        actionAt = DateTime(
+                          date.year,
+                          date.month,
+                          date.day,
+                          time.hour,
+                          time.minute,
+                        );
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF282830)
+                            : const Color(0xFFF8F5EF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_rounded,
+                            color: Color(0xFF5C44E4),
+                            size: 19,
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              actionAt == null
+                                  ? 'Pilih tanggal dan waktu'
+                                  : _formatTimelineDate(actionAt!),
+                              style: TextStyle(
+                                color: actionAt == null ? txtSec : txtPri,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteController,
+                    maxLength: 240,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan singkat',
+                      hintText: 'Contoh: Kirim portofolio terbaru',
+                      prefixIcon: Icon(Icons.notes_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      if (currentJob.hasNextAction)
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(sheetContext);
+                            await ref
+                                .read(jobProvider.notifier)
+                                .setNextAction(
+                                  jobId: currentJob.id,
+                                  dueAt: null,
+                                );
+                            if (mounted) {
+                              AppleToast.success(
+                                this.context,
+                                'Tindakan berikutnya dihapus',
+                              );
+                            }
+                          },
+                          child: const Text('Hapus'),
+                        ),
+                      const Spacer(),
+                      FilledButton(
+                        onPressed: actionAt == null
+                            ? null
+                            : () async {
+                                final note = noteController.text.trim();
+                                Navigator.pop(sheetContext);
+                                await ref
+                                    .read(jobProvider.notifier)
+                                    .setNextAction(
+                                      jobId: currentJob.id,
+                                      dueAt: actionAt,
+                                      type: actionType,
+                                      note: note,
+                                    );
+                                if (mounted) {
+                                  AppleToast.success(
+                                    this.context,
+                                    'Tindakan berikutnya diperbarui',
+                                  );
+                                }
+                              },
+                        child: const Text('Simpan Tindakan'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    noteController.dispose();
+  }
+
   void _showStatusPicker(BuildContext context, JobApplication currentJob) {
     HapticFeedback.selectionClick();
-    if (currentJob.isSampleData) {
-      AppleToast.info(context, 'Status dikunci karena ini data contoh.');
-      return;
-    }
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1E1E24) : const Color(0xFFFBF8F2);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
@@ -431,6 +621,31 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         context,
                         'Status berhasil diubah ke $status',
                       );
+                      final updatedJob = ref
+                          .read(jobProvider)
+                          .jobs
+                          .where((job) => job.id == currentJob.id)
+                          .firstOrNull;
+                      final suggestion = updatedJob == null
+                          ? null
+                          : NextActionService.suggest(updatedJob);
+                      if (suggestion != null) {
+                        final reduceMotion =
+                            MediaQuery.maybeOf(context)?.disableAnimations ??
+                            false;
+                        if (!reduceMotion) {
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 850),
+                          );
+                        }
+                        if (context.mounted) {
+                          _showNextActionSuggestion(
+                            context,
+                            updatedJob!,
+                            suggestion,
+                          );
+                        }
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -490,6 +705,128 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               }).toList(),
             ),
             const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNextActionSuggestion(
+    BuildContext context,
+    JobApplication job,
+    NextActionSuggestion suggestion,
+  ) {
+    final isDark = AppTheme.isDark(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        padding: EdgeInsets.fromLTRB(
+          22,
+          14,
+          22,
+          MediaQuery.paddingOf(sheetContext).bottom + 22,
+        ),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E24) : const Color(0xFFFBF8F2),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : const Color(0xFFD5CEBF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Color(0xFF6750E8),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Langkah berikutnya?',
+                    style: TextStyle(
+                      color: AppTheme.getTextPrimary(sheetContext),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              suggestion.note,
+              style: TextStyle(
+                color: AppTheme.getTextSecondary(sheetContext),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF292632)
+                    : const Color(0xFFEDE8FF),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Text(
+                '${suggestion.type} - ${_formatTimelineDate(suggestion.dueAt)}',
+                style: TextStyle(
+                  color: AppTheme.getTextPrimary(sheetContext),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: const Text('Nanti saja'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: () async {
+                      await ref
+                          .read(jobProvider.notifier)
+                          .setNextAction(
+                            jobId: job.id,
+                            dueAt: suggestion.dueAt,
+                            type: suggestion.type,
+                            note: suggestion.note,
+                          );
+                      if (!sheetContext.mounted) return;
+                      Navigator.pop(sheetContext);
+                      AppleToast.success(
+                        context,
+                        'Tindakan ditambahkan ke Kalender',
+                      );
+                    },
+                    child: const Text('Tambahkan'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1452,6 +1789,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         currentJob.location != null && currentJob.location!.trim().isNotEmpty;
 
     final experienceText = currentJob.status;
+    // Keep the softer light-mode palette that lets the content stay legible.
+    // The gradient itself extends farther down the page below.
     final statusBackground =
         _getStatusGradients(currentJob.status, isDark: isDark)
             .map((color) {
@@ -1464,60 +1803,279 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     final scrollRatio = (_scrollOffset / 160.0).clamp(0.0, 1.0);
     final logoSize = 64.0 - (scrollRatio * 18.0); // Shrinks from 64 to 46
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF121214)
-          : AppTheme.warmBackground,
-      body: Stack(
-        children: [
-          // ── DYNAMIC STATUS-BASED GRADIENT BACKGROUND ──
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 480,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: statusBackground,
-                  stops: const [0.0, 0.45, 0.78, 1.0],
+    return AppBackScope(
+      child: Scaffold(
+        backgroundColor: isDark
+            ? const Color(0xFF121214)
+            : AppTheme.warmBackground,
+        body: Stack(
+          children: [
+            // ── DYNAMIC STATUS-BASED GRADIENT BACKGROUND ──
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: statusBackground,
+                    stops: const [0.0, 0.52, 0.88, 1.0],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // ── MAIN SCROLLABLE CONTENT ──
-          SafeArea(
-            bottom: false,
-            child: CustomScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // TOP NAV APP BAR (Back, Logo, Bookmark)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Left Circular Back Button
-                        FluidBounceButton(
-                          semanticLabel: 'Kembali',
-                          hapticEnabled: false,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.pop(context);
-                          },
-                          child: Container(
-                            width: 44,
-                            height: 44,
+            // ── MAIN SCROLLABLE CONTENT ──
+            SafeArea(
+              bottom: false,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // TOP NAV APP BAR (Back, Logo, Bookmark)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        AppLayoutMetrics.headerTopInsideSafeArea(
+                          context,
+                          extra: 10,
+                        ),
+                        20,
+                        14,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Left Circular Back Button
+                          FluidBounceButton(
+                            semanticLabel: 'Kembali',
+                            hapticEnabled: false,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF242428)
+                                    : Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFE5E0D5),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.06,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  CupertinoIcons.chevron_back,
+                                  size: 20,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF121214),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Center Company Logo Badge with landing bounce & scroll shrink animation
+                          Transform.translate(
+                            offset: const Offset(0, 3),
+                            child: ScaleTransition(
+                              scale: _logoBounceAnim,
+                              child: Hero(
+                                tag:
+                                    widget.companyLogoHeroTag ??
+                                    'company_logo_${currentJob.id}',
+                                createRectTween: companyLogoRectTween,
+                                flightShuttleBuilder: companyLogoFlightShuttle,
+                                placeholderBuilder: companyLogoHeroPlaceholder,
+                                child: CompanyLogoBadge(
+                                  companyName: currentJob.companyName,
+                                  size: logoSize,
+                                  customImagePath: currentJob.companyLogoPath,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Circular Bookmark Button with Animated Scale & Pop Feedback
+                          FluidBounceButton(
+                            semanticLabel: currentJob.isFavorite
+                                ? 'Hapus dari bookmark'
+                                : 'Simpan ke bookmark',
+                            selected: currentJob.isFavorite,
+                            hapticEnabled: false,
+                            onTap: () {
+                              HapticFeedback.heavyImpact();
+                              _bookmarkAnimController.forward(from: 0.0);
+                              ref
+                                  .read(jobProvider.notifier)
+                                  .toggleFavorite(currentJob.id);
+                              if (!currentJob.isFavorite) {
+                                // The mascot jumps up from the bottom edge,
+                                // shows a thumbs-up, then lands back below.
+                                BookmarkThumbsUpMascot.show(context);
+                              }
+                              AppleToast.success(
+                                context,
+                                currentJob.isFavorite
+                                    ? 'Dihapus dari Bookmark'
+                                    : 'Disimpan ke Bookmark',
+                                subtitle: currentJob.companyName,
+                              );
+                            },
+                            child: ScaleTransition(
+                              scale: _bookmarkScaleAnim,
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: currentJob.isFavorite
+                                      ? (isDark
+                                            ? const Color(0xFF5C44E4)
+                                            : const Color(0xFF19191B))
+                                      : (isDark
+                                            ? const Color(0xFF242428)
+                                            : Colors.white),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: currentJob.isFavorite
+                                        ? (isDark
+                                              ? const Color(0xFF5C44E4)
+                                              : const Color(0xFF19191B))
+                                        : (isDark
+                                              ? const Color(0xFF383842)
+                                              : const Color(0xFFE5E0D5)),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: currentJob.isFavorite
+                                          ? const Color(
+                                              0xFF5C44E4,
+                                            ).withValues(alpha: 0.35)
+                                          : Colors.black.withValues(
+                                              alpha: isDark ? 0.2 : 0.06,
+                                            ),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    currentJob.isFavorite
+                                        ? CupertinoIcons.bookmark_fill
+                                        : CupertinoIcons.bookmark,
+                                    size: 20,
+                                    color: currentJob.isFavorite
+                                        ? const Color(0xFFFFD54F)
+                                        : (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF121214)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // HERO IDENTITY SECTION (Company Name, Role Pill, Location)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 6),
+                          // Company Name
+                          Text(
+                            currentJob.companyName,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF121214),
+                              letterSpacing: -0.8,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+
+                          if (currentJob.isSampleData) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF382A68)
+                                    : const Color(0xFFEDE9FE),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF6D52C7)
+                                      : const Color(0xFFC4B5FD),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    size: 13,
+                                    color: isDark
+                                        ? const Color(0xFFD8B4FE)
+                                        : const Color(0xFF6B21A8),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Data Contoh',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark
+                                          ? const Color(0xFFD8B4FE)
+                                          : const Color(0xFF6B21A8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 10),
+
+                          // Role / Position Pill (Clean NO OUTLINE)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF242428)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
+                                  : Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: isDark
                                     ? const Color(0xFF383842)
@@ -1526,668 +2084,532 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.06,
+                                    alpha: isDark ? 0.2 : 0.04,
                                   ),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: Center(
-                              child: Icon(
-                                CupertinoIcons.chevron_back,
-                                size: 20,
+                            child: Text(
+                              currentJob.position,
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
                                 color: isDark
                                     ? Colors.white
                                     : const Color(0xFF121214),
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                        ),
 
-                        // Center Company Logo Badge with landing bounce & scroll shrink animation
-                        ScaleTransition(
-                          scale: _logoBounceAnim,
-                          child: Hero(
-                            tag: 'company_logo_${currentJob.id}',
-                            createRectTween: companyLogoRectTween,
-                            flightShuttleBuilder: companyLogoFlightShuttle,
-                            placeholderBuilder: companyLogoHeroPlaceholder,
-                            child: CompanyLogoBadge(
-                              companyName: currentJob.companyName,
-                              size: logoSize,
-                              customImagePath: currentJob.companyLogoPath,
-                            ),
-                          ),
-                        ),
+                          const SizedBox(height: 10),
 
-                        // Circular Bookmark Button with Animated Scale & Pop Feedback
-                        FluidBounceButton(
-                          semanticLabel: currentJob.isFavorite
-                              ? 'Hapus dari bookmark'
-                              : 'Simpan ke bookmark',
-                          selected: currentJob.isFavorite,
-                          hapticEnabled: false,
-                          onTap: () {
-                            HapticFeedback.heavyImpact();
-                            _bookmarkAnimController.forward(from: 0.0);
-                            ref
-                                .read(jobProvider.notifier)
-                                .toggleFavorite(currentJob.id);
-                            if (!currentJob.isFavorite) {
-                              DelightCelebration.show(
-                                context,
-                                message: 'Lowongan favorit tersimpan!',
-                                accent: const Color(0xFFF8BA38),
-                                icon: Icons.bookmark_rounded,
-                                preset: DelightPreset.bookmark,
-                              );
-                            }
-                            AppleToast.success(
-                              context,
-                              currentJob.isFavorite
-                                  ? 'Dihapus dari Bookmark'
-                                  : 'Disimpan ke Bookmark',
-                              subtitle: currentJob.companyName,
-                            );
-                          },
-                          child: ScaleTransition(
-                            scale: _bookmarkScaleAnim,
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: currentJob.isFavorite
-                                    ? (isDark
-                                          ? const Color(0xFF5C44E4)
-                                          : const Color(0xFF19191B))
-                                    : (isDark
-                                          ? const Color(0xFF242428)
-                                          : Colors.white),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: currentJob.isFavorite
-                                      ? (isDark
-                                            ? const Color(0xFF5C44E4)
-                                            : const Color(0xFF19191B))
-                                      : (isDark
-                                            ? const Color(0xFF383842)
-                                            : const Color(0xFFE5E0D5)),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: currentJob.isFavorite
-                                        ? const Color(
-                                            0xFF5C44E4,
-                                          ).withValues(alpha: 0.35)
-                                        : Colors.black.withValues(
-                                            alpha: isDark ? 0.2 : 0.06,
-                                          ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  currentJob.isFavorite
-                                      ? CupertinoIcons.bookmark_fill
-                                      : CupertinoIcons.bookmark,
-                                  size: 20,
-                                  color: currentJob.isFavorite
-                                      ? const Color(0xFFFFD54F)
-                                      : (isDark
-                                            ? Colors.white
-                                            : const Color(0xFF121214)),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // HERO IDENTITY SECTION (Company Name, Role Pill, Location)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 6),
-                        // Company Name
-                        Text(
-                          currentJob.companyName,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF121214),
-                            letterSpacing: -0.8,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Role / Position Pill (Clean NO OUTLINE)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF242428)
-                                : Colors.white.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF383842)
-                                  : const Color(0xFFE5E0D5),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.2 : 0.04,
-                                ),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            currentJob.position,
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF121214),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Location Row (Clickable to open in Google Maps / Apple Maps)
-                        Semantics(
-                          button: hasLocation,
-                          enabled: hasLocation,
-                          label: hasLocation
-                              ? 'Buka lokasi $locationText di peta'
-                              : 'Lokasi belum dicantumkan',
-                          child: GestureDetector(
-                            onTap: !hasLocation
-                                ? null
-                                : () async {
-                                    HapticFeedback.selectionClick();
-                                    final loc = currentJob.location!.trim();
-                                    final Uri mapUri;
-                                    if (loc.startsWith('http://') ||
-                                        loc.startsWith('https://')) {
-                                      mapUri = Uri.parse(loc);
-                                    } else {
-                                      mapUri = Uri.parse(
-                                        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(loc)}',
-                                      );
-                                    }
-                                    try {
-                                      await launchUrl(
-                                        mapUri,
-                                        mode: LaunchMode.externalApplication,
-                                      );
-                                    } catch (_) {
-                                      if (context.mounted) {
-                                        AppleToast.info(
-                                          context,
-                                          'Tidak dapat membuka aplikasi peta',
+                          // Location Row (Clickable to open in Google Maps / Apple Maps)
+                          Semantics(
+                            button: hasLocation,
+                            enabled: hasLocation,
+                            label: hasLocation
+                                ? 'Buka lokasi $locationText di peta'
+                                : 'Lokasi belum dicantumkan',
+                            child: GestureDetector(
+                              onTap: !hasLocation
+                                  ? null
+                                  : () async {
+                                      HapticFeedback.selectionClick();
+                                      final loc = currentJob.location!.trim();
+                                      final Uri mapUri;
+                                      if (loc.startsWith('http://') ||
+                                          loc.startsWith('https://')) {
+                                        mapUri = Uri.parse(loc);
+                                      } else {
+                                        mapUri = Uri.parse(
+                                          'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(loc)}',
                                         );
                                       }
-                                    }
-                                  },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.location_on_rounded,
-                                  size: 15,
-                                  color: hasLocation
-                                      ? Color(0xFFE53935)
-                                      : Color(0xFF8E8E93),
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    locationText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : const Color(0xFF454549),
+                                      try {
+                                        await launchUrl(
+                                          mapUri,
+                                          mode: LaunchMode.externalApplication,
+                                        );
+                                      } catch (_) {
+                                        if (context.mounted) {
+                                          AppleToast.info(
+                                            context,
+                                            'Tidak dapat membuka aplikasi peta',
+                                          );
+                                        }
+                                      }
+                                    },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_on_rounded,
+                                    size: 15,
+                                    color: hasLocation
+                                        ? Color(0xFFE53935)
+                                        : Color(0xFF8E8E93),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      locationText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF454549),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (hasLocation) ...[
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 12,
-                                    color: isDark
-                                        ? Colors.white54
-                                        : const Color(0xFF77777A),
-                                  ),
+                                  if (hasLocation) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.open_in_new_rounded,
+                                      size: 12,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : const Color(0xFF77777A),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
-                        ),
 
-                        const SizedBox(height: 18),
+                          const SizedBox(height: 18),
 
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final salaryBubble = _buildInfoBubble(
-                              icon: const Icon(
-                                Icons.payments_rounded,
-                                size: 17,
-                                color: Color(0xFFB45309),
-                              ),
-                              label: salaryText,
-                              index: 0,
-                            );
-                            final workTypeBubble = _buildInfoBubble(
-                              icon: const Icon(
-                                Icons.home_work_rounded,
-                                size: 17,
-                                color: Color(0xFF5C44E4),
-                              ),
-                              label: currentJob.workType,
-                              index: 1,
-                            );
-                            final statusBubble = StatusPulse(
-                              status: currentJob.status,
-                              child: _buildInfoBubble(
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final salaryBubble = _buildInfoBubble(
                                 icon: const Icon(
-                                  Icons.work_outline_rounded,
+                                  Icons.payments_rounded,
                                   size: 17,
-                                  color: Color(0xFF1E8E3E),
+                                  color: Color(0xFFB45309),
                                 ),
-                                label: experienceText,
-                                index: 2,
-                              ),
-                            );
+                                label: salaryText,
+                                index: 0,
+                              );
+                              final workTypeBubble = _buildInfoBubble(
+                                icon: const Icon(
+                                  Icons.home_work_rounded,
+                                  size: 17,
+                                  color: Color(0xFF5C44E4),
+                                ),
+                                label: currentJob.workType,
+                                index: 1,
+                              );
+                              final statusBubble = StatusPulse(
+                                status: currentJob.status,
+                                child: _buildInfoBubble(
+                                  icon: const Icon(
+                                    Icons.work_outline_rounded,
+                                    size: 17,
+                                    color: Color(0xFF1E8E3E),
+                                  ),
+                                  label: experienceText,
+                                  index: 2,
+                                ),
+                              );
 
-                            if (constraints.maxWidth < 340) {
-                              return Column(
+                              if (constraints.maxWidth < 340) {
+                                return Column(
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: salaryBubble,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(child: workTypeBubble),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: statusBubble),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Row(
                                 children: [
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: salaryBubble,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(child: workTypeBubble),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: statusBubble),
-                                    ],
-                                  ),
+                                  Expanded(flex: 2, child: salaryBubble),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: workTypeBubble),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: statusBubble),
                                 ],
                               );
-                            }
+                            },
+                          ),
 
-                            return Row(
-                              children: [
-                                Expanded(flex: 2, child: salaryBubble),
-                                const SizedBox(width: 8),
-                                Expanded(child: workTypeBubble),
-                                const SizedBox(width: 8),
-                                Expanded(child: statusBubble),
-                              ],
-                            );
-                          },
-                        ),
-
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.topCenter,
-                          child: _expandedInfoBubbleIndex == null
-                              ? const SizedBox.shrink()
-                              : Padding(
-                                  padding: const EdgeInsets.only(top: 10),
-                                  child: _buildExpandedBubbleDetail(
-                                    currentJob,
-                                    _expandedInfoBubbleIndex!,
-                                    isDark,
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.topCenter,
+                            child: _expandedInfoBubbleIndex == null
+                                ? const SizedBox.shrink()
+                                : Padding(
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: _buildExpandedBubbleDetail(
+                                      currentJob,
+                                      _expandedInfoBubbleIndex!,
+                                      isDark,
+                                    ),
                                   ),
-                                ),
-                        ),
+                          ),
 
-                        const SizedBox(height: 18),
-                        Divider(
-                          height: 1,
-                          color: Colors.black.withValues(alpha: 0.08),
-                        ),
-                      ],
+                          const SizedBox(height: 18),
+                          Divider(
+                            height: 1,
+                            color: Colors.black.withValues(alpha: 0.08),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // ── MINIMUM QUALIFICATION: matches the reference card and
-                // displays the user's original job description verbatim. ──
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 16, 28, 10),
-                    child: _buildReferenceQualificationCard(currentJob, isDark),
-                  ),
-                ),
-
-                // ── BAGIAN BAWAH: OPSI MELIHAT DATA DENGAN LENGKAP ──
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      14,
-                      20,
-                      AppLayoutMetrics.contentBottomClearance(context),
+                  // ── MINIMUM QUALIFICATION: matches the reference card and
+                  // displays the user's original job description verbatim. ──
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 16, 28, 10),
+                      child: _buildReferenceQualificationCard(
+                        currentJob,
+                        isDark,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4, bottom: 10),
-                          child: Text(
-                            'DATA & RIWAYAT LENGKAP',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.grey,
-                              letterSpacing: 0.6,
+                  ),
+
+                  // ── BAGIAN BAWAH: OPSI MELIHAT DATA DENGAN LENGKAP ──
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        14,
+                        20,
+                        AppLayoutMetrics.contentBottomClearance(context),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4, bottom: 10),
+                            child: Text(
+                              'DATA & RIWAYAT LENGKAP',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey,
+                                letterSpacing: 0.6,
+                              ),
                             ),
                           ),
-                        ),
 
-                        if (currentJob.hasNextAction) ...[
+                          // Timeline is the single entry point for stages and
+                          // interview guidance, avoiding duplicate destinations.
+                          _buildOptionCard(
+                            icon: Icons.timeline_rounded,
+                            iconColor: const Color(0xFF5C44E4),
+                            title: 'Timeline',
+                            subtitle:
+                                '${currentJob.status} • ${currentJob.recruitmentEvents.length} aktivitas',
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                CupertinoPageRoute(
+                                  builder: (_) =>
+                                      InterviewStagesScreen(job: currentJob),
+                                ),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 10),
+
                           _buildOptionCard(
                             icon: Icons.task_alt_rounded,
                             iconColor: const Color(0xFF22A06B),
-                            title: currentJob.nextActionType!,
-                            subtitle:
-                                '${_formatTimelineDate(currentJob.nextActionAt!)}${currentJob.nextActionNote?.trim().isNotEmpty == true ? ' — ${currentJob.nextActionNote}' : ''}',
-                            onTap: () => _openEditJob(currentJob),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-
-                        // Timeline is the single entry point for stages and
-                        // interview guidance, avoiding duplicate destinations.
-                        _buildOptionCard(
-                          icon: Icons.timeline_rounded,
-                          iconColor: const Color(0xFF5C44E4),
-                          title: 'Timeline & Riwayat',
-                          subtitle:
-                              'Status saat ini: ${currentJob.status} • ${currentJob.recruitmentEvents.length} riwayat',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (_) =>
-                                    InterviewStagesScreen(job: currentJob),
-                              ),
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Kontak HR & Template Follow-Up
-                        _buildOptionCard(
-                          icon: Icons.send_rounded,
-                          iconColor: const Color(0xFF25D366),
-                          title: 'Kontak HR & Follow-Up',
-                          subtitle:
-                              currentJob.hrContact != null &&
-                                  currentJob.hrContact!.isNotEmpty
-                              ? 'Tersimpan: ${currentJob.hrContact}'
-                              : 'Kirim pesan follow-up via WhatsApp / Email',
-                          onTap: () => _showFollowupSheet(context, currentJob),
-                        ),
-
-                        if (currentJob.status == 'Offering' ||
-                            currentJob.offerDetails != null) ...[
-                          const SizedBox(height: 10),
-                          _buildOptionCard(
-                            icon: Icons.local_offer_rounded,
-                            iconColor: const Color(0xFFE11D48),
-                            title: 'Rincian & Komparasi Penawaran',
-                            subtitle:
-                                'Bandingkan komponen gaji, benefit, dan masa probation',
-                            trailingBadge: 'Offering',
-                            badgeColor: const Color(0xFFE11D48),
+                            title: 'Tindakan Berikutnya',
+                            subtitle: currentJob.hasNextAction
+                                ? '${currentJob.nextActionType} • ${_formatTimelineDate(currentJob.nextActionAt!)}'
+                                : 'Atur agenda tindak lanjut',
                             onTap: () =>
-                                _showOfferComparisonSheet(context, currentJob),
+                                _showNextActionEditor(context, currentJob),
                           ),
-                        ],
 
-                        const SizedBox(height: 10),
-
-                        // Option 4: Detail Penuh, Screenshot & Catatan
-                        _buildOptionCard(
-                          icon: Icons.feed_outlined,
-                          iconColor: const Color(0xFFE58F00),
-                          title: 'Lihat Detail Penuh & Screenshot',
-                          subtitle:
-                              'Bukti poster loker, catatan pelamar, dan riwayat',
-                          onTap: () =>
-                              _showFullDetailsSheet(context, currentJob),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Option 5: Unggah / Ubah Foto Logo Perusahaan
-                        _buildOptionCard(
-                          icon: Icons.camera_alt_rounded,
-                          iconColor: const Color(0xFF5C44E4),
-                          title: 'Ubah / Unggah Foto Perusahaan',
-                          subtitle: currentJob.companyLogoPath != null
-                              ? 'Foto kustom terpasang (ketuk untuk ganti)'
-                              : 'Pilih foto logo atau kantor dari galeri HP',
-                          onTap: () => _pickCompanyLogo(currentJob),
-                        ),
-
-                        if (currentJob.jobUrl != null &&
-                            currentJob.jobUrl!.isNotEmpty) ...[
                           const SizedBox(height: 10),
+
                           _buildOptionCard(
-                            icon: Icons.open_in_new_rounded,
-                            iconColor: const Color(0xFF19191B),
-                            title: 'Buka di Portal Asli',
-                            subtitle:
-                                'Kunjungi postingan resmi di ${currentJob.sourcePlatform}',
-                            onTap: () => _openOriginalUrl(currentJob.jobUrl),
+                            icon: Icons.school_rounded,
+                            iconColor: const Color(0xFF17824F),
+                            title: 'Persiapan untuk Posisi Ini',
+                            subtitle: 'Berkas, interview, gaji, dan pesan HR',
+                            onTap: () => Navigator.of(context).push(
+                              AppMotion.hubRoute(
+                                builder: (_) => CareerHubScreen(
+                                  initialSection: 1,
+                                  careerContext: CareerContext.fromJob(
+                                    currentJob,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
 
-                        const SizedBox(height: 14),
+                          const SizedBox(height: 10),
 
-                        // Edit, Bagikan & Hapus Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _openEditJob(currentJob),
-                                icon: const Icon(Icons.edit_outlined, size: 15),
+                          // Kontak HR & Template Follow-Up
+                          _buildOptionCard(
+                            icon: Icons.send_rounded,
+                            iconColor: const Color(0xFF25D366),
+                            title: 'Kontak HR',
+                            subtitle:
+                                currentJob.hrContact != null &&
+                                    currentJob.hrContact!.isNotEmpty
+                                ? currentJob.hrContact!
+                                : 'Hubungi dan follow-up',
+                            onTap: () =>
+                                _showFollowupSheet(context, currentJob),
+                          ),
+
+                          if (currentJob.status == 'Offering' ||
+                              currentJob.offerDetails != null) ...[
+                            const SizedBox(height: 10),
+                            _buildOptionCard(
+                              icon: Icons.local_offer_rounded,
+                              iconColor: const Color(0xFFE11D48),
+                              title: 'Rincian & Komparasi Penawaran',
+                              subtitle:
+                                  'Bandingkan komponen gaji, benefit, dan masa probation',
+                              trailingBadge: 'Offering',
+                              badgeColor: const Color(0xFFE11D48),
+                              onTap: () => _showOfferComparisonSheet(
+                                context,
+                                currentJob,
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 10),
+
+                          // Option 4: Detail Penuh, Screenshot & Catatan
+                          _buildOptionCard(
+                            icon: Icons.feed_outlined,
+                            iconColor: const Color(0xFFE58F00),
+                            title: 'Detail Lamaran',
+                            subtitle: 'Poster, catatan, dan bukti',
+                            onTap: () =>
+                                _showFullDetailsSheet(context, currentJob),
+                          ),
+
+                          if (currentJob.jobUrl != null &&
+                              currentJob.jobUrl!.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            _buildOptionCard(
+                              icon: Icons.open_in_new_rounded,
+                              iconColor: const Color(0xFF19191B),
+                              title: 'Buka di Portal Asli',
+                              subtitle:
+                                  'Kunjungi postingan resmi di ${currentJob.sourcePlatform}',
+                              onTap: () => _openOriginalUrl(currentJob.jobUrl),
+                            ),
+                          ],
+
+                          const SizedBox(height: 14),
+
+                          // Edit, Bagikan & Hapus Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _openEditJob(currentJob),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 15,
+                                  ),
+                                  label: const Text(
+                                    'Edit Lamaran',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    foregroundColor: isDark
+                                        ? Colors.white
+                                        : const Color(0xFF121214),
+                                    backgroundColor: isDark
+                                        ? const Color(0xFF242428)
+                                        : Colors.white,
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF383842)
+                                          : const Color(0xFFDCD8CE),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () => _shareJob(currentJob),
+                                icon: const Icon(
+                                  Icons.share_outlined,
+                                  size: 15,
+                                  color: Color(0xFF5C44E4),
+                                ),
                                 label: const Text(
-                                  'Edit Lamaran',
+                                  'Bagikan',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
+                                    color: Color(0xFF5C44E4),
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 14,
+                                    horizontal: 14,
                                   ),
-                                  foregroundColor: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF121214),
                                   backgroundColor: isDark
                                       ? const Color(0xFF242428)
                                       : Colors.white,
                                   side: BorderSide(
                                     color: isDark
-                                        ? const Color(0xFF383842)
-                                        : const Color(0xFFDCD8CE),
+                                        ? const Color(0xFF4C38C2)
+                                        : const Color(0xFFD6C8F8),
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(18),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton.icon(
-                              onPressed: () => _shareJob(currentJob),
-                              icon: const Icon(
-                                Icons.share_outlined,
-                                size: 15,
-                                color: Color(0xFF5C44E4),
-                              ),
-                              label: const Text(
-                                'Bagikan',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Color(0xFF5C44E4),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: () => _deleteJob(currentJob),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                    horizontal: 14,
+                                  ),
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF242428)
+                                      : Colors.white,
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? const Color(0xFF8B2525)
+                                        : const Color(0xFFFFCDD2),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: Color(0xFFE53935),
                                 ),
                               ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 14,
-                                ),
-                                backgroundColor: isDark
-                                    ? const Color(0xFF242428)
-                                    : Colors.white,
-                                side: BorderSide(
-                                  color: isDark
-                                      ? const Color(0xFF4C38C2)
-                                      : const Color(0xFFD6C8F8),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton(
-                              onPressed: () => _deleteJob(currentJob),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                  horizontal: 14,
-                                ),
-                                backgroundColor: isDark
-                                    ? const Color(0xFF242428)
-                                    : Colors.white,
-                                side: BorderSide(
-                                  color: isDark
-                                      ? const Color(0xFF8B2525)
-                                      : const Color(0xFFFFCDD2),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.delete_outline_rounded,
-                                size: 18,
-                                color: Color(0xFFE53935),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-          // ── STICKY BOTTOM ACTION BUTTON (ALWAYS SHOWS STATUS PICKER DOCK) ──
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                12,
-                20,
-                MediaQuery.of(context).padding.bottom > 0
-                    ? MediaQuery.of(context).padding.bottom + 12
-                    : 24,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    (isDark ? const Color(0xFF121214) : const Color(0xFFFBF8F2))
-                        .withValues(alpha: 0.0),
-                    (isDark ? const Color(0xFF121214) : const Color(0xFFFBF8F2))
-                        .withValues(alpha: 0.95),
-                    (isDark
-                        ? const Color(0xFF121214)
-                        : const Color(0xFFFBF8F2)),
-                  ],
+            // ── STICKY BOTTOM ACTION BUTTON (ALWAYS SHOWS STATUS PICKER DOCK) ──
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  MediaQuery.of(context).padding.bottom > 0
+                      ? MediaQuery.of(context).padding.bottom + 12
+                      : 24,
                 ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.heavyImpact();
-                    _showStatusPicker(context, currentJob);
-                  },
-                  icon: const Icon(
-                    Icons.swap_horiz_rounded,
-                    size: 20,
-                    color: Colors.white,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      (isDark
+                              ? const Color(0xFF121214)
+                              : const Color(0xFFFBF8F2))
+                          .withValues(alpha: 0.0),
+                      (isDark
+                              ? const Color(0xFF121214)
+                              : const Color(0xFFFBF8F2))
+                          .withValues(alpha: 0.95),
+                      (isDark
+                          ? const Color(0xFF121214)
+                          : const Color(0xFFFBF8F2)),
+                    ],
                   ),
-                  label: const Text(
-                    'Perbarui Status Lamaran',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.2,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: Hero(
+                    tag: statusActionHeroTag(currentJob.id),
+                    createRectTween: statusActionRectTween,
+                    flightShuttleBuilder: statusActionFlightShuttle,
+                    placeholderBuilder: statusActionHeroPlaceholder,
+                    child: StatusActionHeroMetadata(
+                      isExpanded: true,
+                      backgroundColor: isDark
+                          ? const Color(0xFF5C44E4)
+                          : const Color(0xFF19191B),
+                      foregroundColor: Colors.white,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.heavyImpact();
+                          _showStatusPicker(context, currentJob);
+                        },
+                        icon: const Icon(
+                          Icons.swap_horiz_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        label: Text(
+                          'Perbarui Status Lamaran',
+                          style: statusActionLabelTextStyle(context),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? const Color(0xFF5C44E4)
+                              : const Color(0xFF19191B),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                          elevation: 8,
+                          shadowColor: Colors.black.withValues(alpha: 0.35),
+                        ),
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark
-                        ? const Color(0xFF5C44E4)
-                        : const Color(0xFF19191B),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    elevation: 8,
-                    shadowColor: Colors.black.withValues(alpha: 0.35),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

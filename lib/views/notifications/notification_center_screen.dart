@@ -95,7 +95,12 @@ class _NotificationCenterScreenState
     required int totalCount,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        AppLayoutMetrics.headerTopInsideSafeArea(context, extra: 12),
+        20,
+        10,
+      ),
       child: TweenAnimationBuilder<double>(
         duration: const Duration(milliseconds: 380),
         curve: Curves.easeOutCubic,
@@ -381,8 +386,6 @@ class _NotificationCenterScreenState
                                 snapshot.connectionState ==
                                 ConnectionState.waiting;
                             final enabled = snapshot.data == true;
-                            final cardBg = AppTheme.getSurface(context);
-                            final cardBorder = AppTheme.getBorder(context);
                             final statusColor = enabled
                                 ? const Color(0xFF15803D)
                                 : const Color(0xFFD97706);
@@ -393,27 +396,15 @@ class _NotificationCenterScreenState
                                 vertical: 14,
                               ),
                               decoration: BoxDecoration(
+                                // The notification system is intentionally a
+                                // neutral surface. Status remains in the icon
+                                // and badge rather than tinting an entire card.
                                 color: isDark
-                                    ? cardBg
-                                    : statusColor.withValues(alpha: 0.075),
+                                    ? const Color(0xFF2A2824)
+                                    : const Color(0xFFE7DED0),
                                 borderRadius: BorderRadius.circular(
                                   AppTheme.radiusCard,
                                 ),
-                                border: Border.all(
-                                  color: isDark
-                                      ? cardBorder
-                                      : statusColor.withValues(alpha: 0.28),
-                                  width: 1.3,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: isDark ? 0.18 : 0.03,
-                                    ),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 children: [
@@ -870,8 +861,6 @@ class _MaterialJobNoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardBg = AppTheme.getSurface(context);
-    final cardBorder = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
@@ -881,19 +870,8 @@ class _MaterialJobNoticeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? cardBg : notice.color.withValues(alpha: 0.075),
+          color: isDark ? const Color(0xFF2A2824) : const Color(0xFFE7DED0),
           borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          border: Border.all(
-            color: isDark ? cardBorder : notice.color.withValues(alpha: 0.26),
-            width: 1.3,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -995,8 +973,6 @@ class _MaterialInboxCard extends StatelessWidget {
       _ => 'Pengumuman',
     };
 
-    final cardBg = AppTheme.getSurface(context);
-    final cardBorder = AppTheme.getBorder(context);
     final txtPri = AppTheme.getTextPrimary(context);
     final txtSec = AppTheme.getTextSecondary(context);
 
@@ -1004,19 +980,8 @@ class _MaterialInboxCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? cardBg : color.withValues(alpha: 0.075),
+        color: isDark ? const Color(0xFF2A2824) : const Color(0xFFE7DED0),
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(
-          color: isDark ? cardBorder : color.withValues(alpha: 0.26),
-          width: 1.3,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

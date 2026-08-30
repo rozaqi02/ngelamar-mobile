@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/job_application.dart';
+import '../repositories/profile_repository.dart';
+import '../services/job_search_service.dart';
 import '../services/prefs_service.dart';
 import '../services/notification_service.dart';
 import '../services/android_home_widget_service.dart';
@@ -83,79 +85,48 @@ class JobState {
     );
   }
 
-  // Metrics & Stats
-  int get totalCount => jobs.length;
-  int get appliedCount => jobs.where((j) => j.status == 'Dikirim').length;
-  int get ghostedCount => jobs.where((j) => j.isGhosted).length;
-  int get interviewCount => jobs
+  // Metrics & Stats (excludes sample tutorial data to ensure clean, accurate metrics)
+  List<JobApplication> get realJobs =>
+      jobs.where((j) => !j.isSampleData).toList();
+
+  int get totalCount => realJobs.length;
+  int get savedCount => realJobs.where((j) => j.isSaved).length;
+  int get draftCount => realJobs.where((j) => j.isDraft).length;
+  int get appliedCount => realJobs.where((j) => j.isApplied).length;
+  int get sentOnlyCount => realJobs.where((j) => j.status == 'Dikirim').length;
+  int get ghostedCount => realJobs.where((j) => j.isGhosted).length;
+  int get interviewCount => realJobs
       .where(
-        (j) => j.status.contains('Interview') || j.status == 'Tes / Psikotes',
+        (j) =>
+            (j.status.contains('Interview') || j.status == 'Tes / Psikotes') &&
+            j.isApplied,
       )
       .length;
-  int get offeringCount => jobs.where((j) => j.status == 'Offering').length;
-  int get acceptedCount => jobs.where((j) => j.status == 'Diterima').length;
-  int get rejectedCount => jobs.where((j) => j.status == 'Ditolak').length;
-  int get favoriteCount => jobs.where((j) => j.isFavorite).length;
+  int get offeringCount => realJobs.where((j) => j.status == 'Offering').length;
+  int get acceptedCount => realJobs.where((j) => j.status == 'Diterima').length;
+  int get rejectedCount => realJobs.where((j) => j.status == 'Ditolak').length;
+  int get favoriteCount => realJobs.where((j) => j.isFavorite).length;
+  bool get hasSampleData => jobs.any((j) => j.isSampleData);
 
   double get responseRate {
-    if (jobs.isEmpty) return 0.0;
-    final responded = jobs.where((j) => j.status != 'Dikirim').length;
-    return (responded / jobs.length) * 100;
+    final activeApplied = realJobs.where((j) => j.isApplied).toList();
+    if (activeApplied.isEmpty) return 0.0;
+    final responded = activeApplied.where((j) => j.status != 'Dikirim').length;
+    return (responded / activeApplied.length) * 100;
   }
 
   /// Daftar lamaran yang telah disaring berdasarkan kata kunci dan filter aktif
-  List<JobApplication> get filteredJobs {
-    final queryTokens = searchQuery
-        .trim()
-        .toLowerCase()
-        .split(RegExp(r'\s+'))
-        .where((t) => t.isNotEmpty)
-        .toList();
-
-    return jobs.where((job) {
-      if (queryTokens.isNotEmpty) {
-        final pos = job.position.toLowerCase();
-        final comp = job.companyName.toLowerCase();
-        final loc = (job.location ?? '').toLowerCase();
-        final desc = job.jobDescription.toLowerCase();
-        final notes = (job.notes ?? '').toLowerCase();
-        final hr = (job.hrContact ?? '').toLowerCase();
-
-        // Setiap token pencarian harus cocok dengan minimal 1 atribut
-        final allTokensMatch = queryTokens.every(
-          (token) =>
-              pos.contains(token) ||
-              comp.contains(token) ||
-              loc.contains(token) ||
-              desc.contains(token) ||
-              notes.contains(token) ||
-              hr.contains(token),
-        );
-
-        if (!allTokensMatch) return false;
-      }
-      if (selectedStatusFilter != 'Semua' &&
-          job.status != selectedStatusFilter) {
-        return false;
-      }
-      if (selectedWorkTypeFilter != 'Semua' &&
-          job.workType != selectedWorkTypeFilter) {
-        return false;
-      }
-      if (onlyFavoritesFilter && !job.isFavorite) {
-        return false;
-      }
-      if (onlyWfhFilter &&
-          job.workType != 'WFH' &&
-          !job.jobDescription.toLowerCase().contains('remote')) {
-        return false;
-      }
-      return true;
-    }).toList();
-  }
+  List<JobApplication> get filteredJobs => JobSearchService.filterJobs(
+    jobs,
+    query: searchQuery,
+    status: selectedStatusFilter,
+    workType: selectedWorkTypeFilter,
+    onlyFavorites: onlyFavoritesFilter,
+    onlyWfh: onlyWfhFilter,
+  );
 
   /// Mengembalikan maksimal 4 lamaran prioritas untuk tumpukan kartu Beranda.
-  /// Urutan prioritas: Offering / Interview / Tes -> Favorit -> Terbaru.
+  /// Urutan prioritas: Offering / Interview / Tes -> Favorit -> Dikirim -> Tersimpan.
   List<JobApplication> get priorityJobs {
     final baseList =
         (selectedStatusFilter != 'Semua' ||
@@ -175,6 +146,7 @@ class JobState {
         if (j.status == 'Tes / Psikotes') return 6;
         if (j.isFavorite) return 4;
         if (j.status == 'Dikirim') return 2;
+        if (j.status == 'Tersimpan') return 1;
         return 0;
       }
 
@@ -212,6 +184,8 @@ class JobNotifier extends StateNotifier<JobState> {
   late final Future<Box<String>> _boxReady;
 
   static const List<String> stageSequence = [
+    'Tersimpan',
+    'Draft',
     'Dikirim',
     'Tes / Psikotes',
     'Interview HR',
@@ -266,6 +240,7 @@ class JobNotifier extends StateNotifier<JobState> {
     final name = await PrefsService.getUserName() ?? '';
     final email = await PrefsService.getUserEmail() ?? '';
     final photo = await PrefsService.getProfilePhoto() ?? '';
+    unawaited(ProfileRepository().initialize());
     state = state.copyWith(
       jobs: loaded,
       isLoading: false,
@@ -343,17 +318,42 @@ class JobNotifier extends StateNotifier<JobState> {
   JobApplication? _findDuplicate(
     JobApplication candidate, {
     String? excludingId,
+    bool allowReapplyAfterPeriod = true,
   }) {
-    final company = candidate.companyName.trim().toLowerCase();
-    final position = candidate.position.trim().toLowerCase();
-    return state.jobs.cast<JobApplication?>().firstWhere(
-      (job) =>
-          job != null &&
-          job.id != excludingId &&
-          job.companyName.trim().toLowerCase() == company &&
-          job.position.trim().toLowerCase() == position,
-      orElse: () => null,
-    );
+    final company = _normalizeName(candidate.companyName);
+    final position = _normalizeName(candidate.position);
+    if (company.isEmpty || position.isEmpty) return null;
+
+    return state.jobs.cast<JobApplication?>().firstWhere((job) {
+      if (job == null || job.id == excludingId) return false;
+      final existingCompany = _normalizeName(job.companyName);
+      final existingPosition = _normalizeName(job.position);
+      if (existingCompany != company || existingPosition != position) {
+        return false;
+      }
+      if (allowReapplyAfterPeriod) {
+        // If previous application was > 90 days ago or is already closed (Ditolak / Diterima),
+        // allow creating a new re-application record
+        final daysDiff = candidate.appliedDate
+            .difference(job.appliedDate)
+            .inDays
+            .abs();
+        if (daysDiff >= 90 ||
+            job.status == 'Ditolak' ||
+            job.status == 'Diterima') {
+          return false;
+        }
+      }
+      return true;
+    }, orElse: () => null);
+  }
+
+  static String _normalizeName(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   bool _isAttachmentStillReferenced(String path, {String? excludingId}) {
@@ -446,7 +446,7 @@ class JobNotifier extends StateNotifier<JobState> {
   }
 
   String _duplicateKey(JobApplication job) =>
-      '${job.companyName.trim().toLowerCase()}\u0000${job.position.trim().toLowerCase()}';
+      '${_normalizeName(job.companyName)}\u0000${_normalizeName(job.position)}';
 
   Future<void> discardUnreferencedAttachments(Iterable<String> paths) async {
     for (final path in paths) {
@@ -470,9 +470,11 @@ class JobNotifier extends StateNotifier<JobState> {
     }
   }
 
-  Future<void> addJob(JobApplication job) async {
-    final duplicate = _findDuplicate(job);
-    if (duplicate != null) throw DuplicateJobException(duplicate);
+  Future<void> addJob(JobApplication job, {bool allowDuplicate = false}) async {
+    if (!allowDuplicate) {
+      final duplicate = _findDuplicate(job);
+      if (duplicate != null) throw DuplicateJobException(duplicate);
+    }
 
     final savedJob = _ensureInitialHistory(job);
     final box = await _boxReady;
@@ -483,7 +485,7 @@ class JobNotifier extends StateNotifier<JobState> {
     _syncWidgetQuietly(updated);
   }
 
-  /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet) dengan proteksi anti-duplikasi.
+  /// 1-Tap Save dari Mesin Pencari Loker (Glints/JobStreet) dengan status default 'Tersimpan'.
   Future<JobApplication> saveFromSearchEngine(JobApplication searchJob) async {
     final duplicate = _findDuplicate(searchJob);
     if (duplicate != null) return duplicate;
@@ -491,7 +493,40 @@ class JobNotifier extends StateNotifier<JobState> {
     final now = DateTime.now();
     final newJob = searchJob.copyWith(
       id: 'job_${now.millisecondsSinceEpoch}',
-      status: 'Dikirim',
+      status: 'Tersimpan',
+      savedAt: now,
+      appliedDate: now,
+    );
+    await addJob(newJob);
+    return newJob;
+  }
+
+  /// Menghapus seluruh data contoh tutorial secara aman dengan 1 klik.
+  Future<int> deleteSampleJobs() async {
+    final box = await _boxReady;
+    final samples = state.jobs.where((j) => j.isSampleData).toList();
+    if (samples.isEmpty) return 0;
+
+    await box.deleteAll(samples.map((j) => j.id));
+    final updated = state.jobs.where((j) => !j.isSampleData).toList();
+    state = state.copyWith(jobs: updated);
+    _syncRemindersQuietly(updated);
+    _syncWidgetQuietly(updated);
+    return samples.length;
+  }
+
+  /// Menyimpan lowongan belum lengkap sebagai 'Draft'.
+  Future<JobApplication> saveAsDraft(JobApplication draftJob) async {
+    final duplicate = _findDuplicate(draftJob);
+    if (duplicate != null) return duplicate;
+
+    final now = DateTime.now();
+    final newJob = draftJob.copyWith(
+      id: draftJob.id.isEmpty
+          ? 'job_${now.millisecondsSinceEpoch}'
+          : draftJob.id,
+      status: 'Draft',
+      savedAt: now,
       appliedDate: now,
     );
     await addJob(newJob);
@@ -501,28 +536,42 @@ class JobNotifier extends StateNotifier<JobState> {
   /// Progres 1-Klik: Menaikkan tahapan seleksi ke langkah berikutnya.
   Future<String?> advanceToNextStage(String id) async {
     final job = state.jobs.firstWhere((j) => j.id == id);
-    final currentIndex = stageSequence.indexOf(job.status);
+    var currentIndex = stageSequence.indexOf(job.status);
+    if (currentIndex == -1) {
+      if (job.status == 'Tersimpan' || job.status == 'Draft') {
+        currentIndex = 0;
+      }
+    }
     if (currentIndex != -1 && currentIndex < stageSequence.length - 1) {
       final nextStatus = stageSequence[currentIndex + 1];
-      final updated = job.copyWith(status: nextStatus);
+      final isNowSent =
+          (job.status == 'Tersimpan' || job.status == 'Draft') &&
+          nextStatus == 'Dikirim';
+      final updated = job.copyWith(
+        status: nextStatus,
+        appliedDate: isNowSent ? DateTime.now() : job.appliedDate,
+        closedAt: (nextStatus == 'Diterima' || nextStatus == 'Ditolak')
+            ? DateTime.now()
+            : null,
+      );
       await updateJob(updated);
       return nextStatus;
     }
     return null;
   }
 
-  Future<void> updateJob(JobApplication job) async {
+  Future<void> updateJob(
+    JobApplication job, {
+    bool allowDuplicate = false,
+  }) async {
     final existing = state.jobs.where((item) => item.id == job.id).firstOrNull;
     if (existing == null) {
       throw StateError('Lamaran yang ingin diperbarui tidak ditemukan.');
     }
-    if (existing.isSampleData && job.status != existing.status) {
-      throw StateError(
-        'Status data contoh dikunci. Jadikan data contoh sebagai lamaran nyata terlebih dahulu.',
-      );
+    if (!allowDuplicate) {
+      final duplicate = _findDuplicate(job, excludingId: job.id);
+      if (duplicate != null) throw DuplicateJobException(duplicate);
     }
-    final duplicate = _findDuplicate(job, excludingId: job.id);
-    if (duplicate != null) throw DuplicateJobException(duplicate);
 
     final savedJob = _withStatusHistory(existing, job);
     final box = await _boxReady;
@@ -603,13 +652,6 @@ class JobNotifier extends StateNotifier<JobState> {
     );
   }
 
-  Future<void> addRecruitmentEvent(String jobId, RecruitmentEvent event) async {
-    final job = state.jobs.firstWhere((item) => item.id == jobId);
-    await updateJob(
-      job.copyWith(recruitmentEvents: [...job.recruitmentEvents, event]),
-    );
-  }
-
   Future<void> setNextAction({
     required String jobId,
     required DateTime? dueAt,
@@ -627,14 +669,19 @@ class JobNotifier extends StateNotifier<JobState> {
     );
   }
 
-  Future<void> deleteJob(String id) async {
+  Future<void> deleteJob(
+    String id, {
+    bool deleteFilesImmediately = false,
+  }) async {
     final job = state.jobs.where((item) => item.id == id).firstOrNull;
     if (job == null) return;
     final box = await _boxReady;
     await box.delete(id);
     final updated = state.jobs.where((j) => j.id != id).toList();
     state = state.copyWith(jobs: updated);
-    await _deleteAttachmentsForJobs([job]);
+    if (deleteFilesImmediately) {
+      await _deleteAttachmentsForJobs([job]);
+    }
     _cancelReminderQuietly(id);
     _syncWidgetQuietly(updated);
   }
@@ -647,11 +694,6 @@ class JobNotifier extends StateNotifier<JobState> {
 
   Future<void> updateStatus(String id, String status) async {
     final job = state.jobs.firstWhere((j) => j.id == id);
-    if (job.isSampleData) {
-      throw StateError(
-        'Status data contoh dikunci. Jadikan data contoh sebagai lamaran nyata terlebih dahulu.',
-      );
-    }
     final updated = job.copyWith(status: status);
     await updateJob(updated);
   }
@@ -661,6 +703,121 @@ class JobNotifier extends StateNotifier<JobState> {
     final updated = job.copyWith(isSampleData: false);
     await updateJob(updated);
   }
+
+  /// Menambahkan event kronologis rekrutmen baru
+  Future<void> addRecruitmentEvent(String jobId, RecruitmentEvent event) async {
+    final job = state.jobs.firstWhere((j) => j.id == jobId);
+    final updatedEvents = [...job.recruitmentEvents, event];
+    final updated = job.copyWith(
+      recruitmentEvents: updatedEvents,
+      updatedAt: DateTime.now(),
+    );
+    await updateJob(updated);
+  }
+
+  /// Menunda (snooze) pengingat follow-up
+  Future<void> snoozeFollowUp(
+    String jobId, {
+    Duration duration = const Duration(days: 3),
+    DateTime? customDate,
+  }) async {
+    final job = state.jobs.firstWhere((j) => j.id == jobId);
+    final targetDate = customDate ?? DateTime.now().add(duration);
+    final event = RecruitmentEvent(
+      id: 'evt_snooze_${DateTime.now().millisecondsSinceEpoch}',
+      type: 'followup_snooze',
+      title: 'Follow-up Ditunda',
+      occurredAt: DateTime.now(),
+      scheduledAt: targetDate,
+      notes:
+          'Pengingat follow-up ditunda hingga ${_formatDateSimple(targetDate)}',
+    );
+    final updated = job.copyWith(
+      nextActionAt: targetDate,
+      nextActionType: 'Follow-up HR',
+      nextActionNote: 'Tindak lanjut HR (Snoozed)',
+      recruitmentEvents: [...job.recruitmentEvents, event],
+      updatedAt: DateTime.now(),
+    );
+    await updateJob(updated);
+  }
+
+  /// Menandai follow-up sudah dilakukan atau diabaikan
+  Future<void> dismissFollowUp(
+    String jobId, {
+    bool noFollowUpNeeded = false,
+  }) async {
+    final job = state.jobs.firstWhere((j) => j.id == jobId);
+    final now = DateTime.now();
+    final event = RecruitmentEvent(
+      id: 'evt_followup_${now.millisecondsSinceEpoch}',
+      type: noFollowUpNeeded ? 'followup_dismissed' : 'followup_done',
+      title: noFollowUpNeeded ? 'Follow-up Diabaikan' : 'Follow-up Terkirim',
+      occurredAt: now,
+      notes: noFollowUpNeeded
+          ? 'Pengguna memilih tidak perlu follow-up untuk lowongan ini.'
+          : 'Pengguna telah menghubungi recruiter / HR untuk follow-up.',
+    );
+    final updated = job.copyWith(
+      lastFollowUpAt: now,
+      followUpCount: job.followUpCount + 1,
+      clearNextAction: true,
+      recruitmentEvents: [...job.recruitmentEvents, event],
+      updatedAt: now,
+    );
+    await updateJob(updated);
+  }
+
+  /// Menyelesaikan tindakan lanjutan (Next Action)
+  Future<void> completeNextAction(String jobId, {String? outcome}) async {
+    final job = state.jobs.firstWhere((j) => j.id == jobId);
+    final now = DateTime.now();
+    final event = RecruitmentEvent(
+      id: 'evt_action_done_${now.millisecondsSinceEpoch}',
+      type: 'action_completed',
+      title: job.nextActionType ?? 'Tindakan Selesai',
+      occurredAt: now,
+      completedAt: now,
+      notes: job.nextActionNote,
+      outcome: outcome,
+    );
+    final updated = job.copyWith(
+      clearNextAction: true,
+      recruitmentEvents: [...job.recruitmentEvents, event],
+      updatedAt: now,
+    );
+    await updateJob(updated);
+  }
+
+  /// Menjadwalkan ulang (reschedule) tanpa menghapus histori sebelumnya
+  Future<void> rescheduleStage(
+    String jobId,
+    DateTime newDate, {
+    String? reason,
+  }) async {
+    final job = state.jobs.firstWhere((j) => j.id == jobId);
+    final now = DateTime.now();
+    final event = RecruitmentEvent(
+      id: 'evt_resched_${now.millisecondsSinceEpoch}',
+      type: 'reschedule',
+      title: 'Jadwal Diubah (${job.status})',
+      occurredAt: now,
+      scheduledAt: newDate,
+      notes: reason ?? 'Jadwal interview/tes disesuaikan ke tanggal baru.',
+    );
+    final updated = job.copyWith(
+      interviewDate: job.status.startsWith('Interview')
+          ? newDate
+          : job.interviewDate,
+      testDate: job.status == 'Tes / Psikotes' ? newDate : job.testDate,
+      recruitmentEvents: [...job.recruitmentEvents, event],
+      updatedAt: now,
+    );
+    await updateJob(updated);
+  }
+
+  static String _formatDateSimple(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   void setSearchQuery(String query) {
     state = state.copyWith(searchQuery: query);
@@ -695,11 +852,17 @@ class JobNotifier extends StateNotifier<JobState> {
   Future<void> setUserName(String name) async {
     await PrefsService.setUserName(name);
     state = state.copyWith(userName: name);
+    await ProfileRepository().saveProfile(
+      ProfileRepository().currentProfile.copyWith(name: name),
+    );
   }
 
   Future<void> setUserEmail(String email) async {
     await PrefsService.setUserEmail(email);
     state = state.copyWith(userEmail: email);
+    await ProfileRepository().saveProfile(
+      ProfileRepository().currentProfile.copyWith(email: email),
+    );
   }
 
   Future<void> setUserProfilePhoto(String sourcePath) async {
@@ -724,7 +887,80 @@ class JobNotifier extends StateNotifier<JobState> {
     final previousPath = state.userProfilePhoto;
     await PrefsService.setProfilePhoto(profilePhotoPath);
     state = state.copyWith(userProfilePhoto: profilePhotoPath);
+    await ProfileRepository().saveProfile(
+      ProfileRepository().currentProfile.copyWith(avatarPath: profilePhotoPath),
+    );
     await _deleteManagedProfilePhoto(previousPath);
+  }
+
+  /// Applies one archive mutation and one provider rebuild for selection mode.
+  /// The returned originals can be passed to [restoreJobs] for Undo.
+  Future<List<JobApplication>> archiveJobs(Iterable<String> ids) async {
+    final selected = ids.toSet();
+    final originals = state.jobs
+        .where((job) => selected.contains(job.id))
+        .toList(growable: false);
+    if (originals.isEmpty) return const [];
+    final now = DateTime.now();
+    final replacements = <String, JobApplication>{
+      for (final job in originals)
+        job.id: job.copyWith(
+          status: 'Dibatalkan',
+          closedAt: now,
+          updatedAt: now,
+        ),
+    };
+    final box = await _boxReady;
+    await box.putAll({
+      for (final entry in replacements.entries) entry.key: entry.value.toJson(),
+    });
+    final updated = _normalizedJobs(
+      state.jobs.map((job) => replacements[job.id] ?? job),
+    );
+    state = state.copyWith(jobs: updated);
+    for (final id in selected) {
+      _cancelReminderQuietly(id);
+    }
+    _syncWidgetQuietly(updated);
+    return originals;
+  }
+
+  Future<void> restoreJobs(Iterable<JobApplication> jobs) async {
+    final restored = {for (final job in jobs) job.id: job};
+    if (restored.isEmpty) return;
+    final box = await _boxReady;
+    await box.putAll({
+      for (final entry in restored.entries) entry.key: entry.value.toJson(),
+    });
+    final existingIds = state.jobs.map((job) => job.id).toSet();
+    final merged = [
+      for (final job in state.jobs) restored[job.id] ?? job,
+      for (final job in restored.values)
+        if (!existingIds.contains(job.id)) job,
+    ];
+    final normalized = _normalizedJobs(merged);
+    state = state.copyWith(jobs: normalized);
+    _syncRemindersQuietly(normalized);
+    _syncWidgetQuietly(normalized);
+  }
+
+  Future<List<JobApplication>> deleteJobs(Iterable<String> ids) async {
+    final selected = ids.toSet();
+    final removed = state.jobs
+        .where((job) => selected.contains(job.id))
+        .toList(growable: false);
+    if (removed.isEmpty) return const [];
+    final box = await _boxReady;
+    await box.deleteAll(selected);
+    final updated = state.jobs
+        .where((job) => !selected.contains(job.id))
+        .toList(growable: false);
+    state = state.copyWith(jobs: updated);
+    for (final id in selected) {
+      _cancelReminderQuietly(id);
+    }
+    _syncWidgetQuietly(updated);
+    return removed;
   }
 
   Future<void> _deleteManagedProfilePhoto(String path) async {
@@ -751,18 +987,37 @@ class JobNotifier extends StateNotifier<JobState> {
     final now = DateTime.now();
     return [
       JobApplication(
+        id: 'sample_idka',
+        companyName: 'IDKA Solutions',
+        position: 'Digital Marketing',
+        status: 'Interview User',
+        appliedDate: now.subtract(const Duration(days: 1)),
+        salaryOffered: 'Rp 3 jt / bln',
+        minSalary: 3000000,
+        maxSalary: 3000000,
+        workType: 'Hybrid',
+        location: 'Yogyakarta',
+        jobSource: 'IDKA Portal',
+        sourcePlatform: 'IDKA Portal',
+        companyLogoPath: 'assets/portal_logos/idka_logo.png',
+        jobDescription:
+            'Mengelola kampanye pemasaran digital, pembuatan konten kreatif, optimasi media sosial, dan strategi brand IDKA Solutions.',
+        isFavorite: true,
+        isSampleData: true,
+      ),
+      JobApplication(
         id: 'sample_nusa',
         companyName: 'Nusa Tech',
         position: 'Flutter Dev',
         status: 'Interview HR',
-        appliedDate: now.subtract(const Duration(days: 1)),
+        appliedDate: now.subtract(const Duration(days: 2)),
         salaryOffered: 'Rp 8–11 jt / bln',
         minSalary: 8000000,
         maxSalary: 11000000,
         workType: 'Hybrid',
         location: 'Jakarta',
-        jobSource: 'Portal A',
-        sourcePlatform: 'Portal A',
+        jobSource: 'Glints',
+        sourcePlatform: 'Glints',
         jobDescription:
             'Data dummy untuk mencoba tampilan detail lamaran dan fitur pelacakan.',
         isFavorite: true,
@@ -773,14 +1028,14 @@ class JobNotifier extends StateNotifier<JobState> {
         companyName: 'Karsa Labs',
         position: 'UI Designer',
         status: 'Offering',
-        appliedDate: now.subtract(const Duration(days: 2)),
+        appliedDate: now.subtract(const Duration(days: 3)),
         salaryOffered: 'Rp 7–10 jt / bln',
         minSalary: 7000000,
         maxSalary: 10000000,
         workType: 'WFO',
         location: 'Bandung',
-        jobSource: 'Portal B',
-        sourcePlatform: 'Portal B',
+        jobSource: 'JobStreet',
+        sourcePlatform: 'JobStreet',
         jobDescription:
             'Data dummy untuk melihat contoh lowongan desain di dalam tracker.',
         isFavorite: true,
@@ -791,70 +1046,16 @@ class JobNotifier extends StateNotifier<JobState> {
         companyName: 'Bumi Data',
         position: 'Data Analis',
         status: 'Tes / Psikotes',
-        appliedDate: now.subtract(const Duration(days: 3)),
+        appliedDate: now.subtract(const Duration(days: 4)),
         salaryOffered: 'Rp 7–9 jt / bln',
         minSalary: 7000000,
         maxSalary: 9000000,
         workType: 'WFH',
         location: 'Remote',
-        jobSource: 'Portal C',
-        sourcePlatform: 'Portal C',
+        jobSource: 'LinkedIn',
+        sourcePlatform: 'LinkedIn',
         jobDescription:
             'Data dummy untuk mencoba informasi gaji, lokasi, dan mode kerja.',
-        isFavorite: false,
-        isSampleData: true,
-      ),
-      JobApplication(
-        id: 'sample_aruna',
-        companyName: 'Aruna Mart',
-        position: 'QA Engineer',
-        status: 'Dikirim',
-        appliedDate: now.subtract(const Duration(days: 4)),
-        salaryOffered: 'Rp 6–9 jt / bln',
-        minSalary: 6000000,
-        maxSalary: 9000000,
-        workType: 'Hybrid',
-        location: 'Surabaya',
-        jobSource: 'Portal D',
-        sourcePlatform: 'Portal D',
-        jobDescription:
-            'Data dummy untuk mengeksplorasi catatan dan detail proses seleksi.',
-        isFavorite: true,
-        isSampleData: true,
-      ),
-      JobApplication(
-        id: 'sample_sora',
-        companyName: 'Sora Bank',
-        position: 'HR Officer',
-        status: 'Interview User',
-        appliedDate: now.subtract(const Duration(days: 5)),
-        salaryOffered: 'Rp 6–8 jt / bln',
-        minSalary: 6000000,
-        maxSalary: 8000000,
-        workType: 'WFO',
-        location: 'Bekasi',
-        jobSource: 'Portal E',
-        sourcePlatform: 'Portal E',
-        jobDescription:
-            'Data dummy untuk memahami susunan informasi pada kartu lamaran.',
-        isFavorite: false,
-        isSampleData: true,
-      ),
-      JobApplication(
-        id: 'sample_tera',
-        companyName: 'Tera Media',
-        position: 'Copywriter',
-        status: 'Dikirim',
-        appliedDate: now.subtract(const Duration(days: 6)),
-        salaryOffered: 'Rp 5–7 jt / bln',
-        minSalary: 5000000,
-        maxSalary: 7000000,
-        workType: 'WFH',
-        location: 'Bogor',
-        jobSource: 'Portal F',
-        sourcePlatform: 'Portal F',
-        jobDescription:
-            'Data dummy untuk mencoba pencarian, bookmark, serta mode grid dan list.',
         isFavorite: false,
         isSampleData: true,
       ),

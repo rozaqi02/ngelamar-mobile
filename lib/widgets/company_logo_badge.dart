@@ -123,7 +123,15 @@ class CompanyLogoBadge extends StatelessWidget {
         painter: _SampleCompanyLogoPainter(sampleBrand),
       );
     }
-    if (lower.contains('goto') || lower.contains('gojek')) {
+    if (lower.contains('idka')) {
+      return Image.asset(
+        'assets/portal_logos/idka_logo.png',
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildGoToLogo(),
+      );
+    } else if (lower.contains('goto') || lower.contains('gojek')) {
       return _buildGoToLogo();
     } else if (lower.contains('shopee')) {
       return _buildShopeeLogo();

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome (themed) variant of the Ngelamar mascot envelope. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.72"
+        android:scaleY="0.72"
+        android:translateX="15.12"
+        android:translateY="15.12">
+
+        <!-- Envelope silhouette with flap cut out -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z M16,26.5 L50,53.5 L84,26.5 L87,30.5 L52,58.5 Q50,60 48,58.5 L13,30.5 Z"
+            android:fillType="evenOdd" />
+
+        <!-- Eyes -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M41.5,51 A5.5,5.5 0 1,1 30.5,51 A5.5,5.5 0 1,1 41.5,51 Z" />
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="3.2"
+            android:strokeLineCap="round"
+            android:pathData="M60,52 Q64,45 68,52" />
+
+        <!-- Smile -->
+        <path
+            android:strokeColor="#000000"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M48,57 Q50,61 52,57" />
+
+        <!-- Waving hand -->
+        <path
+            android:fillColor="#000000"
+            android:pathData="M92.25,40 A6.25,6.25 0 1,1 79.75,40 A6.25,6.25 0 1,1 92.25,40 Z" />
+    </group>
+</vector>

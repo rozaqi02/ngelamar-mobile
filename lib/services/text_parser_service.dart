@@ -11,6 +11,8 @@ class ParsedJobData {
   final String? jobUrl;
   final String? hrContact;
   final String sourcePlatform;
+  final double confidenceScore;
+  final Map<String, bool> fieldConfidence;
 
   ParsedJobData({
     required this.companyName,
@@ -23,7 +25,9 @@ class ParsedJobData {
     this.jobUrl,
     this.hrContact,
     this.sourcePlatform = 'Manual',
-  });
+    this.confidenceScore = 1.0,
+    Map<String, bool>? fieldConfidence,
+  }) : fieldConfidence = fieldConfidence ?? const {};
 }
 
 class TextParserService {
@@ -43,9 +47,10 @@ class TextParserService {
       return ParsedJobData(
         companyName: '',
         position: '',
-        workType: 'WFO',
+        workType: '',
         rawDescription: '',
         extractedSkills: [],
+        confidenceScore: 0.0,
       );
     }
 
@@ -60,7 +65,24 @@ class TextParserService {
     }
 
     // 2. Jika bukan URL atau URL offline, parse sebagai teks postingan
-    return parseJobText(trimmed);
+    final parsed = parseJobText(trimmed);
+    if (urlMatch != null && (parsed.jobUrl == null || parsed.jobUrl!.isEmpty)) {
+      return ParsedJobData(
+        companyName: parsed.companyName,
+        position: parsed.position,
+        workType: parsed.workType,
+        salary: parsed.salary,
+        location: parsed.location,
+        rawDescription: parsed.rawDescription,
+        extractedSkills: parsed.extractedSkills,
+        jobUrl: urlMatch.group(0)!,
+        hrContact: parsed.hrContact,
+        sourcePlatform: parsed.sourcePlatform,
+        confidenceScore: parsed.confidenceScore,
+        fieldConfidence: parsed.fieldConfidence,
+      );
+    }
+    return parsed;
   }
 
   /// Ekstraksi cerdas dari URL lowongan
@@ -81,6 +103,8 @@ class TextParserService {
         extractedSkills: parsed.extractedSkills,
         jobUrl: url,
         hrContact: parsed.hrContact,
+        confidenceScore: parsed.confidenceScore,
+        fieldConfidence: parsed.fieldConfidence,
       );
     }
     final safeUri = uri!;
@@ -190,17 +214,25 @@ class TextParserService {
 
     final parsedFromText = parseJobText(description);
 
+    final resolvedCompany = company.isNotEmpty
+        ? company
+        : (parsedFromText.companyName.isNotEmpty
+              ? parsedFromText.companyName
+              : 'Perusahaan Baru');
+    final resolvedPosition = position.isNotEmpty
+        ? position
+        : (parsedFromText.position.isNotEmpty
+              ? parsedFromText.position
+              : 'Posisi Lowongan');
+
+    final isCompanyConfident = resolvedCompany != 'Perusahaan Baru';
+    final isPositionConfident = resolvedPosition != 'Posisi Lowongan';
+    double confidence =
+        (isCompanyConfident ? 0.5 : 0.0) + (isPositionConfident ? 0.5 : 0.0);
+
     return ParsedJobData(
-      companyName: company.isNotEmpty
-          ? company
-          : (parsedFromText.companyName.isNotEmpty
-                ? parsedFromText.companyName
-                : 'Perusahaan Lowongan'),
-      position: position.isNotEmpty
-          ? position
-          : (parsedFromText.position.isNotEmpty
-                ? parsedFromText.position
-                : 'Posisi Lowongan'),
+      companyName: resolvedCompany,
+      position: resolvedPosition,
       workType: parsedFromText.workType,
       salary: parsedFromText.salary,
       location: parsedFromText.location,
@@ -209,6 +241,13 @@ class TextParserService {
       jobUrl: url,
       hrContact: parsedFromText.hrContact,
       sourcePlatform: platform,
+      confidenceScore: confidence,
+      fieldConfidence: {
+        'company': isCompanyConfident,
+        'position': isPositionConfident,
+        'salary': parsedFromText.salary != null,
+        'location': parsedFromText.location != null,
+      },
     );
   }
 
@@ -226,9 +265,13 @@ class TextParserService {
     var t = text
         .replaceAll(
           RegExp(
-            r'(\d+|job|lowongan|kerja|hiring|recruitment|rekrutmen)',
+            r'^(we are hiring|hiring|lowongan kerja|lowongan|loker)\s*[:\-–]?\s*',
             caseSensitive: false,
           ),
+          '',
+        )
+        .replaceAll(
+          RegExp(r'\b(lowongan kerja|loker)\b', caseSensitive: false),
           ' ',
         )
         .trim();
@@ -247,7 +290,7 @@ class TextParserService {
   static String _cleanCompany(String text) {
     var c = text
         .replaceAll(
-          RegExp(r'(\d+|careers?|karir|official|loker)', caseSensitive: false),
+          RegExp(r'\b(careers?|karir|official|loker)\b', caseSensitive: false),
           ' ',
         )
         .trim();
@@ -275,7 +318,7 @@ class TextParserService {
 
     String companyName = '';
     String position = '';
-    String workType = 'WFO';
+    String workType = '';
     String? salary;
     String? location;
     String? hrContact;
@@ -292,7 +335,12 @@ class TextParserService {
         lowerText.contains('remote') ||
         lowerText.contains('kerja dari rumah')) {
       workType = 'WFH';
-    } else {
+    } else if (lowerText.contains('wfo') ||
+        lowerText.contains('work from office') ||
+        lowerText.contains('on-site') ||
+        lowerText.contains('onsite') ||
+        lowerText.contains('kerja di kantor') ||
+        lowerText.contains('di kantor')) {
       workType = 'WFO';
     }
 

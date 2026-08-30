@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/job_provider.dart';
+import '../../models/career_context.dart';
 import '../../services/prefs_service.dart';
 import '../../services/salary_evaluator_service.dart';
 import '../../theme/app_theme.dart';
@@ -19,8 +20,13 @@ import 'career_prep_welcome_screen.dart';
 
 class FreshGradPrepScreen extends ConsumerStatefulWidget {
   final bool embedded;
+  final CareerContext? careerContext;
 
-  const FreshGradPrepScreen({super.key, this.embedded = false});
+  const FreshGradPrepScreen({
+    super.key,
+    this.embedded = false,
+    this.careerContext,
+  });
 
   @override
   ConsumerState<FreshGradPrepScreen> createState() =>
@@ -378,7 +384,9 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
     final pageColor = isDark
-        ? const Color(0xFF121614)
+        ? const Color(0xFF0F1B14)
+        : widget.embedded
+        ? const Color(0xFFE8F5E9)
         : const Color(0xFFFAF9F6);
 
     final checkedDocsCount = _checkedCount;
@@ -459,36 +467,71 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              WelcomeScreenRoute(
-                                child: const CareerPrepWelcomeScreen(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!widget.embedded &&
+                                Navigator.canPop(context)) ...[
+                              GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.of(context).pop();
+                                },
+                                child: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF222226)
+                                        : Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF333338)
+                                          : const Color(0xFFE5E0D5),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    CupertinoIcons.back,
+                                    size: 18,
+                                    color: txtPri,
+                                  ),
+                                ),
                               ),
-                            );
-                          },
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF222226)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF333338)
-                                    : const Color(0xFFE5E0D5),
+                              const SizedBox(width: 8),
+                            ],
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.push(
+                                  context,
+                                  WelcomeScreenRoute(
+                                    child: const CareerPrepWelcomeScreen(),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF222226)
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF333338)
+                                        : const Color(0xFFE5E0D5),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.question_circle_fill,
+                                  size: 18,
+                                  color: Color(0xFFF59E0B),
+                                ),
                               ),
                             ),
-                            child: const Icon(
-                              CupertinoIcons.question_circle_fill,
-                              size: 18,
-                              color: Color(0xFFF59E0B),
-                            ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -506,6 +549,58 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (widget.careerContext != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1F3025)
+                              : const Color(0xFFDDF2E3),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Color(0xFF17824F),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.careerContext!.practiceTitle,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: txtPri,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Tahap ${widget.careerContext!.status}',
+                                    style: TextStyle(
+                                      color: txtSec,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1086,7 +1181,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                         Text(
                           _useCustomUmr
                               ? 'Input Manual Aktif'
-                              : 'Standar Resmi 2025/2026',
+                              : 'Referensi ${SalaryEvaluatorService.currentDatasetYear}',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark
@@ -1138,6 +1233,20 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                   ),
                 ],
               ),
+
+              if (!_useCustomUmr) ...[
+                const SizedBox(height: 8),
+                Text(
+                  SalaryEvaluatorService.datasetDisclaimer,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    height: 1.35,
+                    color: isDark
+                        ? const Color(0xFFA0A0A8)
+                        : const Color(0xFF6B6A70),
+                  ),
+                ),
+              ],
 
               if (_useCustomUmr) ...[
                 const SizedBox(height: 8),

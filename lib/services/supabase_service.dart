@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'web_url_replace_stub.dart'
+    if (dart.library.html) 'web_url_replace_web.dart';
+
 class AccountIdentity {
   final String id;
   final String? email;
@@ -101,13 +104,17 @@ class SupabaseService {
   static Future<bool> connectGoogle() async {
     try {
       final user = await ensureAuthenticated();
-      final redirectTo = kIsWeb ? Uri.base.origin : _mobileAuthRedirect;
+      // On web, always return to the clean root URL. Using the default
+      // redirect can land the OAuth callback on a pushed route; a failed
+      // link then looks like a blank page after the reload.
+      final redirectTo = kIsWeb ? '${Uri.base.origin}/' : _mobileAuthRedirect;
       if (user.isAnonymous) {
         try {
           return await client.auth.linkIdentity(
             OAuthProvider.google,
             redirectTo: redirectTo,
             authScreenLaunchMode: LaunchMode.externalApplication,
+            queryParams: const {'prompt': 'select_account'},
           );
         } catch (e) {
           // Signing in is not an equivalent fallback: it can replace the
@@ -120,11 +127,74 @@ class SupabaseService {
         OAuthProvider.google,
         redirectTo: redirectTo,
         authScreenLaunchMode: LaunchMode.externalApplication,
+        queryParams: const {'prompt': 'select_account'},
       );
     } catch (e) {
       debugPrint('connectGoogle error: $e');
       return false;
     }
+  }
+
+  /// Signs in with Google as a standalone account. Unlike [connectGoogle],
+  /// this does NOT link the current anonymous identity; the anonymous UID's
+  /// cloud files and PRO entitlement stay with the old UID. Only call this
+  /// after the user explicitly accepts that trade-off (e.g. when the Google
+  /// identity is already linked to another user).
+  static Future<bool> signInWithGoogle() async {
+    try {
+      final redirectTo = kIsWeb ? '${Uri.base.origin}/' : _mobileAuthRedirect;
+      return await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: redirectTo,
+        authScreenLaunchMode: LaunchMode.externalApplication,
+        queryParams: const {'prompt': 'select_account'},
+      );
+    } catch (e) {
+      debugPrint('signInWithGoogle error: $e');
+      return false;
+    }
+  }
+
+  /// Reads a rejected OAuth redirect (e.g. identity_already_exists) from the
+  /// current web URL so the app can explain it, then scrubs the parameters so
+  /// the next reload does not replay the failure.
+  static ({String code, String description})? consumeOAuthError() {
+    if (!kIsWeb) return null;
+    final uri = Uri.base;
+    final error =
+        uri.queryParameters['error'] ?? _fragmentParams(uri.fragment)['error'];
+    if (error == null) return null;
+    final code =
+        uri.queryParameters['error_code'] ??
+        _fragmentParams(uri.fragment)['error_code'] ??
+        error;
+    final rawDescription =
+        uri.queryParameters['error_description'] ??
+        _fragmentParams(uri.fragment)['error_description'] ??
+        '';
+    try {
+      // ignore: avoid_web_libraries_in_flutter
+      // Clean address bar without triggering another navigation.
+      _replaceWebUrl('${uri.origin}/');
+    } catch (_) {}
+    return (code: code, description: rawDescription.replaceAll('+', ' '));
+  }
+
+  static Map<String, String> _fragmentParams(String fragment) {
+    final result = <String, String>{};
+    for (final segment in fragment.split('&')) {
+      final eq = segment.indexOf('=');
+      if (eq <= 0) continue;
+      result[segment.substring(0, eq)] = Uri.decodeComponent(
+        segment.substring(eq + 1),
+      );
+    }
+    return result;
+  }
+
+  static void _replaceWebUrl(String url) {
+    // Wrapped so tests cannot touch the browser history API.
+    webUrlReplace(url);
   }
 
   static Future<void> signOutToAnonymous() async {

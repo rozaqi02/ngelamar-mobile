@@ -436,8 +436,9 @@ class JobApplication {
       case 'onsite':
       case 'on site':
       case 'wfo':
-      default:
         return 'WFO';
+      default:
+        return 'Belum ditentukan';
     }
   }
 

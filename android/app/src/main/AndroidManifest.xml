@@ -8,6 +8,7 @@
         android:label="Ngelamar"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"
@@ -36,6 +37,11 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="ngelamar" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
         </activity>
         <receiver
             android:exported="false"
@@ -55,7 +61,8 @@
         </receiver>
         <receiver
             android:name=".NgelamarReminderWidgetProvider"
-            android:exported="false"
+            android:exported="true"
+            android:enabled="true"
             android:label="Pengingat Ngelamar">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

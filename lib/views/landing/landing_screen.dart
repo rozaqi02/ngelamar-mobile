@@ -1190,7 +1190,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                         _buildChoiceCard(
                           title: 'Mulai dengan Data Contoh',
                           subtitle:
-                              'Muat 6 lamaran dummy terkunci untuk mengenal fitur tracker.',
+                              'Muat 4 lamaran contoh untuk langsung mencoba fitur aplikasi.',
                           isPrimary: true,
                           badgeText: 'REKOMENDASI',
                           onTap: () => _handleSampleDataSelection(),
@@ -1478,13 +1478,13 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
     HapticFeedback.mediumImpact();
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    // Modal Rincian 6 Data Contoh
+    // Modal Rincian 4 Data Contoh
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx1) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
+        height: MediaQuery.of(context).size.height * 0.76,
         padding: EdgeInsets.fromLTRB(
           22,
           16,
@@ -1507,7 +1507,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Rincian 6 Data Contoh',
+              'Rincian 4 Data Contoh',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
@@ -1523,11 +1523,18 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
             ),
             const SizedBox(height: 14),
 
-            // List of 6 Sample Jobs
+            // List of 4 Sample Jobs
             Expanded(
               child: ListView(
                 physics: const BouncingScrollPhysics(),
                 children: [
+                  _buildSamplePreviewItem(
+                    company: 'IDKA Solutions',
+                    role: 'Digital Marketing',
+                    status: 'Interview User',
+                    salary: 'Rp 3 jt / bln',
+                    statusColor: const Color(0xFF5C44E4),
+                  ),
                   _buildSamplePreviewItem(
                     company: 'Nusa Tech',
                     role: 'Flutter Dev',
@@ -1549,34 +1556,13 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                     salary: 'Rp 7–9 jt / bln',
                     statusColor: const Color(0xFFE65100),
                   ),
-                  _buildSamplePreviewItem(
-                    company: 'Aruna Mart',
-                    role: 'QA Engineer',
-                    status: 'Dikirim',
-                    salary: 'Rp 6–9 jt / bln',
-                    statusColor: const Color(0xFF1565C0),
-                  ),
-                  _buildSamplePreviewItem(
-                    company: 'Sora Bank',
-                    role: 'HR Officer',
-                    status: 'Interview User',
-                    salary: 'Rp 6–8 jt / bln',
-                    statusColor: const Color(0xFF6A1B9A),
-                  ),
-                  _buildSamplePreviewItem(
-                    company: 'Tera Media',
-                    role: 'Copywriter',
-                    status: 'Dikirim',
-                    salary: 'Rp 5–7 jt / bln',
-                    statusColor: const Color(0xFF1565C0),
-                  ),
                 ],
               ),
             ),
 
             const SizedBox(height: 12),
 
-            // Tombol Muat 6 Data Contoh
+            // Tombol Muat 4 Data Contoh
             SizedBox(
               width: double.infinity,
               height: 50,
@@ -1592,7 +1578,7 @@ class _OnboardingTutorialSheetState extends State<OnboardingTutorialSheet> {
                   ),
                 ),
                 child: const Text(
-                  'Gunakan 6 Data Contoh',
+                  'Gunakan 4 Data Contoh',
                   style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                 ),
               ),

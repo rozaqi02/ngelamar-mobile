@@ -1,8 +1,15 @@
 class UmrData {
   final String city;
   final double umrAmount;
+  final String effectiveYear;
+  final String source;
 
-  const UmrData(this.city, this.umrAmount);
+  const UmrData(
+    this.city,
+    this.umrAmount, {
+    this.effectiveYear = '2025/2026',
+    this.source = 'Kemenaker & Kepgub Pemda',
+  });
 }
 
 class SalaryRangeEvaluationResult {
@@ -11,8 +18,14 @@ class SalaryRangeEvaluationResult {
   final bool isRange;
   final double minNetTakeHome;
   final double maxNetTakeHome;
+  final double minBpjsDeduction;
+  final double maxBpjsDeduction;
+  final double minPph21Deduction;
+  final double maxPph21Deduction;
   final double umrAmount;
   final String city;
+  final String effectiveYear;
+  final String source;
   final double minUmrRatio;
   final double maxUmrRatio;
   final double estimatedOperationalCost;
@@ -25,8 +38,14 @@ class SalaryRangeEvaluationResult {
     required this.isRange,
     required this.minNetTakeHome,
     required this.maxNetTakeHome,
+    required this.minBpjsDeduction,
+    required this.maxBpjsDeduction,
+    required this.minPph21Deduction,
+    required this.maxPph21Deduction,
     required this.umrAmount,
     required this.city,
+    this.effectiveYear = '2025/2026',
+    this.source = 'Kemenaker & Kepgub Pemda',
     required this.minUmrRatio,
     required this.maxUmrRatio,
     required this.estimatedOperationalCost,
@@ -36,19 +55,96 @@ class SalaryRangeEvaluationResult {
 }
 
 class SalaryEvaluatorService {
+  static const String currentDatasetYear = '2025/2026';
+  static const String datasetSourceUrl = 'https://satudata.kemnaker.go.id';
+  static const String datasetDisclaimer =
+      'Referensi 2025/2026. Nilai dapat berubah; verifikasi keputusan terbaru pemerintah daerah.';
+
   static const List<UmrData> umrList = [
-    UmrData('Jakarta', 5067381),
-    UmrData('Surabaya', 4725479),
-    UmrData('Tangerang / BSD', 4760000),
-    UmrData('Bekasi', 5343430),
-    UmrData('Depok', 4878612),
-    UmrData('Bogor', 4813988),
-    UmrData('Bandung', 4209309),
-    UmrData('Semarang', 3243969),
-    UmrData('Medan', 3769082),
-    UmrData('Yogyakarta / Jogja', 2492997),
-    UmrData('Bali (Badung)', 3318628),
-    UmrData('Malang', 3309144),
+    UmrData(
+      'Jakarta',
+      5396761,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub DKI Jakarta',
+    ),
+    UmrData(
+      'Bekasi',
+      5698540,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Barat',
+    ),
+    UmrData(
+      'Depok',
+      5195000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Barat',
+    ),
+    UmrData(
+      'Bogor',
+      5132000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Barat',
+    ),
+    UmrData(
+      'Tangerang / BSD',
+      5065000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Banten',
+    ),
+    UmrData(
+      'Surabaya',
+      5035000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Timur',
+    ),
+    UmrData(
+      'Batam',
+      4950000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Kepri',
+    ),
+    UmrData(
+      'Bandung',
+      4492000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Barat',
+    ),
+    UmrData(
+      'Medan',
+      4020000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Sumut',
+    ),
+    UmrData(
+      'Bali (Badung)',
+      3520000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Bali',
+    ),
+    UmrData(
+      'Malang',
+      3525000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Timur',
+    ),
+    UmrData(
+      'Semarang',
+      3460000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Tengah',
+    ),
+    UmrData(
+      'Yogyakarta / Jogja',
+      2650000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub DIY',
+    ),
+    UmrData(
+      'Solo (Surakarta)',
+      2450000,
+      effectiveYear: '2025/2026',
+      source: 'Kepgub Jawa Tengah',
+    ),
   ];
 
   /// Formats currency with Indonesian Rupiah dot separators.
@@ -160,6 +256,14 @@ class SalaryEvaluatorService {
     return double.tryParse(clean) ?? 0.0;
   }
 
+  static double estimatePph21(double gross) {
+    if (gross <= 4500000) return 0.0;
+    if (gross <= 8000000) return gross * 0.015;
+    if (gross <= 15000000) return gross * 0.05;
+    if (gross <= 25000000) return gross * 0.09;
+    return gross * 0.15;
+  }
+
   static SalaryRangeEvaluationResult evaluateSalaryRange({
     required String? rawSalaryInput,
     required String city,
@@ -167,14 +271,28 @@ class SalaryEvaluatorService {
     bool needsKos = true,
     double? customKosCost,
     double? customUmr,
+    double bpjsPercent = 4.0,
+    bool includePph21 = false,
   }) {
     final range = parseSalaryRange(rawSalaryInput);
     final minGross = range.min;
     final maxGross = range.max;
     final isRange = range.isRange;
 
-    final minNetTHP = minGross * 0.96;
-    final maxNetTHP = maxGross * 0.96;
+    final minBpjs = minGross * (bpjsPercent / 100.0);
+    final maxBpjs = maxGross * (bpjsPercent / 100.0);
+
+    final minPph21 = includePph21 ? estimatePph21(minGross) : 0.0;
+    final maxPph21 = includePph21 ? estimatePph21(maxGross) : 0.0;
+
+    final minNetTHP = (minGross - minBpjs - minPph21).clamp(
+      0.0,
+      double.infinity,
+    );
+    final maxNetTHP = (maxGross - maxBpjs - maxPph21).clamp(
+      0.0,
+      double.infinity,
+    );
 
     final umrItem = umrList.firstWhere(
       (element) => element.city.toLowerCase() == city.toLowerCase(),
@@ -189,7 +307,7 @@ class SalaryEvaluatorService {
     final maxUmrRatio = effectiveUmr > 0 ? (maxGross / effectiveUmr) : 1.0;
 
     double operationalCost = 0.0;
-    if (customKosCost != null && customKosCost > 0) {
+    if (customKosCost != null) {
       operationalCost = customKosCost;
     } else if (workType == 'WFH') {
       operationalCost = needsKos ? 2000000 : 1200000;
@@ -208,8 +326,14 @@ class SalaryEvaluatorService {
       isRange: isRange,
       minNetTakeHome: minNetTHP,
       maxNetTakeHome: maxNetTHP,
+      minBpjsDeduction: minBpjs,
+      maxBpjsDeduction: maxBpjs,
+      minPph21Deduction: minPph21,
+      maxPph21Deduction: maxPph21,
       umrAmount: effectiveUmr,
       city: umrItem.city,
+      effectiveYear: umrItem.effectiveYear,
+      source: umrItem.source,
       minUmrRatio: minUmrRatio,
       maxUmrRatio: maxUmrRatio,
       estimatedOperationalCost: operationalCost,
@@ -225,6 +349,8 @@ class SalaryEvaluatorService {
     bool needsKos = true,
     double? customKosCost,
     double? customUmr,
+    double bpjsPercent = 4.0,
+    bool includePph21 = false,
   }) {
     final res = evaluateSalaryRange(
       rawSalaryInput: grossSalary.toString(),
@@ -233,13 +359,18 @@ class SalaryEvaluatorService {
       needsKos: needsKos,
       customKosCost: customKosCost,
       customUmr: customUmr,
+      bpjsPercent: bpjsPercent,
+      includePph21: includePph21,
     );
     return SalaryEvaluationResult(
       grossSalary: res.minGross,
-      estimatedBpjsDeduction: res.minGross * 0.04,
+      estimatedBpjsDeduction: res.minBpjsDeduction,
+      estimatedPph21Deduction: res.minPph21Deduction,
       estimatedNetTakeHomePay: res.minNetTakeHome,
       umrAmount: res.umrAmount,
       city: res.city,
+      effectiveYear: res.effectiveYear,
+      source: res.source,
       umrRatio: res.minUmrRatio,
       estimatedOperationalCost: res.estimatedOperationalCost,
       estimatedNetSavings: res.minSavings,
@@ -250,9 +381,12 @@ class SalaryEvaluatorService {
 class SalaryEvaluationResult {
   final double grossSalary;
   final double estimatedBpjsDeduction;
+  final double estimatedPph21Deduction;
   final double estimatedNetTakeHomePay;
   final double umrAmount;
   final String city;
+  final String effectiveYear;
+  final String source;
   final double umrRatio;
   final double estimatedOperationalCost;
   final double estimatedNetSavings;
@@ -260,9 +394,12 @@ class SalaryEvaluationResult {
   SalaryEvaluationResult({
     required this.grossSalary,
     required this.estimatedBpjsDeduction,
+    this.estimatedPph21Deduction = 0.0,
     required this.estimatedNetTakeHomePay,
     required this.umrAmount,
     required this.city,
+    this.effectiveYear = '2025/2026',
+    this.source = 'Kemenaker & Kepgub Pemda',
     required this.umrRatio,
     required this.estimatedOperationalCost,
     required this.estimatedNetSavings,

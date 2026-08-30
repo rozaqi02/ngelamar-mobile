@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/prefs_service.dart';
@@ -22,13 +21,6 @@ class JobListWelcomeScreen extends StatelessWidget {
     final isDark = AppTheme.isDark(context);
 
     final bgColor = isDark ? const Color(0xFF161224) : const Color(0xFFF6F2FC);
-    final tonalBtnColor = isDark
-        ? const Color(0xFF261E3D)
-        : const Color(0xFFEADBFC);
-    final tonalIconColor = isDark
-        ? const Color(0xFFD8B4FE)
-        : const Color(0xFF4A1A78);
-
     final txtPri = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
     final txtSec = isDark ? const Color(0xFFC7BED9) : const Color(0xFF4B5563);
 
@@ -43,36 +35,15 @@ class JobListWelcomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 12),
-
-                // Top Bar with Material 3 Tonal Icon Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FluidBounceButton(
-                      onTap: () => _handleClose(context),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: tonalBtnColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.chevron_down,
-                          color: tonalIconColor,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                // The shared drag handle sits above this content; no close
+                // arrow is needed because the dock can be swiped down.
+                const SizedBox(height: 30),
 
                 const Spacer(),
 
                 // Mascot Canvas
                 const Center(
-                  child: WavingGreetingMascot(width: 132, height: 98),
+                  child: WavingGreetingMascot(width: 220, height: 165),
                 ),
 
                 const Spacer(),

@@ -25,8 +25,9 @@ class FlyToTrackerAnimator {
       final size = MediaQuery.of(context).size;
       startPos ??= Offset(size.width * 0.8, size.height * 0.4);
 
-      // Destination: bottom navigation bar tab "Lamaran" (approx center-left at 50% width on 5 items)
-      final endPos = Offset(size.width * 0.50, size.height - 55);
+      // Destination: tab kedua "Daftar Lamaran". Tombol tengah kini adalah
+      // aksi Catat Lamaran, bukan tujuan tracker.
+      final endPos = Offset(size.width * 0.33, size.height - 55);
 
       final overlay = Overlay.of(context, rootOverlay: true);
       late OverlayEntry entry;

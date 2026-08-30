@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_tokens.dart';
 
 class AppTheme {
   // ─────────────────────────────────────────────────
@@ -124,8 +125,11 @@ class AppTheme {
   }
 
   static bool isDarkCard(Color color) {
-    return color.computeLuminance() < 0.45;
+    return AppColorTokens.contrastRatio(color, Colors.white) >= 4.5;
   }
+
+  static Color getCardForeground(Color color) =>
+      AppColorTokens.light.onStrongCard(color);
 
   // ─────────────────────────────────────────────────
   // Status Color Mapping - Bright Dominant Palette
@@ -196,6 +200,9 @@ class AppTheme {
         onSurface: txtPri,
         onError: Colors.white,
       ),
+      extensions: <ThemeExtension<dynamic>>[
+        isDark ? AppColorTokens.dark : AppColorTokens.light,
+      ],
       textTheme: GoogleFonts.plusJakartaSansTextTheme(
         ThemeData(
           brightness: brightness,

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../constants/app_version.dart';
 import '../services/prefs_service.dart';
 import '../services/remote_config_service.dart';
 import 'landing/landing_screen.dart';
 import 'main_navigation.dart';
 
-import '../widgets/running_envelope_mascot.dart';
+import '../widgets/app_mascot_icon.dart';
 
 /// Splash Screen — Warm Neo-Modern Entrance with Elastic Animations.
 class SplashScreen extends ConsumerStatefulWidget {
@@ -27,7 +28,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 700),
     );
 
     _scaleAnim = Tween<double>(
@@ -41,13 +42,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 350), _navigate);
+      if (mounted) _navigate();
     });
   }
 
   Future<void> _navigate() async {
-    await RemoteConfigService.refresh();
-    if (RemoteConfigService.requiresUpdate('2.25.5')) {
+    // Non-blocking refresh runs in background; check cached version rules immediately
+    if (RemoteConfigService.requiresUpdate(AppVersion.version)) {
       if (!mounted) return;
       await _showRequiredUpdate();
       return;
@@ -92,34 +93,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _goToLanding() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 500),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const LandingScreen(),
-        transitionsBuilder: (context, anim, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-            child: child,
-          );
-        },
-      ),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LandingScreen()));
   }
 
   void _goToMain() {
     Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const MainNavigation(),
-        transitionsBuilder: (context, anim, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-            child: child,
-          );
-        },
-      ),
+      MaterialPageRoute(builder: (_) => const MainNavigation()),
     );
   }
 
@@ -131,7 +112,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    const bg = Color(0xFF0D0D0E);
+    const bg = Color(0xFF111113);
     const txtPri = Colors.white;
     const txtSec = Color(0xFFA1A1AA);
 
@@ -146,28 +127,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               scale: _scaleAnim,
               child: FadeTransition(
                 opacity: _fadeAnim,
-                child: Container(
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF19191B),
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        blurRadius: 28,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 76,
-                      height: 58,
-                      child: RunningEnvelopeMascot(width: 76, height: 58),
-                    ),
-                  ),
-                ),
+                child: const AppMascotIcon(size: 108, borderRadius: 32),
               ),
             ),
             const SizedBox(height: 24),
@@ -186,7 +146,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Personal Career CRM',
+                    'Teman Setia Cari Kerja',
                     style: TextStyle(
                       fontSize: 14,
                       color: txtSec,

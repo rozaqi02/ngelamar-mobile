@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Motion language shared by the Ngelamar screens.
 ///
@@ -35,14 +36,46 @@ abstract final class AppMotion {
     );
   }
 
-  /// A calm, full-screen route for adding or editing an application. It gives
-  /// forms a clear forward direction without the abrupt flash or oversized
-  /// morph used by the old edit transition.
+  /// A supporting workspace slides in from the right and leaves to the right
+  /// on back navigation. Its source remains visible underneath—no fade.
+  static PageRoute<T> hubRoute<T>({required WidgetBuilder builder}) {
+    return PageRouteBuilder<T>(
+      // The non-opaque route preserves Kalender as the continuous surface
+      // underneath the workspace while it slides horizontally.
+      opaque: false,
+      transitionDuration: const Duration(milliseconds: 360),
+      reverseTransitionDuration: const Duration(milliseconds: 320),
+      pageBuilder: (context, animation, secondaryAnimation) => builder(context),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final reduceMotion =
+            MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+        if (reduceMotion) return child;
+        final curve = CurvedAnimation(
+          parent: animation,
+          curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+          reverseCurve: Curves.easeInCubic,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1, 0),
+            end: Offset.zero,
+          ).animate(curve),
+          child: child,
+        );
+      },
+    );
+  }
+
+  /// The application form travels vertically like a sheet modal: it rises
+  /// gracefully from the bottom with a subtle background veil and returns
+  /// there upon dismissal, moving as a single cohesive unit with zero flicker.
   static PageRoute<T> editorRoute<T>({required WidgetBuilder builder}) {
     return PageRouteBuilder<T>(
-      opaque: true,
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 240),
+      opaque: false,
+      barrierColor: Colors.black.withValues(alpha: 0.32),
+      barrierDismissible: false,
+      transitionDuration: const Duration(milliseconds: 520),
+      reverseTransitionDuration: const Duration(milliseconds: 460),
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final reduceMotion =
@@ -51,16 +84,16 @@ abstract final class AppMotion {
 
         final curved = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutCubic,
+          curve: const Cubic(0.16, 1.0, 0.3, 1.0),
           reverseCurve: Curves.easeInCubic,
         );
-        return FadeTransition(
-          opacity: Tween<double>(begin: 0.96, end: 1).animate(curved),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.045),
-              end: Offset.zero,
-            ).animate(curved),
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 1),
+            end: Offset.zero,
+          ).animate(curved),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
             child: child,
           ),
         );
@@ -72,9 +105,9 @@ abstract final class AppMotion {
   /// and clear hero trajectory.
   static PageRoute<T> detailDockRoute<T>({required WidgetBuilder builder}) {
     return PageRouteBuilder<T>(
-      opaque: true,
-      transitionDuration: const Duration(milliseconds: 520),
-      reverseTransitionDuration: const Duration(milliseconds: 440),
+      opaque: false,
+      transitionDuration: const Duration(milliseconds: 650),
+      reverseTransitionDuration: const Duration(milliseconds: 560),
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final reduceMotion =
@@ -89,11 +122,11 @@ abstract final class AppMotion {
 
         return SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.90),
+            begin: const Offset(0, 0.96),
             end: Offset.zero,
           ).animate(curvedAnim),
-          child: FadeTransition(
-            opacity: Tween<double>(begin: 0.85, end: 1.0).animate(curvedAnim),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
             child: child,
           ),
         );
@@ -159,6 +192,245 @@ Widget companyLogoFlightShuttle(
 /// Zero-ghost hero placeholder: reserves the layout space without rendering a
 /// duplicate visible badge at the origin during mid-air flight.
 Widget companyLogoHeroPlaceholder(
+  BuildContext context,
+  Size heroSize,
+  Widget child,
+) => SizedBox.fromSize(size: heroSize);
+
+/// Shared hero configuration for primary action button morphing.
+RectTween actionButtonRectTween(Rect? begin, Rect? end) =>
+    MaterialRectArcTween(begin: begin, end: end);
+
+/// One immutable visual contract for the label at both ends of the add-job
+/// Hero. Keeping the exact family variant and metrics prevents Flutter from
+/// swapping from a synthesized in-flight face to the button's final face.
+TextStyle actionButtonLabelTextStyle() => GoogleFonts.plusJakartaSans(
+  color: Colors.white,
+  fontSize: 15,
+  fontWeight: FontWeight.w800,
+  letterSpacing: -0.2,
+  height: 1,
+  decoration: TextDecoration.none,
+);
+
+String statusActionHeroTag(String jobId) => 'status_action_$jobId';
+
+/// Carries the endpoint colors into the status-action Hero without changing
+/// how either endpoint is laid out or receives taps.
+class StatusActionHeroMetadata extends StatelessWidget {
+  const StatusActionHeroMetadata({
+    super.key,
+    required this.isExpanded,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.child,
+  });
+
+  final bool isExpanded;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+TextStyle statusActionLabelTextStyle(BuildContext context) {
+  final buttonStyle = Theme.of(
+    context,
+  ).elevatedButtonTheme.style?.textStyle?.resolve(const <WidgetState>{});
+  return (buttonStyle ?? DefaultTextStyle.of(context).style).copyWith(
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.2,
+    height: 1,
+    decoration: TextDecoration.none,
+  );
+}
+
+RectTween statusActionRectTween(Rect? begin, Rect? end) =>
+    MaterialRectArcTween(begin: begin, end: end);
+
+Widget statusActionFlightShuttle(
+  BuildContext flightContext,
+  Animation<double> animation,
+  HeroFlightDirection flightDirection,
+  BuildContext fromHeroContext,
+  BuildContext toHeroContext,
+) {
+  StatusActionHeroMetadata metadataOf(BuildContext context) {
+    final hero = context.widget as Hero;
+    return hero.child as StatusActionHeroMetadata;
+  }
+
+  final from = metadataOf(fromHeroContext);
+  final to = metadataOf(toHeroContext);
+  final compact = from.isExpanded ? to : from;
+  final expanded = from.isExpanded ? from : to;
+
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, _) {
+      final forwardTime = flightDirection == HeroFlightDirection.push
+          ? animation.value
+          : 1 - animation.value;
+      final t = Curves.easeInOutCubicEmphasized.transform(forwardTime);
+      final expansion = flightDirection == HeroFlightDirection.push ? t : 1 - t;
+      final arrowOpacity = 1 - const Interval(0.12, 0.38).transform(expansion);
+      final labelOpacity = const Interval(0.54, 0.82).transform(expansion);
+      final background = Color.lerp(
+        compact.backgroundColor,
+        expanded.backgroundColor,
+        expansion,
+      )!;
+      final foreground = Color.lerp(
+        compact.foregroundColor,
+        expanded.foregroundColor,
+        expansion,
+      )!;
+
+      return Material(
+        type: MaterialType.transparency,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18 + (10 * expansion)),
+            boxShadow: expansion > 0.02
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22 * expansion),
+                      blurRadius: 12 * expansion,
+                      offset: Offset(0, 5 * expansion),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: arrowOpacity,
+                child: Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 18,
+                  color: foreground,
+                ),
+              ),
+              Opacity(
+                opacity: labelOpacity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.swap_horiz_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Perbarui Status Lamaran',
+                        style: statusActionLabelTextStyle(flightContext),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget statusActionHeroPlaceholder(
+  BuildContext context,
+  Size heroSize,
+  Widget child,
+) => SizedBox.fromSize(size: heroSize);
+
+/// Rich animated flight shuttle for morphing between dock '+' icon and form save button.
+Widget actionButtonFlightShuttle(
+  BuildContext flightContext,
+  Animation<double> animation,
+  HeroFlightDirection flightDirection,
+  BuildContext fromHeroContext,
+  BuildContext toHeroContext,
+) {
+  final isDark = Theme.of(flightContext).brightness == Brightness.dark;
+  final actionColor = isDark
+      ? const Color(0xFF5C44E4)
+      : const Color(0xFF19191B);
+  final dockRim = isDark ? const Color(0xFF38383E) : const Color(0xFFE5E0D5);
+
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, _) {
+      // Flutter plays a returning Hero's animation backwards (1 → 0). Normalize
+      // it first, then describe both flights in the same visual direction.
+      // Without this, a pop renders CTA → plus → CTA → plus in quick succession.
+      final forwardTime = flightDirection == HeroFlightDirection.push
+          ? animation.value
+          : 1 - animation.value;
+      final t = Curves.easeInOutCubicEmphasized.transform(forwardTime);
+      final expansion = flightDirection == HeroFlightDirection.push ? t : 1 - t;
+      final plusOpacity = 1 - const Interval(0.16, 0.42).transform(expansion);
+      final labelOpacity = const Interval(0.50, 0.76).transform(expansion);
+
+      return Material(
+        type: MaterialType.transparency,
+        child: Container(
+          decoration: BoxDecoration(
+            color: actionColor,
+            borderRadius: BorderRadius.circular(32 - (4 * expansion)),
+            border: Border.all(
+              color: dockRim.withValues(alpha: 1 - expansion),
+              width: 3 * (1 - expansion),
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: plusOpacity,
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
+              ),
+              Opacity(
+                opacity: labelOpacity,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Catat Lamaran Cepat',
+                      style: actionButtonLabelTextStyle(),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Zero-ghost hero placeholder for the primary action button.
+Widget actionButtonHeroPlaceholder(
   BuildContext context,
   Size heroSize,
   Widget child,

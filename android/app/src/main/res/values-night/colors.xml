@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_color">#111113</color>
+    <color name="ngelamar_widget_surface">#18181B</color>
+    <color name="widget_background">#18181B</color>
+    <color name="widget_surface">#27272A</color>
+    <color name="widget_text_primary">#FAFAFA</color>
+    <color name="widget_text_secondary">#A1A1AA</color>
+    <color name="widget_text_muted">#71717A</color>
+    <color name="widget_brand">#818CF8</color>
+    <color name="widget_badge_amber_bg">#451A03</color>
+    <color name="widget_badge_amber_text">#FDE68A</color>
+    <color name="widget_badge_indigo_bg">#1E1B4B</color>
+    <color name="widget_badge_indigo_text">#C7D2FE</color>
+    <color name="widget_btn_bg">#FAFAFA</color>
+    <color name="widget_btn_text">#18181B</color>
+</resources>

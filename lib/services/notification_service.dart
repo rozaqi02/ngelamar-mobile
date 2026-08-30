@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -14,6 +15,36 @@ class NotificationService {
   static const _channelId = 'ngelamar_interview_reminders';
   static const _notificationIdPrefix = 100000000;
   static const _nextActionNotificationIdPrefix = 900000000;
+  static final StreamController<NotificationActionEvent> _actionController =
+      StreamController<NotificationActionEvent>.broadcast();
+  static final List<NotificationActionEvent> _pendingActions = [];
+
+  static Stream<NotificationActionEvent> get actionEvents =>
+      _actionController.stream;
+
+  static List<NotificationActionEvent> drainPendingActions() {
+    final result = List<NotificationActionEvent>.from(_pendingActions);
+    _pendingActions.clear();
+    return result;
+  }
+
+  static void acknowledgeAction(NotificationActionEvent event) {
+    _pendingActions.removeWhere(
+      (pending) =>
+          pending.jobId == event.jobId && pending.actionId == event.actionId,
+    );
+  }
+
+  static void _onNotificationResponse(NotificationResponse response) {
+    final jobId = response.payload?.trim() ?? '';
+    if (jobId.isEmpty || response.actionId?.isEmpty != false) return;
+    final event = NotificationActionEvent(
+      jobId: jobId,
+      actionId: response.actionId!,
+    );
+    _pendingActions.add(event);
+    _actionController.add(event);
+  }
 
   static Future<void> init() async {
     if (kIsWeb || _initialized) return;
@@ -34,7 +65,10 @@ class NotificationService {
 
     try {
       tz_data.initializeTimeZones();
-      await _notificationsPlugin.initialize(initSettings);
+      await _notificationsPlugin.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: _onNotificationResponse,
+      );
 
       final androidPlugin = _notificationsPlugin
           .resolvePlatformSpecificImplementation<
@@ -139,6 +173,11 @@ class NotificationService {
 
   /// Edu-sheet untuk izin notifikasi di Android 13+ (POST_NOTIFICATIONS)
   static Future<bool> promptPermissionIfNeeded(BuildContext context) async {
+    if (await areNotificationsEnabled()) {
+      return true;
+    }
+
+    if (!context.mounted) return false;
     final granted = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -246,10 +285,31 @@ class NotificationService {
     return false;
   }
 
-  static Future<void> syncInterviewReminder(JobApplication job) async {
-    if (kIsWeb) return;
+  static Future<NotificationScheduleResult> syncInterviewReminder(
+    JobApplication job,
+  ) async {
+    if (kIsWeb) {
+      return const NotificationScheduleResult(
+        state: ScheduleState.unsupported,
+        message: 'Notifikasi lokal belum didukung di platform Web.',
+      );
+    }
+    if (job.isSampleData ||
+        job.status == 'Diterima' ||
+        job.status == 'Ditolak' ||
+        job.status == 'Dibatalkan') {
+      return const NotificationScheduleResult(
+        state: ScheduleState.skippedClosedOrSample,
+        message: 'Lamaran berstatus ditutup atau data contoh diabaikan.',
+      );
+    }
     if (!_initialized) await init();
-    if (!_initialized) return;
+    if (!_initialized) {
+      return const NotificationScheduleResult(
+        state: ScheduleState.failed,
+        message: 'Inisialisasi notifikasi lokal gagal.',
+      );
+    }
 
     try {
       final id = notificationIdFor(job.id);
@@ -264,13 +324,17 @@ class NotificationService {
           interviewDate == null ||
           interviewDate.hour != 0 ||
           interviewDate.minute != 0;
-      if (interviewDate == null ||
-          !interviewDate.isAfter(DateTime.now()) ||
-          !isSelectionStage ||
-          !hasExplicitTime ||
-          job.status == 'Diterima' ||
-          job.status == 'Ditolak') {
-        return;
+      if (interviewDate == null || !interviewDate.isAfter(DateTime.now())) {
+        return const NotificationScheduleResult(
+          state: ScheduleState.skippedPastDate,
+          message: 'Tanggal wawancara sudah lewat atau belum ditentukan.',
+        );
+      }
+      if (!isSelectionStage || !hasExplicitTime) {
+        return const NotificationScheduleResult(
+          state: ScheduleState.cancelled,
+          message: 'Bukan tahap seleksi aktif atau jam belum diisi.',
+        );
       }
 
       const androidDetails = AndroidNotificationDetails(
@@ -279,6 +343,18 @@ class NotificationService {
         channelDescription: 'Pengingat jadwal interview & tes lamaran kerja',
         importance: Importance.high,
         priority: Priority.high,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            'complete',
+            'Tandai selesai',
+            showsUserInterface: true,
+          ),
+          AndroidNotificationAction(
+            'snooze_tomorrow',
+            'Tunda besok',
+            showsUserInterface: true,
+          ),
+        ],
       );
       const darwinDetails = DarwinNotificationDetails();
       const details = NotificationDetails(
@@ -316,15 +392,46 @@ class NotificationService {
           payload: job.id,
         );
       }
+
+      return NotificationScheduleResult(
+        state: ScheduleState.scheduled,
+        message: 'Pengingat berhasil dijadwalkan.',
+        scheduledTime: interviewDate,
+      );
     } catch (error) {
       debugPrint('Gagal menjadwalkan pengingat ${job.id}: $error');
+      return NotificationScheduleResult(
+        state: ScheduleState.failed,
+        message: 'Gagal menjadwalkan pengingat: $error',
+      );
     }
   }
 
-  static Future<void> syncNextActionReminder(JobApplication job) async {
-    if (kIsWeb) return;
+  static Future<NotificationScheduleResult> syncNextActionReminder(
+    JobApplication job,
+  ) async {
+    if (kIsWeb) {
+      return const NotificationScheduleResult(
+        state: ScheduleState.unsupported,
+        message: 'Notifikasi lokal belum didukung di platform Web.',
+      );
+    }
+    if (job.isSampleData ||
+        job.status == 'Diterima' ||
+        job.status == 'Ditolak' ||
+        job.status == 'Dibatalkan') {
+      return const NotificationScheduleResult(
+        state: ScheduleState.skippedClosedOrSample,
+        message: 'Lamaran berstatus ditutup atau data contoh diabaikan.',
+      );
+    }
     if (!_initialized) await init();
-    if (!_initialized) return;
+    if (!_initialized) {
+      return const NotificationScheduleResult(
+        state: ScheduleState.failed,
+        message: 'Inisialisasi notifikasi lokal gagal.',
+      );
+    }
 
     final id = nextActionNotificationIdFor(job.id);
     try {
@@ -332,10 +439,11 @@ class NotificationService {
       final dueAt = job.nextActionAt;
       if (dueAt == null ||
           !dueAt.isAfter(DateTime.now()) ||
-          job.nextActionType == null ||
-          job.status == 'Diterima' ||
-          job.status == 'Ditolak') {
-        return;
+          job.nextActionType == null) {
+        return const NotificationScheduleResult(
+          state: ScheduleState.skippedPastDate,
+          message: 'Tindakan lanjutan belum ditentukan atau sudah lewat.',
+        );
       }
 
       const details = NotificationDetails(
@@ -345,6 +453,18 @@ class NotificationService {
           channelDescription: 'Pengingat tindakan dan jadwal lamaran kerja',
           importance: Importance.high,
           priority: Priority.high,
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction(
+              'complete',
+              'Tandai selesai',
+              showsUserInterface: true,
+            ),
+            AndroidNotificationAction(
+              'snooze_tomorrow',
+              'Tunda besok',
+              showsUserInterface: true,
+            ),
+          ],
         ),
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
@@ -362,8 +482,18 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: job.id,
       );
+
+      return NotificationScheduleResult(
+        state: ScheduleState.scheduled,
+        message: 'Pengingat tindakan lanjutan berhasil dijadwalkan.',
+        scheduledTime: dueAt,
+      );
     } catch (error) {
       debugPrint('Gagal menjadwalkan tindakan berikutnya ${job.id}: $error');
+      return NotificationScheduleResult(
+        state: ScheduleState.failed,
+        message: 'Gagal menjadwalkan tindakan lanjutan: $error',
+      );
     }
   }
 
@@ -452,4 +582,35 @@ class NotificationService {
       debugPrint('Gagal membatalkan seluruh pengingat: $e');
     }
   }
+}
+
+enum ScheduleState {
+  scheduled,
+  failed,
+  skippedPastDate,
+  skippedClosedOrSample,
+  permissionDenied,
+  unsupported,
+  cancelled,
+}
+
+class NotificationScheduleResult {
+  final ScheduleState state;
+  final String message;
+  final DateTime? scheduledTime;
+
+  const NotificationScheduleResult({
+    required this.state,
+    required this.message,
+    this.scheduledTime,
+  });
+
+  bool get isSuccess => state == ScheduleState.scheduled;
+}
+
+class NotificationActionEvent {
+  final String jobId;
+  final String actionId;
+
+  const NotificationActionEvent({required this.jobId, required this.actionId});
 }

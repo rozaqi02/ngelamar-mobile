@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 class AppleBouncyCard extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final bool selected;
   final double scaleFactor;
   final Duration duration;
   final String? semanticLabel;
@@ -14,6 +16,8 @@ class AppleBouncyCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
+    this.selected = false,
     this.scaleFactor = 0.965,
     this.duration = const Duration(milliseconds: 140),
     this.semanticLabel,
@@ -33,6 +37,7 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
     return Semantics(
       button: widget.onTap != null,
       enabled: widget.onTap != null,
+      selected: widget.selected,
       label: widget.semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -46,6 +51,7 @@ class _AppleBouncyCardState extends State<AppleBouncyCard> {
             ? null
             : () => setState(() => _isPressed = false),
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: AnimatedScale(
           scale: !reduceMotion && _isPressed ? widget.scaleFactor : 1.0,
           duration: reduceMotion ? Duration.zero : widget.duration,
