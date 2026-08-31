@@ -28,9 +28,20 @@ class ParsedJobData {
     this.confidenceScore = 1.0,
     Map<String, bool>? fieldConfidence,
   }) : fieldConfidence = fieldConfidence ?? const {};
+
+  bool get hasUsableCompany =>
+      companyName.trim().isNotEmpty &&
+      !TextParserService.isPlaceholderCompany(companyName);
+
+  bool get hasUsablePosition =>
+      position.trim().isNotEmpty &&
+      !TextParserService.isPlaceholderPosition(position);
 }
 
 class TextParserService {
+  static const placeholderCompany = 'Perusahaan Baru';
+  static const placeholderPosition = 'Posisi Lowongan';
+
   static const _supportedJobHosts = <String>[
     'linkedin.com',
     'jobstreet.com',
@@ -38,7 +49,26 @@ class TextParserService {
     'glints.com',
     'indeed.com',
     'kalibrr.com',
+    'kitalulus.com',
+    'karir.com',
   ];
+
+  static bool isPlaceholderCompany(String name) {
+    final n = name.trim().toLowerCase();
+    return n.isEmpty ||
+        n == placeholderCompany.toLowerCase() ||
+        n == 'perusahaan' ||
+        n == 'company';
+  }
+
+  static bool isPlaceholderPosition(String name) {
+    final n = name.trim().toLowerCase();
+    return n.isEmpty ||
+        n == placeholderPosition.toLowerCase() ||
+        n == 'posisi' ||
+        n == 'position' ||
+        n == 'lowongan';
+  }
 
   /// Ekstraksi otomatis dari URL (LinkedIn, JobStreet, Glints, Indeed, dll.) atau Teks Bebas.
   static Future<ParsedJobData> extractFromUrlOrText(String input) async {
@@ -54,18 +84,18 @@ class TextParserService {
       );
     }
 
-    // 1. Cek apakah input mengandung URL
+    final normalized = _ensureUrlProtocol(trimmed);
+
     final urlReg = RegExp(r'https?://[^\s]+', caseSensitive: false);
-    final urlMatch = urlReg.firstMatch(trimmed);
+    final urlMatch = urlReg.firstMatch(normalized);
 
     if (urlMatch != null) {
       final detectedUrl = urlMatch.group(0)!;
-      final urlParsed = await _extractFromUrl(detectedUrl, trimmed);
+      final urlParsed = await _extractFromUrl(detectedUrl, normalized);
       if (urlParsed != null) return urlParsed;
     }
 
-    // 2. Jika bukan URL atau URL offline, parse sebagai teks postingan
-    final parsed = parseJobText(trimmed);
+    final parsed = parseJobText(normalized);
     if (urlMatch != null && (parsed.jobUrl == null || parsed.jobUrl!.isEmpty)) {
       return ParsedJobData(
         companyName: parsed.companyName,
@@ -85,7 +115,16 @@ class TextParserService {
     return parsed;
   }
 
-  /// Ekstraksi cerdas dari URL lowongan
+  static String _ensureUrlProtocol(String input) {
+    return input.replaceAllMapped(
+      RegExp(
+        r'(^|[\s])((?:www\.)?(?:linkedin|jobstreet|glints|indeed|kalibrr|kitalulus|karir)\.[\w./?&=%-]+)',
+        caseSensitive: false,
+      ),
+      (m) => '${m.group(1)}https://${m.group(2)}',
+    );
+  }
+
   static Future<ParsedJobData?> _extractFromUrl(
     String url,
     String originalInput,
@@ -103,6 +142,7 @@ class TextParserService {
         extractedSkills: parsed.extractedSkills,
         jobUrl: url,
         hrContact: parsed.hrContact,
+        sourcePlatform: parsed.sourcePlatform,
         confidenceScore: parsed.confidenceScore,
         fieldConfidence: parsed.fieldConfidence,
       );
@@ -121,13 +161,16 @@ class TextParserService {
       platform = 'Indeed';
     } else if (lowerUrl.contains('kalibrr.com')) {
       platform = 'Kalibrr';
+    } else if (lowerUrl.contains('kitalulus.com')) {
+      platform = 'KitaLulus';
+    } else if (lowerUrl.contains('karir.com')) {
+      platform = 'Karir.com';
     }
 
     String position = '';
     String company = '';
     String description = originalInput;
 
-    // A. Analisis Path / Slug URL
     try {
       final pathSegments = safeUri.pathSegments
           .where((s) => s.isNotEmpty)
@@ -155,7 +198,6 @@ class TextParserService {
       }
     } catch (_) {}
 
-    // B. Coba fetch metadata HTML jika memungkinkan (timeout 2.5s)
     try {
       final res = await http
           .get(Uri.parse(url))
@@ -163,7 +205,6 @@ class TextParserService {
       if (res.statusCode == 200) {
         final html = res.body;
 
-        // Cari <title>
         final titleMatch = RegExp(
           r'<title[^>]*>(.*?)</title>',
           caseSensitive: false,
@@ -180,7 +221,6 @@ class TextParserService {
           }
         }
 
-        // Cari OpenGraph og:title & og:description
         final ogTitleMatch =
             RegExp(
               r'<meta[^>]*property="og:title"[^>]*content="(.*?)"',
@@ -216,17 +256,13 @@ class TextParserService {
 
     final resolvedCompany = company.isNotEmpty
         ? company
-        : (parsedFromText.companyName.isNotEmpty
-              ? parsedFromText.companyName
-              : 'Perusahaan Baru');
+        : parsedFromText.companyName;
     final resolvedPosition = position.isNotEmpty
         ? position
-        : (parsedFromText.position.isNotEmpty
-              ? parsedFromText.position
-              : 'Posisi Lowongan');
+        : parsedFromText.position;
 
-    final isCompanyConfident = resolvedCompany != 'Perusahaan Baru';
-    final isPositionConfident = resolvedPosition != 'Posisi Lowongan';
+    final isCompanyConfident = resolvedCompany.isNotEmpty;
+    final isPositionConfident = resolvedPosition.isNotEmpty;
     double confidence =
         (isCompanyConfident ? 0.5 : 0.0) + (isPositionConfident ? 0.5 : 0.0);
 
@@ -276,7 +312,7 @@ class TextParserService {
         )
         .trim();
     t = t.replaceAll(RegExp(r'\s+'), ' ');
-    if (t.isEmpty) return 'Posisi Lowongan';
+    if (t.isEmpty) return '';
     return t
         .split(' ')
         .map(
@@ -295,7 +331,7 @@ class TextParserService {
         )
         .trim();
     c = c.replaceAll(RegExp(r'\s+'), ' ');
-    if (c.isEmpty) return 'Perusahaan Baru';
+    if (c.isEmpty) return '';
     return c;
   }
 
@@ -304,9 +340,10 @@ class TextParserService {
       return ParsedJobData(
         companyName: '',
         position: '',
-        workType: 'WFO',
+        workType: '',
         rawDescription: '',
         extractedSkills: [],
+        confidenceScore: 0.0,
       );
     }
 
@@ -325,26 +362,28 @@ class TextParserService {
 
     final lowerText = text.toLowerCase();
 
-    // 1. Tipe Kerja
-    if (lowerText.contains('hybrid') ||
-        lowerText.contains('fleksibel') ||
-        (lowerText.contains('wfh') && lowerText.contains('wfo'))) {
-      workType = 'Hybrid';
-    } else if (lowerText.contains('wfh') ||
+    final hasWfh =
+        lowerText.contains('wfh') ||
         lowerText.contains('work from home') ||
         lowerText.contains('remote') ||
-        lowerText.contains('kerja dari rumah')) {
-      workType = 'WFH';
-    } else if (lowerText.contains('wfo') ||
+        lowerText.contains('kerja dari rumah');
+    final hasWfo =
+        lowerText.contains('wfo') ||
         lowerText.contains('work from office') ||
         lowerText.contains('on-site') ||
         lowerText.contains('onsite') ||
-        lowerText.contains('kerja di kantor') ||
-        lowerText.contains('di kantor')) {
+        lowerText.contains('on site') ||
+        lowerText.contains('kerja di kantor');
+    final hasHybrid =
+        lowerText.contains('hybrid') || lowerText.contains('fleksibel');
+    if (hasHybrid || (hasWfh && hasWfo)) {
+      workType = 'Hybrid';
+    } else if (hasWfh) {
+      workType = 'WFH';
+    } else if (hasWfo) {
       workType = 'WFO';
     }
 
-    // 2. Kontak HR (Email / WA)
     final emailReg = RegExp(
       r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
       caseSensitive: false,
@@ -353,73 +392,92 @@ class TextParserService {
     if (emailMatch != null) {
       hrContact = emailMatch.group(0);
     } else {
-      final phoneReg = RegExp(r'(08\d{8,12}|\+62\d{8,12})');
-      final phoneMatch = phoneReg.firstMatch(text);
+      final phoneReg = RegExp(r'(\+?62|0)8\d{7,12}');
+      final phoneMatch = phoneReg.firstMatch(text.replaceAll(RegExp(r'[\s-]'), ''));
       if (phoneMatch != null) {
         hrContact = phoneMatch.group(0);
       }
     }
 
-    // 3. Nama Perusahaan (PT / CV / Tbk / Bank / Di / At)
-    final ptReg = RegExp(
-      r'(pt\.?\s+[a-zA-Z0-9\.\-\s]{2,35}|cv\.?\s+[a-zA-Z0-9\.\-\s]{2,35}|bank\s+[a-zA-Z0-9\.\-\s]{2,30}|[a-zA-Z0-9\.\-\s]{2,30}\s+tbk\.?|[a-zA-Z0-9\.\-\s]{2,30}\s+inc\.?)',
-      caseSensitive: false,
+    companyName = _extractLabeled(
+      text,
+      const ['perusahaan', 'company', 'nama perusahaan', 'instansi'],
     );
-    final ptMatch = ptReg.firstMatch(text);
-    if (ptMatch != null) {
-      companyName = ptMatch.group(0)!.trim();
-      if (companyName.contains('\n')) {
-        companyName = companyName.split('\n').first.trim();
-      }
-    } else {
-      final diReg = RegExp(
-        r'(di\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30})|at\s+([A-Z][a-zA-Z0-9\.\-\s]{2,30}))',
+    if (companyName.isEmpty) {
+      final ptReg = RegExp(
+        r'(pt\.?\s+[a-zA-Z0-9\.\-][a-zA-Z0-9\.\-\s]{1,40}|cv\.?\s+[a-zA-Z0-9\.\-][a-zA-Z0-9\.\-\s]{1,40}|bank\s+[a-zA-Z0-9\.\-\s]{2,30}|[a-zA-Z0-9\.\-\s]{2,30}\s+tbk\.?|[a-zA-Z0-9\.\-\s]{2,30}\s+inc\.?)',
+        caseSensitive: false,
       );
-      final diMatch = diReg.firstMatch(text);
-      if (diMatch != null) {
-        final raw = diMatch
-            .group(0)!
-            .replaceAll(RegExp(r'^(di|at)\s+', caseSensitive: false), '')
-            .trim();
-        companyName = raw.split('\n').first.trim();
+      final ptMatch = ptReg.firstMatch(text);
+      if (ptMatch != null) {
+        companyName = ptMatch.group(0)!.split('\n').first.trim();
+      } else {
+        final diReg = RegExp(
+          r'(?:di|at)\s+([A-Z][A-Za-z0-9&.\-][A-Za-z0-9&.\-\s]{1,40})',
+        );
+        final diMatch = diReg.firstMatch(text);
+        if (diMatch != null) {
+          companyName = diMatch.group(1)!.split('\n').first.trim();
+        }
       }
     }
+    companyName = companyName
+        .replaceAll(RegExp(r'[.,;:]+$'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
 
-    // 4. Posisi / Role
-    final posReg = RegExp(
-      r'([a-zA-Z\s]{2,35}(developer|engineer|designer|specialist|staff|officer|intern|internship|manager|admin|analyst|associate|lead|programmer|consultant|supervisor))',
-      caseSensitive: false,
+    position = _extractLabeled(
+      text,
+      const [
+        'posisi',
+        'jabatan',
+        'role',
+        'job title',
+        'title',
+        'sebagai',
+        'dibutuhkan',
+        'looking for',
+        'hiring',
+      ],
     );
-    final posMatch = posReg.firstMatch(text);
-    if (posMatch != null) {
-      position = posMatch.group(0)!.trim();
-      if (position.contains('\n')) {
-        position = position.split('\n').first.trim();
-      }
-    } else if (lines.isNotEmpty) {
-      final firstLine = lines.first;
-      if (firstLine.length <= 45 && !firstLine.toLowerCase().contains('http')) {
-        position = firstLine;
+    if (position.isEmpty) {
+      const roleKeywords =
+          r'(developer|engineer|designer|specialist|staff|officer|intern|internship|manager|admin|analyst|associate|lead|programmer|consultant|supervisor|creator|executive|associate|accountant|secretary|receptionist|copywriter|marketer|recruiter|hrd|perawat|guru|dosen|barista|kasir|sales|driver|teknisi|mekanik|farmasi|bidan|gudang|operasional|security|chef|waiter|videographer|photographer|illustrator|researcher)';
+      final posReg = RegExp(
+        r'\b((?:[a-zA-Z][a-zA-Z/\s]{0,35})?' + roleKeywords + r')\b',
+        caseSensitive: false,
+      );
+      final posMatch = posReg.firstMatch(text);
+      if (posMatch != null) {
+        position = posMatch.group(0)!.split('\n').first.trim();
+      } else if (lines.isNotEmpty) {
+        final firstLine = lines.first;
+        if (firstLine.length <= 55 &&
+            !firstLine.toLowerCase().contains('http') &&
+            !RegExp(r'^we are hiring', caseSensitive: false).hasMatch(firstLine)) {
+          position = firstLine;
+        }
       }
     }
+    position = _cleanTitle(position);
 
-    // 5. Gaji (Format Rp)
     final salaryReg = RegExp(
-      r'(rp\.?\s*[\d\.\,]+(\s*-\s*[\d\.\,]+)?(\s*(jt|juta|mio|rb|ribu|bln|bulan))?|[\d\.\,]+\s*(jt|juta)\s*-\s*[\d\.\,]+\s*(jt|juta)|idr\s*[\d\.\,]+)',
+      r'(?:rp\.?\s*|idr\s*|usd\s*|\$)\s*[\d\.\,]+(?:\s*(?:jt|juta|mio|rb|ribu|k))?(?:\s*[-–—]\s*(?:rp\.?\s*|idr\s*|usd\s*|\$)?\s*[\d\.\,]+(?:\s*(?:jt|juta|mio|rb|ribu|k))?)?(?:\s*(?:/\s*)?(?:bln|bulan|month))?'
+      r'|[\d\.\,]+\s*(?:jt|juta)\s*[-–—]\s*[\d\.\,]+\s*(?:jt|juta)',
       caseSensitive: false,
     );
     final salaryMatch = salaryReg.firstMatch(text);
     if (salaryMatch != null) {
-      salary = salaryMatch.group(0)!.trim();
+      salary = salaryMatch.group(0)!.replaceAll(RegExp(r'\s+'), ' ').trim();
     }
 
-    // 6. Lokasi Kota
     final cities = [
       'Jakarta Selatan',
       'Jakarta Barat',
       'Jakarta Pusat',
       'Jakarta Timur',
       'Jakarta Utara',
+      'South Jakarta',
       'Jakarta',
       'Surabaya',
       'Bandung',
@@ -433,52 +491,87 @@ class TextParserService {
       'Bekasi',
       'Depok',
       'Bogor',
+      'Denpasar',
       'Bali',
       'Malang',
       'Solo',
       'Batam',
+      'Makassar',
+      'Palembang',
+      'Balikpapan',
+      'Samarinda',
+      'Pontianak',
+      'Manado',
+      'Padang',
+      'Pekanbaru',
+      'Bandar Lampung',
+      'Cikarang',
+      'Karawang',
+      'Sidoarjo',
+      'Gresik',
+      'Cirebon',
+      'Purwokerto',
     ];
     for (var city in cities) {
       if (lowerText.contains(city.toLowerCase())) {
-        location = city;
+        location = city == 'South Jakarta' ? 'Jakarta Selatan' : city;
         break;
       }
     }
+    if (location == null &&
+        (lowerText.contains('remote indonesia') ||
+            lowerText.contains('remote, indonesia'))) {
+      location = 'Remote';
+    }
 
-    // 7. Skill Keywords
-    final skillKeywords = [
+    const skillKeywords = [
       'Flutter',
       'Dart',
       'React',
       'Node.js',
       'Python',
       'Golang',
-      'Java',
       'Kotlin',
       'Swift',
-      'PHP',
       'Laravel',
-      'SQL',
       'PostgreSQL',
       'Figma',
-      'Excel',
       'SEO',
       'Copywriting',
       'Canva',
-      'Git',
       'UI/UX',
     ];
-
-    List<String> extractedSkills = [];
-    for (var skill in skillKeywords) {
-      if (lowerText.contains(skill.toLowerCase())) {
+    final extractedSkills = <String>[];
+    for (final skill in skillKeywords) {
+      if (_hasSkillToken(lowerText, skill.toLowerCase())) {
         extractedSkills.add(skill);
       }
     }
+    if (_hasSkillToken(lowerText, 'excel')) {
+      extractedSkills.add('Excel');
+    }
+    if (_hasSkillToken(lowerText, 'java') &&
+        !lowerText.contains('javascript')) {
+      extractedSkills.add('Java');
+    } else if (_hasSkillToken(lowerText, 'javascript')) {
+      extractedSkills.add('JavaScript');
+    }
+    if (_hasSkillToken(lowerText, 'php')) {
+      extractedSkills.add('PHP');
+    }
+    if (_hasSkillToken(lowerText, 'sql')) {
+      extractedSkills.add('SQL');
+    }
+    if (_hasSkillToken(lowerText, 'git')) {
+      extractedSkills.add('Git');
+    }
+
+    final usableCompany = isPlaceholderCompany(companyName) ? '' : companyName;
+    final usablePosition = isPlaceholderPosition(position) ? '' : position;
 
     return ParsedJobData(
-      companyName: companyName.isEmpty ? 'Perusahaan Baru' : companyName,
-      position: position.isEmpty ? 'Posisi Lowongan' : position,
+      companyName: usableCompany,
+      position: usablePosition,
       workType: workType,
       salary: salary,
       location: location,
@@ -486,6 +579,34 @@ class TextParserService {
       extractedSkills: extractedSkills,
       hrContact: hrContact,
       sourcePlatform: 'Manual',
+      confidenceScore:
+          (usableCompany.isNotEmpty ? 0.5 : 0.0) +
+          (usablePosition.isNotEmpty ? 0.5 : 0.0),
+      fieldConfidence: {
+        'company': usableCompany.isNotEmpty,
+        'position': usablePosition.isNotEmpty,
+        'salary': salary != null,
+        'location': location != null,
+      },
     );
+  }
+
+  static String _extractLabeled(String text, List<String> labels) {
+    final joined = labels.map(RegExp.escape).join('|');
+    final reg = RegExp(
+      '(?:$joined)\\s*[:\\-]\\s*([^\\n,]{2,60})',
+      caseSensitive: false,
+    );
+    final match = reg.firstMatch(text);
+    if (match == null) return '';
+    return match.group(1)!.trim();
+  }
+
+  static bool _hasSkillToken(String lowerText, String skill) {
+    final escaped = RegExp.escape(skill);
+    return RegExp(
+      '(^|[^a-z0-9+])$escaped([^a-z0-9+]|\$)',
+      caseSensitive: false,
+    ).hasMatch(lowerText);
   }
 }

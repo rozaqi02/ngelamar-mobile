@@ -11,6 +11,7 @@ import '../services/job_search_service.dart';
 import '../services/prefs_service.dart';
 import '../services/notification_service.dart';
 import '../services/android_home_widget_service.dart';
+import '../services/device_calendar_service.dart';
 import '../services/pro_verification_service.dart';
 import '../services/secure_hive_service.dart';
 
@@ -287,6 +288,9 @@ class JobNotifier extends StateNotifier<JobState> {
     AndroidHomeWidgetService.syncJobs(jobs).catchError((Object error) {
       debugPrint('Sinkronisasi widget Android gagal: $error');
     });
+    DeviceCalendarService.syncJobs(jobs).catchError((Object error) {
+      debugPrint('Sinkronisasi kalender perangkat gagal: $error');
+    });
   }
 
   void _scheduleReminderQuietly(JobApplication job) {
@@ -313,6 +317,25 @@ class JobNotifier extends StateNotifier<JobState> {
     final result = byId.values.toList();
     result.sort((a, b) => b.appliedDate.compareTo(a.appliedDate));
     return result;
+  }
+
+  JobApplication? findDuplicate({
+    required String companyName,
+    required String position,
+    bool allowReapplyAfterPeriod = false,
+  }) {
+    return _findDuplicate(
+      JobApplication(
+        id: '_probe',
+        companyName: companyName,
+        position: position,
+        status: 'Tersimpan',
+        appliedDate: DateTime.now(),
+        workType: 'Belum ditentukan',
+        jobDescription: '',
+      ),
+      allowReapplyAfterPeriod: allowReapplyAfterPeriod,
+    );
   }
 
   JobApplication? _findDuplicate(

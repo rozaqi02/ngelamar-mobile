@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full splash artwork, inset into the 72dp adaptive safe zone so launchers
+     do not crop/zoom the mascot. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_mascot_icon"
+    android:inset="16.67%" />

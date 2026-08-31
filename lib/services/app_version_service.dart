@@ -4,8 +4,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 /// Single source of truth service for application version, build number,
 /// and semantic version validation.
 class AppVersionService {
-  static const String fallbackVersion = '2.28.1';
-  static const String fallbackBuildNumber = '246';
+  static const String fallbackVersion = '2.32.0';
+  static const String fallbackBuildNumber = '250';
   static const String fallbackAppName = 'Ngelamar';
 
   static PackageInfo? _packageInfo;

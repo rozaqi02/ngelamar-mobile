@@ -1,42 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive-icon foreground matching the in-app AppMascotIcon artwork.
-     Coordinate space is the same 100x100 canvas used by the Flutter
-     painter, scaled into the 108dp adaptive viewport. -->
+<!-- Adaptive-icon foreground matching AppMascotIcon / splash.
+     Fill is drawn first, then the dark stroke — never cover the outline.
+     Coordinate space is the 100x100 Flutter canvas, scaled into the 108dp
+     adaptive viewport with the 72dp safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Safe-zone: artwork lives inside the center ~72dp circle -->
+
+    <!-- Inner radial highlight over the full adaptive canvas -->
+    <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="21.6"
+                android:gradientRadius="97.2"
+                android:startColor="#38FFFFFF"
+                android:endColor="#00FFFFFF" />
+        </aapt:attr>
+    </path>
+
     <group
         android:scaleX="0.72"
         android:scaleY="0.72"
         android:translateX="15.12"
         android:translateY="15.12">
 
-        <!-- Soft envelope drop shadow -->
+        <!-- Soft envelope drop shadow (offset, no blur in vector) -->
         <path
-            android:fillColor="#3319191B"
-            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z" />
+            android:fillColor="#3819191B"
+            android:pathData="M26,27 L74,27 A14,14 0 0,1 88,41 L88,69 A14,14 0 0,1 74,83 L26,83 A14,14 0 0,1 12,69 L12,41 A14,14 0 0,1 26,27 Z" />
 
-        <!-- Envelope body border -->
-        <path
-            android:fillColor="#19191B"
-            android:pathData="M12,38 Q12,24 26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 Z M15.5,39.5 Q15.5,27.5 27.5,27.5 L72.5,27.5 Q84.5,27.5 84.5,39.5 L84.5,64.5 Q84.5,76.5 72.5,76.5 L27.5,76.5 Q15.5,76.5 15.5,64.5 Z"
-            android:fillType="evenOdd" />
-
-        <!-- Envelope body fill -->
+        <!-- Envelope body: cream fill + dark stroke (same order as Flutter painter) -->
         <path
             android:fillColor="#FAF9F6"
-            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z" />
+            android:strokeColor="#19191B"
+            android:strokeWidth="3.5"
+            android:strokeLineJoin="round"
+            android:pathData="M26,24 L74,24 A14,14 0 0,1 88,38 L88,66 A14,14 0 0,1 74,80 L26,80 A14,14 0 0,1 12,66 L12,38 A14,14 0 0,1 26,24 Z" />
 
-        <!-- Flap fold line -->
+        <!-- Flap fold line, inset so it never crosses the black stroke -->
+        <clip-path android:pathData="M27.8,26.8 L72.2,26.8 A11.2,11.2 0 0,1 85.2,38 L85.2,66 A11.2,11.2 0 0,1 72.2,77.2 L27.8,77.2 A11.2,11.2 0 0,1 14.8,66 L14.8,38 A11.2,11.2 0 0,1 27.8,26.8 Z" />
         <path
             android:strokeColor="#E2DBD0"
             android:strokeWidth="2.5"
             android:strokeLineCap="round"
             android:strokeLineJoin="round"
-            android:pathData="M14,28 L50,56 L86,28" />
+            android:pathData="M24,32 L50,53 L76,32" />
 
         <!-- Left sparkling eye -->
         <path
@@ -56,7 +69,7 @@
         <!-- Rosy cheeks -->
         <path
             android:fillColor="#A6FF8A80"
-            android:pathData="M25.5,58 C25.5,56.62 27.52,55.5 30,55.5 C32.48,55.5 34.5,56.62 34.5,58 C34.5,59.38 32.48,60.5 30,60.5 C27.52,60.5 25.5,59.38 25.5,58 Z M65.5,58 C65.5,56.62 67.52,55.5 70,55.5 C72.48,55.5 74.5,56.62 74.5,58 C74.5,59.38 72.48,60.5 70,60.5 C67.52,60.5 65.5,59.38 65.5,58 Z" />
+            android:pathData="M25.5,58 A4.5,2.5 0 1,1 34.5,58 A4.5,2.5 0 1,1 25.5,58 Z M65.5,58 A4.5,2.5 0 1,1 74.5,58 A4.5,2.5 0 1,1 65.5,58 Z" />
 
         <!-- Cute smile -->
         <path
@@ -67,10 +80,9 @@
 
         <!-- Peek waving glove hand -->
         <path
-            android:fillColor="#19191B"
-            android:pathData="M92.25,40 A6.25,6.25 0 1,1 79.75,40 A6.25,6.25 0 1,1 92.25,40 Z" />
-        <path
             android:fillColor="#FAF9F6"
-            android:pathData="M90.5,40 A4.5,4.5 0 1,1 81.5,40 A4.5,4.5 0 1,1 90.5,40 Z" />
+            android:strokeColor="#19191B"
+            android:strokeWidth="2.5"
+            android:pathData="M91,40 A5,5 0 1,1 81,40 A5,5 0 1,1 91,40 Z" />
     </group>
 </vector>

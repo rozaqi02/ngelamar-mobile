@@ -2,4 +2,5 @@
 <resources>
     <string name="ngelamar_widget_description">Pengingat interview, tindakan berikutnya, dan catatan lamaran</string>
     <string name="ngelamar_widget_add_description">Catat lamaran baru</string>
+    <string name="ngelamar_calendar_widget_description">Agenda seleksi minggu ini dari Ngelamar</string>
 </resources>

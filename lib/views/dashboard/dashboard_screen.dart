@@ -16,6 +16,7 @@ import '../../widgets/crying_envelope_mascot.dart';
 import '../../widgets/fly_to_tracker_animator.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/app_motion.dart';
+import '../../widgets/app_tour_overlay.dart';
 import '../../widgets/safe_avatar_image.dart';
 import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
@@ -673,200 +674,203 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── TOP PROFILE & GREETING BAR ──
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  AppLayoutMetrics.headerTopInsideSafeArea(context),
-                  20,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    // Profile Avatar with Navigation to Tab 4 (Settings)
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        widget.onNavigateTab?.call(4);
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF333336),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+              TourAnchor(
+                id: 'home_greeting',
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    AppLayoutMetrics.headerTopInsideSafeArea(context),
+                    20,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      // Profile Avatar with Navigation to Tab 4 (Settings)
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          widget.onNavigateTab?.call(4);
+                        },
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF333336),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: SafeAvatarImage(
+                              imagePath: state.userProfilePhoto,
+                              size: 44,
+                              displayName: displayName,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Personal identity, kept deliberately minimal.
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: txtPri,
+                                letterSpacing: -0.25,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              _profileSubtitle,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: txtSec,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
-                        child: ClipOval(
-                          child: SafeAvatarImage(
-                            imagePath: state.userProfilePhoto,
-                            size: 44,
-                            displayName: displayName,
-                          ),
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 8),
 
-                    // Personal identity, kept deliberately minimal.
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Top Right Action Buttons: Notification Bell & Search
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            displayName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: txtPri,
-                              letterSpacing: -0.25,
+                          // Notification Bell Button
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                AppMotion.detailDockRoute(
+                                  builder: (_) =>
+                                      const NotificationCenterScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: bg,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFDCD8CE),
+                                  width: 1.4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.04,
+                                    ),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.notifications_outlined,
+                                    size: 21,
+                                    color: txtPri,
+                                  ),
+                                  if (state.jobs.any(
+                                    (j) =>
+                                        (j.interviewDate != null ||
+                                            j.testDate != null ||
+                                            j.needsFollowup) &&
+                                        j.status != 'Ditolak' &&
+                                        j.status != 'Diterima',
+                                  ))
+                                    Positioned(
+                                      top: 10,
+                                      right: 11,
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFDE4B3E),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 1),
-                          Text(
-                            _profileSubtitle,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              color: txtSec,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(width: 8),
+
+                          // Circular Search Button — compact outlined glyph in
+                          // the same scale as the visual reference.
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                _isSearchActive = !_isSearchActive;
+                                if (!_isSearchActive) {
+                                  _searchController.clear();
+                                  ref
+                                      .read(jobProvider.notifier)
+                                      .setSearchQuery('');
+                                }
+                              });
+                            },
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: bg,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFDCD8CE),
+                                  width: 1.4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.2 : 0.04,
+                                    ),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                _isSearchActive
+                                    ? Icons.close_rounded
+                                    : CupertinoIcons.search,
+                                size: 20,
+                                color: txtPri,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Top Right Action Buttons: Notification Bell & Search
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Notification Bell Button
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.push(
-                              context,
-                              AppMotion.detailDockRoute(
-                                builder: (_) =>
-                                    const NotificationCenterScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: bg,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF383842)
-                                    : const Color(0xFFDCD8CE),
-                                width: 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.04,
-                                  ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Icon(
-                                  Icons.notifications_outlined,
-                                  size: 21,
-                                  color: txtPri,
-                                ),
-                                if (state.jobs.any(
-                                  (j) =>
-                                      (j.interviewDate != null ||
-                                          j.testDate != null ||
-                                          j.needsFollowup) &&
-                                      j.status != 'Ditolak' &&
-                                      j.status != 'Diterima',
-                                ))
-                                  Positioned(
-                                    top: 10,
-                                    right: 11,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFDE4B3E),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Circular Search Button — compact outlined glyph in
-                        // the same scale as the visual reference.
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() {
-                              _isSearchActive = !_isSearchActive;
-                              if (!_isSearchActive) {
-                                _searchController.clear();
-                                ref
-                                    .read(jobProvider.notifier)
-                                    .setSearchQuery('');
-                              }
-                            });
-                          },
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: bg,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF383842)
-                                    : const Color(0xFFDCD8CE),
-                                width: 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: isDark ? 0.2 : 0.04,
-                                  ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              _isSearchActive
-                                  ? Icons.close_rounded
-                                  : CupertinoIcons.search,
-                              size: 20,
-                              color: txtPri,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
@@ -1029,182 +1033,195 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               const SizedBox(height: 20),
 
               // ── FULL-WIDTH EDGE-TO-EDGE OVERLAPPING CARD STACK ──
-              if (displayJobs.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(30, 24, 30, 60),
-                    child: Column(
-                      children: [
-                        const CryingEnvelopeMascot(width: 170, height: 130),
-                        const SizedBox(height: 14),
-                        Text(
-                          (state.selectedStatusFilter != 'Semua' ||
-                                  state.searchQuery.isNotEmpty ||
-                                  state.onlyFavoritesFilter ||
-                                  state.onlyWfhFilter ||
-                                  state.selectedWorkTypeFilter != 'Semua')
-                              ? 'Tidak Ada Hasil yang Cocok'
-                              : 'Belum Ada Lamaran Aktif',
-                          style: TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
-                            color: isDark
-                                ? Colors.white
-                                : const Color(0xFF121214),
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          (state.selectedStatusFilter != 'Semua' ||
-                                  state.searchQuery.isNotEmpty ||
-                                  state.onlyFavoritesFilter ||
-                                  state.onlyWfhFilter ||
-                                  state.selectedWorkTypeFilter != 'Semua')
-                              ? 'Coba ubah kata kunci pencarian atau bersihkan filter yang sedang aktif.'
-                              : 'Surat lamaranmu masih sedih nih karena belum dikirim. Yuk mulai cari dan catat lowongan impianmu hari ini!',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark
-                                ? const Color(0xFFA0A0A8)
-                                : const Color(0xFF707074),
-                            height: 1.45,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 18),
-                        Column(
-                          children: [
-                            if (state.selectedStatusFilter != 'Semua' ||
-                                state.searchQuery.isNotEmpty ||
-                                state.onlyFavoritesFilter ||
-                                state.onlyWfhFilter ||
-                                state.selectedWorkTypeFilter != 'Semua') ...[
-                              OutlinedButton.icon(
-                                onPressed: () {
-                                  HapticFeedback.selectionClick();
-                                  ref.read(jobProvider.notifier).resetFilters();
-                                },
-                                icon: const Icon(
-                                  Icons.refresh_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text(
-                                  'Reset Filter & Pencarian',
-                                  style: TextStyle(fontWeight: FontWeight.w800),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 14,
-                                  ),
-                                  foregroundColor: isDark
+              TourAnchor(
+                id: 'home_cards',
+                child: displayJobs.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(30, 24, 30, 60),
+                          child: Column(
+                            children: [
+                              const CryingEnvelopeMascot(
+                                width: 170,
+                                height: 130,
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                (state.selectedStatusFilter != 'Semua' ||
+                                        state.searchQuery.isNotEmpty ||
+                                        state.onlyFavoritesFilter ||
+                                        state.onlyWfhFilter ||
+                                        state.selectedWorkTypeFilter != 'Semua')
+                                    ? 'Tidak Ada Hasil yang Cocok'
+                                    : 'Belum Ada Lamaran Aktif',
+                                style: TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: isDark
                                       ? Colors.white
                                       : const Color(0xFF121214),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? const Color(0xFF383842)
-                                        : const Color(0xFFDCD8CE),
-                                    width: 1.3,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
+                                  letterSpacing: -0.4,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                            ],
-                            FluidBounceButton(
-                              key: _addBtnKey,
-                              onTap: () => _openAddJob(context),
-                              child: Container(
-                                width: double.infinity,
-                                height: 56,
-                                decoration: BoxDecoration(
+                              const SizedBox(height: 6),
+                              Text(
+                                (state.selectedStatusFilter != 'Semua' ||
+                                        state.searchQuery.isNotEmpty ||
+                                        state.onlyFavoritesFilter ||
+                                        state.onlyWfhFilter ||
+                                        state.selectedWorkTypeFilter != 'Semua')
+                                    ? 'Coba ubah kata kunci pencarian atau bersihkan filter yang sedang aktif.'
+                                    : 'Surat lamaranmu masih sedih nih karena belum dikirim. Yuk mulai cari dan catat lowongan impianmu hari ini!',
+                                style: TextStyle(
+                                  fontSize: 13,
                                   color: isDark
-                                      ? const Color(0xFF5C44E4)
-                                      : const Color(0xFF19191B),
-                                  borderRadius: BorderRadius.circular(28),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.16,
-                                      ),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
+                                      ? const Color(0xFFA0A0A8)
+                                      : const Color(0xFF707074),
+                                  height: 1.45,
                                 ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_rounded,
-                                      color: Colors.white,
-                                      size: 21,
-                                    ),
-                                    SizedBox(width: 9),
-                                    Text(
-                                      'Catat Lamaran',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            const SizedBox(height: 11),
-                            FluidBounceButton(
-                              onTap: widget.onOpenCareerHub,
-                              child: Container(
-                                width: double.infinity,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1E8E3E),
-                                  borderRadius: BorderRadius.circular(28),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF1E8E3E,
-                                      ).withValues(alpha: 0.24),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 5),
-                                    ),
-                                  ],
-                                ),
-                                child: const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.explore_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 9),
-                                    Text(
-                                      'Cari Lowongan',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w900,
+                              const SizedBox(height: 18),
+                              Column(
+                                children: [
+                                  if (state.selectedStatusFilter != 'Semua' ||
+                                      state.searchQuery.isNotEmpty ||
+                                      state.onlyFavoritesFilter ||
+                                      state.onlyWfhFilter ||
+                                      state.selectedWorkTypeFilter !=
+                                          'Semua') ...[
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        HapticFeedback.selectionClick();
+                                        ref
+                                            .read(jobProvider.notifier)
+                                            .resetFilters();
+                                      },
+                                      icon: const Icon(
+                                        Icons.refresh_rounded,
+                                        size: 18,
+                                      ),
+                                      label: const Text(
+                                        'Reset Filter & Pencarian',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 14,
+                                        ),
+                                        foregroundColor: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF121214),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? const Color(0xFF383842)
+                                              : const Color(0xFFDCD8CE),
+                                          width: 1.3,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(height: 12),
                                   ],
-                                ),
+                                  FluidBounceButton(
+                                    key: _addBtnKey,
+                                    onTap: () => _openAddJob(context),
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF5C44E4)
+                                            : const Color(0xFF19191B),
+                                        borderRadius: BorderRadius.circular(28),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.16,
+                                            ),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_rounded,
+                                            color: Colors.white,
+                                            size: 21,
+                                          ),
+                                          SizedBox(width: 9),
+                                          Text(
+                                            'Catat Lamaran',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 11),
+                                  FluidBounceButton(
+                                    onTap: widget.onOpenCareerHub,
+                                    child: Container(
+                                      width: double.infinity,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E8E3E),
+                                        borderRadius: BorderRadius.circular(28),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFF1E8E3E,
+                                            ).withValues(alpha: 0.24),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.explore_rounded,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 9),
+                                          Text(
+                                            'Cari Lowongan',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              else ...[
-                _buildEdgeToEdgeStackedDeck(displayJobs),
-              ],
+                      )
+                    : _buildEdgeToEdgeStackedDeck(displayJobs),
+              ),
             ],
           ),
         ),
@@ -1446,34 +1463,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                             ),
                                           );
                                         },
-                                        child: Hero(
-                                          tag: statusActionHeroTag(job.id),
-                                          createRectTween:
-                                              statusActionRectTween,
-                                          flightShuttleBuilder:
-                                              statusActionFlightShuttle,
-                                          placeholderBuilder:
-                                              statusActionHeroPlaceholder,
-                                          child: StatusActionHeroMetadata(
-                                            isExpanded: false,
-                                            backgroundColor: Colors.white,
-                                            foregroundColor: const Color(
-                                              0xFF121214,
-                                            ),
-                                            child: Container(
-                                              width: 38,
-                                              height: 38,
-                                              decoration: const BoxDecoration(
-                                                color: Colors.white,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.arrow_outward_rounded,
-                                                  size: 18,
-                                                  color: Color(0xFF121214),
-                                                ),
-                                              ),
+                                        child: Container(
+                                          width: 38,
+                                          height: 38,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.arrow_outward_rounded,
+                                              size: 18,
+                                              color: Color(0xFF121214),
                                             ),
                                           ),
                                         ),
@@ -1485,17 +1486,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 // Expanded Details: Position, Location, Salary, Details Link
                                 if (isExpanded) ...[
                                   const SizedBox(height: 16),
-                                  Text(
-                                    job.position,
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: titleColor,
-                                      letterSpacing: -0.5,
-                                      height: 1.2,
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      Navigator.push(
+                                        context,
+                                        AppMotion.detailDockRoute(
+                                          builder: (_) =>
+                                              JobDetailScreen(job: job),
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      job.position,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: titleColor,
+                                        letterSpacing: -0.5,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 12),
                                   GestureDetector(
@@ -1576,6 +1590,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+  String _urgentStripLabel(_ActionItem item) {
+    final company = item.job.companyName.trim();
+    final title = item.title.trim();
+    final time = item.timeLabel?.trim();
+    final titleAlreadyHasWhen =
+        title.contains('H+') || title.toLowerCase().contains('hari');
+    final parts = <String>[title];
+    if (time != null && time.isNotEmpty && !titleAlreadyHasWhen) {
+      parts.add(time);
+    }
+    if (company.isNotEmpty && !title.contains(company)) {
+      parts.add(company);
+    }
+    return parts.join(' · ');
+  }
+
   Widget _buildUrgentActionStrip(List<JobApplication> jobs, bool isDark) {
     final actionItems = _buildActionItems(jobs);
     if (actionItems.isEmpty) return const SizedBox.shrink();
@@ -1605,14 +1635,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${urgentItem.title}${urgentItem.timeLabel != null ? " · ${urgentItem.timeLabel}" : ""} (${urgentItem.job.companyName})',
+                _urgentStripLabel(urgentItem),
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: txtPri,
+                  height: 1.25,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                softWrap: true,
               ),
             ),
             const SizedBox(width: 8),

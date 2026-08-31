@@ -13,19 +13,19 @@ import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/rupiah_input_formatter.dart';
-import '../../widgets/welcome_screen_route.dart';
 import '../../widgets/delight_celebration.dart';
 import '../subscription/subscription_screen.dart';
-import 'career_prep_welcome_screen.dart';
 
 class FreshGradPrepScreen extends ConsumerStatefulWidget {
   final bool embedded;
   final CareerContext? careerContext;
+  final VoidCallback? onHelp;
 
   const FreshGradPrepScreen({
     super.key,
     this.embedded = false,
     this.careerContext,
+    this.onHelp,
   });
 
   @override
@@ -383,11 +383,7 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
     final isDark = AppTheme.isDark(context);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
     final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
-    final pageColor = isDark
-        ? const Color(0xFF0F1B14)
-        : widget.embedded
-        ? const Color(0xFFE8F5E9)
-        : const Color(0xFFFAF9F6);
+    final pageColor = AppTheme.getBackground(context);
 
     final checkedDocsCount = _checkedCount;
     final totalDocsCount = _docs.length;
@@ -449,33 +445,60 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Title + Help Button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'SIAPKAN\nKARIRMU',
-                            style: TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: txtPri,
-                              letterSpacing: -1.2,
-                              height: 1.0,
+                    if (!widget.embedded) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'SIAPKAN\nKARIRMU',
+                              style: TextStyle(
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                                color: txtPri,
+                                letterSpacing: -1.15,
+                                height: 0.99,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!widget.embedded &&
-                                Navigator.canPop(context)) ...[
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (Navigator.canPop(context)) ...[
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF222226)
+                                          : Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0xFF333338)
+                                            : const Color(0xFFE5E0D5),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.back,
+                                      size: 18,
+                                      color: txtPri,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
                               GestureDetector(
                                 onTap: () {
                                   HapticFeedback.selectionClick();
-                                  Navigator.of(context).pop();
+                                  widget.onHelp?.call();
                                 },
                                 child: Container(
                                   width: 42,
@@ -491,52 +514,19 @@ class _FreshGradPrepScreenState extends ConsumerState<FreshGradPrepScreen> {
                                           : const Color(0xFFE5E0D5),
                                     ),
                                   ),
-                                  child: Icon(
-                                    CupertinoIcons.back,
+                                  child: const Icon(
+                                    CupertinoIcons.question_circle_fill,
                                     size: 18,
-                                    color: txtPri,
+                                    color: Color(0xFF5C44E4),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                             ],
-                            GestureDetector(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                Navigator.push(
-                                  context,
-                                  WelcomeScreenRoute(
-                                    child: const CareerPrepWelcomeScreen(),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF222226)
-                                      : Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF333338)
-                                        : const Color(0xFFE5E0D5),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  CupertinoIcons.question_circle_fill,
-                                  size: 18,
-                                  color: Color(0xFFF59E0B),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Subtitle
                     Text(

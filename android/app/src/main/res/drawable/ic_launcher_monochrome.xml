@@ -14,7 +14,7 @@
         <!-- Envelope silhouette with flap cut out -->
         <path
             android:fillColor="#000000"
-            android:pathData="M26,24 L74,24 Q88,24 88,38 L88,66 Q88,80 74,80 L26,80 Q12,80 12,66 L12,38 Q12,24 26,24 Z M16,26.5 L50,53.5 L84,26.5 L87,30.5 L52,58.5 Q50,60 48,58.5 L13,30.5 Z"
+            android:pathData="M26,24 L74,24 A14,14 0 0,1 88,38 L88,66 A14,14 0 0,1 74,80 L26,80 A14,14 0 0,1 12,66 L12,38 A14,14 0 0,1 26,24 Z M16,26.5 L50,53.5 L84,26.5 L87,30.5 L52,58.5 Q50,60 48,58.5 L13,30.5 Z"
             android:fillType="evenOdd" />
 
         <!-- Eyes -->

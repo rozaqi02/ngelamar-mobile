@@ -16,6 +16,7 @@ import '../../constants/app_version.dart';
 import '../../providers/job_provider.dart';
 import '../../repositories/profile_repository.dart';
 import '../../services/backup_service.dart';
+import '../../services/spreadsheet_import_service.dart';
 import '../../services/cloud_sync_service.dart';
 import '../../services/feedback_service.dart';
 import '../../services/notification_service.dart';
@@ -28,6 +29,9 @@ import '../../widgets/apple_animations.dart';
 import '../../widgets/apple_toast.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
+import '../../widgets/app_tour_overlay.dart';
+import '../../widgets/header_help_button.dart';
+import '../../widgets/app_mascot_icon.dart';
 import '../../widgets/safe_avatar_image.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/delight_celebration.dart';
@@ -1159,6 +1163,102 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _downloadExcelTemplate() async {
+    HapticFeedback.selectionClick();
+    try {
+      final bytes = SpreadsheetImportService.buildTemplateBytes();
+      if (kIsWeb) {
+        await Share.shareXFiles([
+          XFile.fromData(
+            bytes,
+            name: 'template_lamaran_ngelamar.xlsx',
+            mimeType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ),
+        ]);
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/template_lamaran_ngelamar.xlsx');
+        await file.writeAsBytes(bytes, flush: true);
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'Template lamaran Ngelamar',
+        );
+      }
+      if (mounted) {
+        AppToast.success(context, 'Template Excel siap dipakai.');
+      }
+    } on SpreadsheetImportException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Template Excel belum dapat dibuat.');
+      }
+    }
+  }
+
+  Future<void> _importSpreadsheetData() async {
+    HapticFeedback.mediumImpact();
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final selected = result.files.single;
+      final bytes =
+          selected.bytes ??
+          (selected.path == null
+              ? null
+              : await File(selected.path!).readAsBytes());
+      if (bytes == null) {
+        throw const SpreadsheetImportException('Berkas tidak dapat dibaca.');
+      }
+      final parsed = SpreadsheetImportService.parse(
+        bytes: bytes,
+        fileName: selected.name,
+      );
+      if (!mounted) return;
+      if (parsed.jobs.isEmpty) {
+        AppToast.warning(
+          context,
+          'Tidak ada baris yang bisa diimpor. Cek kolom Perusahaan dan Posisi.',
+        );
+        return;
+      }
+      final confirmed = await _showRestorePreviewModal(
+        context: context,
+        title: selected.name,
+        jobsCount: parsed.jobs.length,
+        attachmentsCount: 0,
+        isLegacy: false,
+      );
+      if (confirmed != true || !mounted) return;
+      final importResult = await ref
+          .read(jobProvider.notifier)
+          .importJobs(parsed.jobs);
+      if (!mounted) return;
+      DelightCelebration.show(
+        context,
+        message: '${importResult.importedCount} lamaran dari Excel!',
+        accent: const Color(0xFF0EA5E9),
+        icon: Icons.table_view_rounded,
+        preset: DelightPreset.restore,
+      );
+      AppToast.success(
+        context,
+        '${importResult.importedCount} lamaran diimpor${importResult.skippedCount > 0 ? ', ${importResult.skippedCount} duplikat dilewati' : ''}${parsed.skippedInvalid > 0 ? ', ${parsed.skippedInvalid} baris tidak lengkap' : ''}.',
+      );
+    } on SpreadsheetImportException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Berkas Excel belum dapat diimpor.');
+      }
+    }
+  }
+
   Future<void> _importApplicationsData() async {
     HapticFeedback.mediumImpact();
     try {
@@ -1777,7 +1877,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Image.asset(
-                  'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+                  kAppLauncherIconAsset,
                   width: 68,
                   height: 68,
                   fit: BoxFit.cover,
@@ -1955,6 +2055,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             AppLayoutMetrics.contentBottomClearance(context),
           ),
           children: [
+            TourAnchor(
+              id: 'profile_identity',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1985,6 +2090,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   ),
                 ),
+                HeaderHelpButton(
+                  onTap: () => widget.onStartAppTour?.call(),
+                  semanticLabel: 'Buka tutorial Profil',
+                ),
+                const SizedBox(width: 8),
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -2302,6 +2412,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(4),
@@ -2358,7 +2471,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   Expanded(
-                    child: GestureDetector(
+                    child: TourAnchor(
+                      id: 'profile_settings',
+                      child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
                         HapticFeedback.selectionClick();
@@ -2400,13 +2515,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                     ),
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 14),
             if (_selectedSegment == 0) ...[
-              _buildCareerAndDocsSegment(
+              TourAnchor(
+                id: 'profile_stats',
+                child: _buildCareerAndDocsSegment(
                 context,
                 state,
                 isDark,
@@ -2414,6 +2532,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 cardBorder,
                 txtPri,
                 txtSec,
+              ),
               ),
             ] else ...[
               _buildSettingsAndDataSegment(
@@ -3001,6 +3120,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: 'Pulihkan Backup',
               subtitle: 'Impor berkas ZIP atau JSON',
               onTap: _importApplicationsData,
+            ),
+            _buildSettingDivider(isDark),
+            _buildSettingTile(
+              icon: CupertinoIcons.square_grid_2x2_fill,
+              color: const Color(0xFF0EA5E9),
+              title: 'Impor dari Excel',
+              subtitle: 'xlsx atau csv • unduh template dulu',
+              onTap: _importSpreadsheetData,
+            ),
+            _buildSettingDivider(isDark),
+            _buildSettingTile(
+              icon: CupertinoIcons.doc_on_doc,
+              color: const Color(0xFF5C44E4),
+              title: 'Unduh Template Excel',
+              subtitle: 'Kolom Perusahaan dan Posisi wajib',
+              onTap: _downloadExcelTemplate,
             ),
           ],
         ),

@@ -87,6 +87,14 @@ class _CalendarPlannerPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
 
+    // Grounded oval shadow under the shoes — does not bob with idle float.
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(120, 184), width: 118, height: 20),
+      Paint()
+        ..color = const Color(0xFF19191B).withValues(alpha: 0.16)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+    );
+
     final ink = const Color(0xFF19191B);
     final outline = Paint()
       ..color = ink

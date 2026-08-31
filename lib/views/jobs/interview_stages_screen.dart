@@ -243,16 +243,7 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                         ),
                       ),
 
-                      // Middle Title "Tahapan Seleksi"
-                      Text(
-                        'Tahapan Seleksi',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: txtPri,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
+                      const SizedBox(width: 42),
 
                       // Circular Options Button (⋮)
                       GestureDetector(
@@ -337,24 +328,35 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
+                      Text(
+                        'TAHAPAN\nSELEKSI',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: txtPri,
+                          letterSpacing: -1.15,
+                          height: 0.99,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         currentJob.companyName,
                         style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                           color: txtPri,
-                          letterSpacing: -0.8,
-                          height: 1.15,
+                          letterSpacing: -0.3,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Panduan & cheat sheet 5 tahapan seleksi ${currentJob.position}',
+                        'Cheat sheet 5 tahap untuk ${currentJob.position}',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: txtSec,
+                          height: 1.35,
                         ),
                       ),
                     ],
@@ -362,7 +364,6 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                 ),
               ),
 
-              // Actual, user-owned history. The guides below remain useful, but
               // Actual, user-owned history. The guides below remain useful, but
               // this section is the source of truth for this particular
               // application and survives status changes or restores.
@@ -628,11 +629,11 @@ class _InterviewStagesScreenState extends ConsumerState<InterviewStagesScreen> {
                                 Text(
                                   stage['title']!,
                                   style: TextStyle(
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
                                     color: titleColor,
                                     letterSpacing: -0.3,
-                                    height: 1.3,
+                                    height: 1.25,
                                   ),
                                 ),
 

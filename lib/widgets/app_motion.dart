@@ -106,6 +106,8 @@ abstract final class AppMotion {
   static PageRoute<T> detailDockRoute<T>({required WidgetBuilder builder}) {
     return PageRouteBuilder<T>(
       opaque: false,
+      barrierColor: Colors.black.withValues(alpha: 0.32),
+      barrierDismissible: false,
       transitionDuration: const Duration(milliseconds: 650),
       reverseTransitionDuration: const Duration(milliseconds: 560),
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),

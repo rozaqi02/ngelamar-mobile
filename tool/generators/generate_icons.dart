@@ -5,17 +5,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Paints launcher / splash / branding icons from the same mascot used in-app.
 void main() {
-  test('Generate All App Icons with Option 1 Mascot Face Zoom', () async {
-    Future<List<int>> renderIconPng(int size, {double cornerRadiusRatio = 0.25, bool isPureSquare = false}) async {
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()));
-      final s = size.toDouble();
-      final scale = s / 100.0;
-
-      final radius = isPureSquare ? 0.0 : s * cornerRadiusRatio;
-
-      // Background Squircle Gradient
+  test('Generate launcher icons with flap fold inside the black stroke', () async {
+    void paintGradientBackground(
+      Canvas canvas,
+      double s, {
+      double cornerRadius = 0,
+    }) {
       final bgPaint = Paint()
         ..shader = ui.Gradient.linear(
           Offset.zero,
@@ -27,178 +24,248 @@ void main() {
           ],
           const [0.0, 0.5, 1.0],
         );
-
-      if (isPureSquare) {
-        canvas.drawRect(Rect.fromLTWH(0, 0, s, s), bgPaint);
+      final rect = Rect.fromLTWH(0, 0, s, s);
+      if (cornerRadius <= 0) {
+        canvas.drawRect(rect, bgPaint);
       } else {
         canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, s, s), Radius.circular(radius)),
+          RRect.fromRectAndRadius(rect, Radius.circular(cornerRadius)),
           bgPaint,
         );
       }
+    }
 
-      // Inner radial highlight
+    void paintHighlight(Canvas canvas, double s) {
       final highlightPaint = Paint()
         ..shader = ui.Gradient.radial(
           Offset(s * 0.5, s * 0.2),
           s * 0.9,
-          [
-            Colors.white.withValues(alpha: 0.22),
-            Colors.transparent,
-          ],
+          [Colors.white.withValues(alpha: 0.22), Colors.transparent],
           [0.0, 1.0],
         );
       canvas.drawRect(Rect.fromLTWH(0, 0, s, s), highlightPaint);
+    }
 
-      // Save & scale for mascot vector paths
+    void paintMascot(Canvas canvas, double scale) {
       canvas.save();
       canvas.scale(scale);
 
-      // Envelope Body (Zoom 1.35x: 76 x 56 at x:12, y:24, r:14)
       final bodyRect = RRect.fromRectAndRadius(
         const Rect.fromLTWH(12, 24, 76, 56),
         const Radius.circular(14),
       );
 
-      // Soft drop shadow
       final envShadow = Paint()
         ..color = Colors.black.withValues(alpha: 0.22)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
       canvas.drawRRect(bodyRect.shift(const Offset(0, 3)), envShadow);
 
-      // Envelope white fill
-      final bodyPaint = Paint()
-        ..color = const Color(0xFFFAF9F6)
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(bodyRect, bodyPaint);
+      canvas.drawRRect(
+        bodyRect,
+        Paint()
+          ..color = const Color(0xFFFAF9F6)
+          ..style = PaintingStyle.fill,
+      );
+      canvas.drawRRect(
+        bodyRect,
+        Paint()
+          ..color = const Color(0xFF19191B)
+          ..strokeWidth = 3.5
+          ..style = PaintingStyle.stroke,
+      );
 
-      // Envelope dark border
-      final borderPaint = Paint()
-        ..color = const Color(0xFF19191B)
-        ..strokeWidth = 3.5
-        ..style = PaintingStyle.stroke;
-      canvas.drawRRect(bodyRect, borderPaint);
-
-      // Flap fold line
+      canvas.save();
+      canvas.clipRRect(bodyRect.deflate(2.8));
       final foldPaint = Paint()
         ..color = const Color(0xFFE2DBD0)
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
+      canvas.drawPath(
+        Path()
+          ..moveTo(24, 32)
+          ..lineTo(50, 53)
+          ..lineTo(76, 32),
+        foldPaint,
+      );
+      canvas.restore();
 
-      final foldPath = Path()
-        ..moveTo(14, 28)
-        ..lineTo(50, 56)
-        ..lineTo(86, 28);
-      canvas.drawPath(foldPath, foldPaint);
-
-      // Left eye (Big sparkle eye)
-      final eyePaint = Paint()
-        ..color = const Color(0xFF19191B)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(const Offset(36, 51), 5.5, eyePaint);
+      canvas.drawCircle(
+        const Offset(36, 51),
+        5.5,
+        Paint()..color = const Color(0xFF19191B),
+      );
       canvas.drawCircle(const Offset(34.2, 49.2), 2.0, Paint()..color = Colors.white);
 
-      // Right eye (Joyful wink)
       final winkPaint = Paint()
         ..color = const Color(0xFF19191B)
         ..strokeWidth = 3.0
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke;
-      final winkPath = Path()
-        ..moveTo(60, 52)
-        ..quadraticBezierTo(64, 45, 68, 52);
-      canvas.drawPath(winkPath, winkPaint);
+      canvas.drawPath(
+        Path()
+          ..moveTo(60, 52)
+          ..quadraticBezierTo(64, 45, 68, 52),
+        winkPaint,
+      );
 
-      // Rosy Pink Cheeks
       final blushPaint = Paint()
-        ..color = const Color(0xFFFF8A80).withValues(alpha: 0.65)
-        ..style = PaintingStyle.fill;
-      canvas.drawOval(Rect.fromCenter(center: const Offset(30, 58), width: 9.0, height: 5.0), blushPaint);
-      canvas.drawOval(Rect.fromCenter(center: const Offset(70, 58), width: 9.0, height: 5.0), blushPaint);
+        ..color = const Color(0xFFFF8A80).withValues(alpha: 0.65);
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(30, 58), width: 9.0, height: 5.0),
+        blushPaint,
+      );
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(70, 58), width: 9.0, height: 5.0),
+        blushPaint,
+      );
 
-      // Cute Smile
-      final smilePaint = Paint()
-        ..color = const Color(0xFF19191B)
-        ..strokeWidth = 2.6
-        ..strokeCap = StrokeCap.round
-        ..style = PaintingStyle.stroke;
-      final smilePath = Path()
-        ..moveTo(48, 57)
-        ..quadraticBezierTo(50, 61, 52, 57);
-      canvas.drawPath(smilePath, smilePaint);
+      canvas.drawPath(
+        Path()
+          ..moveTo(48, 57)
+          ..quadraticBezierTo(50, 61, 52, 57),
+        Paint()
+          ..color = const Color(0xFF19191B)
+          ..strokeWidth = 2.6
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke,
+      );
 
-      // Peek waving glove hand on side
-      final handPaint = Paint()
-        ..color = const Color(0xFFFAF9F6)
-        ..style = PaintingStyle.fill;
-      final handBorder = Paint()
-        ..color = const Color(0xFF19191B)
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke;
-      canvas.drawCircle(const Offset(86, 40), 5.0, handPaint);
-      canvas.drawCircle(const Offset(86, 40), 5.0, handBorder);
+      canvas.drawCircle(
+        const Offset(86, 40),
+        5.0,
+        Paint()..color = const Color(0xFFFAF9F6),
+      );
+      canvas.drawCircle(
+        const Offset(86, 40),
+        5.0,
+        Paint()
+          ..color = const Color(0xFF19191B)
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke,
+      );
 
       canvas.restore();
+    }
 
+    Future<List<int>> renderToPng(
+      int size,
+      void Function(Canvas canvas, double s) paint,
+    ) async {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(
+        recorder,
+        Rect.fromLTWH(0, 0, size.toDouble(), size.toDouble()),
+      );
+      paint(canvas, size.toDouble());
       final picture = recorder.endRecording();
       final img = await picture.toImage(size, size);
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       return byteData!.buffer.asUint8List();
     }
 
-    // Android targets (with squircle corner radius ~ 0.25)
-    final androidTargets = {
+    Future<void> writePng(String path, List<int> bytes) async {
+      final file = File(path);
+      if (!file.parent.existsSync()) {
+        file.parent.createSync(recursive: true);
+      }
+      file.writeAsBytesSync(bytes);
+      print('Wrote $path (${bytes.length} bytes)');
+    }
+
+    Future<List<int>> renderIconPng(
+      int size, {
+      double cornerRadiusRatio = 0.25,
+      bool isPureSquare = false,
+    }) {
+      return renderToPng(size, (canvas, s) {
+        final radius = isPureSquare ? 0.0 : s * cornerRadiusRatio;
+        if (radius > 0) {
+          canvas.save();
+          canvas.clipRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromLTWH(0, 0, s, s),
+              Radius.circular(radius),
+            ),
+          );
+        }
+        paintGradientBackground(canvas, s, cornerRadius: radius);
+        paintHighlight(canvas, s);
+        paintMascot(canvas, s / 100.0);
+        if (radius > 0) canvas.restore();
+      });
+    }
+
+    Future<List<int>> renderAdaptiveForeground(int size) {
+      return renderToPng(size, (canvas, s) {
+        const safe = 72.0 / 108.0;
+        final inset = s * (1.0 - safe) / 2.0;
+        canvas.translate(inset, inset);
+        paintMascot(canvas, (s * safe) / 100.0);
+      });
+    }
+
+    Future<List<int>> renderRoundIcon(int size) {
+      return renderToPng(size, (canvas, s) {
+        canvas.clipPath(Path()..addOval(Rect.fromLTWH(0, 0, s, s)));
+        paintGradientBackground(canvas, s);
+        paintHighlight(canvas, s);
+        paintMascot(canvas, s / 100.0);
+      });
+    }
+
+    const androidLegacy = {
       'android/app/src/main/res/mipmap-mdpi/ic_launcher.png': 48,
       'android/app/src/main/res/mipmap-hdpi/ic_launcher.png': 72,
       'android/app/src/main/res/mipmap-xhdpi/ic_launcher.png': 96,
       'android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png': 144,
       'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png': 192,
+    };
+    const androidRound = {
+      'android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png': 48,
+      'android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png': 72,
+      'android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png': 96,
+      'android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png': 144,
+      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png': 192,
+    };
+    const adaptiveForeground = {
+      'android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png': 108,
+      'android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png': 162,
+      'android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png': 216,
+      'android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png': 324,
+      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png': 432,
+    };
+    const branding = {
       'android/app/src/main/res/drawable/splash_mascot_icon.png': 192,
       'assets/branding/app_logo_512x512.png': 512,
       'assets/branding/app_logo_1024x1024.png': 1024,
       'assets/images/app_icon.png': 512,
     };
 
-    for (final entry in androidTargets.entries) {
-      final bytes = await renderIconPng(entry.value, cornerRadiusRatio: 0.25);
-      final file = File(entry.key);
-      if (!file.parent.existsSync()) {
-        file.parent.createSync(recursive: true);
-      }
-      file.writeAsBytesSync(bytes);
+    for (final entry in androidLegacy.entries) {
+      await writePng(
+        entry.key,
+        await renderIconPng(entry.value, cornerRadiusRatio: 0.25),
+      );
+    }
+    for (final entry in androidRound.entries) {
+      await writePng(entry.key, await renderRoundIcon(entry.value));
+    }
+    for (final entry in adaptiveForeground.entries) {
+      await writePng(entry.key, await renderAdaptiveForeground(entry.value));
+    }
+    for (final entry in branding.entries) {
+      await writePng(
+        entry.key,
+        await renderIconPng(entry.value, cornerRadiusRatio: 0.25),
+      );
     }
 
-    // iOS targets (Pure square, as iOS applies its own squircle mask)
-    final iosTargets = {
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png': 1024,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png': 20,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png': 40,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png': 60,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png': 29,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png': 58,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png': 87,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png': 40,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png': 80,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png': 120,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png': 120,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png': 180,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png': 76,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png': 152,
-      'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png': 167,
-    };
-
-    for (final entry in iosTargets.entries) {
-      final bytes = await renderIconPng(entry.value, isPureSquare: true);
-      final file = File(entry.key);
-      if (!file.parent.existsSync()) {
-        file.parent.createSync(recursive: true);
-      }
-      file.writeAsBytesSync(bytes);
-    }
-
-    expect(File('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png').existsSync(), isTrue);
-    expect(File('assets/branding/app_logo_1024x1024.png').existsSync(), isTrue);
+    expect(
+      File('android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png')
+          .existsSync(),
+      isTrue,
+    );
   });
 }

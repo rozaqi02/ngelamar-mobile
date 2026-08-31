@@ -122,12 +122,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // App Icon Logo with Mascot, Elastic Scale & Subtle Shadow
+            // Same asset as Settings → Tentang Aplikasi (kAppLauncherIconAsset)
             ScaleTransition(
               scale: _scaleAnim,
               child: FadeTransition(
                 opacity: _fadeAnim,
-                child: const AppMascotIcon(size: 108, borderRadius: 32),
+                child: Container(
+                  width: 108,
+                  height: 108,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF5C44E4).withValues(alpha: 0.38),
+                        blurRadius: 34,
+                        offset: const Offset(0, 11),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      kAppLauncherIconAsset,
+                      width: 108,
+                      height: 108,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

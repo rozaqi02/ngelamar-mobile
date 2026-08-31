@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ngelamar/services/backup_service.dart';
+import 'package:ngelamar/services/spreadsheet_import_service.dart';
 import 'package:ngelamar/services/text_parser_service.dart';
 import 'package:ngelamar/services/salary_evaluator_service.dart';
 import 'package:ngelamar/models/job_application.dart';
@@ -30,9 +31,47 @@ Requirements: Flutter, Dart, Riverpod, Firebase.
         expect(result.position, contains('Flutter Developer'));
         expect(result.companyName, contains('PT Tech Innovations'));
         expect(result.workType, equals('WFH'));
-        expect(result.salary, equals('Rp 12.000.000'));
+        expect(result.salary, contains('12.000.000'));
+        expect(result.salary, contains('15.000.000'));
       },
     );
+
+    test('keeps salary ranges with Rp on both sides', () {
+      const sample =
+          'Gaji: Rp 12.000.000 - Rp 15.000.000 per bulan di PT Mandiri.';
+      final result = TextParserService.parseJobText(sample);
+      expect(result.salary, contains('12.000.000'));
+      expect(result.salary, contains('15.000.000'));
+      expect(result.companyName, contains('PT Mandiri'));
+    });
+
+    test('reads Indonesian job titles and labeled company fields', () {
+      const sample = '''
+Perusahaan: Gojek
+Posisi: Content Creator
+Penempatan: Surabaya
+''';
+      final result = TextParserService.parseJobText(sample);
+      expect(result.companyName, equals('Gojek'));
+      expect(result.position.toLowerCase(), contains('content creator'));
+      expect(result.location, equals('Surabaya'));
+      expect(result.hasUsableCompany, isTrue);
+      expect(result.hasUsablePosition, isTrue);
+    });
+
+    test('does not treat excellent as Excel skill', () {
+      const sample = 'Looking for Sales Executive with excellent communication.';
+      final result = TextParserService.parseJobText(sample);
+      expect(result.extractedSkills, isNot(contains('Excel')));
+      expect(result.position.toLowerCase(), contains('sales executive'));
+    });
+
+    test('classifies mixed WFH and office text as Hybrid', () {
+      const sample =
+          'Staff Administrasi WFO di kantor BSD, WFH 2 hari seminggu.';
+      final result = TextParserService.parseJobText(sample);
+      expect(result.workType, equals('Hybrid'));
+    });
 
     test('does not fetch an unsupported or local URL', () async {
       const url = 'http://127.0.0.1/private-job-posting';

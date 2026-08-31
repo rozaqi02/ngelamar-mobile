@@ -69,7 +69,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@drawable/ngelamar_widget_card_surface"
+                android:background="@drawable/ngelamar_widget_card_purple"
                 android:gravity="center_vertical"
                 android:orientation="vertical"
                 android:padding="12dp">
@@ -111,7 +111,7 @@
                         android:includeFontPadding="true"
                         android:maxLines="1"
                         android:text="Interview HR"
-                        android:textColor="@color/widget_text_secondary"
+                        android:textColor="@color/widget_on_purple"
                         android:textSize="10.5sp"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -128,7 +128,7 @@
                     android:includeFontPadding="true"
                     android:maxLines="1"
                     android:text="Nama Perusahaan"
-                    android:textColor="@color/widget_text_primary"
+                    android:textColor="@color/widget_on_purple"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -142,7 +142,7 @@
                     android:includeFontPadding="true"
                     android:maxLines="1"
                     android:text="Posisi Pekerjaan"
-                    android:textColor="@color/widget_text_secondary"
+                    android:textColor="@color/widget_on_purple"
                     android:textSize="11.5sp" />
 
                 <TextView
@@ -156,7 +156,7 @@
                     android:includeFontPadding="true"
                     android:maxLines="1"
                     android:text="Google Meet / Online"
-                    android:textColor="@color/widget_text_muted"
+                    android:textColor="@color/widget_on_purple"
                     android:textSize="10sp" />
             </LinearLayout>
 

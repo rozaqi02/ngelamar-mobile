@@ -25,6 +25,14 @@ class AndroidWidgetProjection {
   final String companyName;
   final String position;
   final String actionNote;
+  final String monthLabel;
+  final int agendaCount;
+  final String event1Title;
+  final String event1When;
+  final String event2Title;
+  final String event2When;
+  final String event3Title;
+  final String event3When;
 
   const AndroidWidgetProjection({
     required this.kind,
@@ -42,6 +50,14 @@ class AndroidWidgetProjection {
     this.companyName = '',
     this.position = '',
     this.actionNote = 'Pantau terus kabar rekrutmen terbaru.',
+    this.monthLabel = 'KALENDER',
+    this.agendaCount = 0,
+    this.event1Title = '',
+    this.event1When = '',
+    this.event2Title = '',
+    this.event2When = '',
+    this.event3Title = '',
+    this.event3When = '',
   });
 
   factory AndroidWidgetProjection.empty() => const AndroidWidgetProjection(
@@ -60,6 +76,8 @@ class AndroidWidgetProjection {
     companyName: '',
     position: '',
     actionNote: 'Pantau terus kabar rekrutmen terbaru.',
+    monthLabel: 'KALENDER',
+    agendaCount: 0,
   );
 
   Map<String, Object> toMap() => {
@@ -78,6 +96,14 @@ class AndroidWidgetProjection {
     'companyName': companyName,
     'position': position,
     'actionNote': actionNote,
+    'monthLabel': monthLabel,
+    'agendaCount': agendaCount,
+    'event1Title': event1Title,
+    'event1When': event1When,
+    'event2Title': event2Title,
+    'event2When': event2When,
+    'event3Title': event3Title,
+    'event3When': event3When,
   };
 }
 
@@ -222,6 +248,29 @@ class AndroidHomeWidgetService {
     }
 
     scheduled.sort((a, b) => a.dueAt.compareTo(b.dueAt));
+    final monthLabel = '${_monthName(now.month).toUpperCase()} ${now.year}';
+    final agendaCount = scheduled.length;
+    String event1Title = '';
+    String event1When = '';
+    String event2Title = '';
+    String event2When = '';
+    String event3Title = '';
+    String event3When = '';
+    if (scheduled.isNotEmpty) {
+      event1Title =
+          '${scheduled[0].job.companyName} · ${scheduled[0].stageLabel}';
+      event1When = scheduled[0].timeBadge;
+    }
+    if (scheduled.length > 1) {
+      event2Title =
+          '${scheduled[1].job.companyName} · ${scheduled[1].stageLabel}';
+      event2When = scheduled[1].timeBadge;
+    }
+    if (scheduled.length > 2) {
+      event3Title =
+          '${scheduled[2].job.companyName} · ${scheduled[2].stageLabel}';
+      event3When = scheduled[2].timeBadge;
+    }
     if (scheduled.isNotEmpty) {
       final item = scheduled.first;
       return AndroidWidgetProjection(
@@ -240,6 +289,14 @@ class AndroidHomeWidgetService {
         companyName: item.job.companyName,
         position: item.job.position,
         actionNote: actionNote,
+        monthLabel: monthLabel,
+        agendaCount: agendaCount,
+        event1Title: event1Title,
+        event1When: event1When,
+        event2Title: event2Title,
+        event2When: event2When,
+        event3Title: event3Title,
+        event3When: event3When,
       );
     }
 
@@ -268,6 +325,14 @@ class AndroidHomeWidgetService {
         companyName: noteJob.companyName,
         position: noteJob.position,
         actionNote: actionNote,
+        monthLabel: monthLabel,
+        agendaCount: agendaCount,
+        event1Title: event1Title,
+        event1When: event1When,
+        event2Title: event2Title,
+        event2When: event2When,
+        event3Title: event3Title,
+        event3When: event3When,
       );
     }
 
@@ -291,6 +356,14 @@ class AndroidHomeWidgetService {
         companyName: latestJob.companyName,
         position: latestJob.position,
         actionNote: actionNote,
+        monthLabel: monthLabel,
+        agendaCount: agendaCount,
+        event1Title: event1Title,
+        event1When: event1When,
+        event2Title: event2Title,
+        event2When: event2When,
+        event3Title: event3Title,
+        event3When: event3When,
       );
     }
 

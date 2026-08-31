@@ -1,18 +1,14 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../services/prefs_service.dart';
 import '../../models/career_context.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_back_policy.dart';
-import '../../widgets/welcome_screen_route.dart';
-import '../discovery/discovery_welcome_screen.dart';
 import '../discovery/job_discovery_screen.dart';
 import '../../widgets/app_layout_metrics.dart';
-import '../prep/career_prep_welcome_screen.dart';
+import '../../widgets/app_tour_overlay.dart';
+import '../../widgets/header_help_button.dart';
 import '../prep/fresh_grad_prep_screen.dart';
 
 /// A focused workspace for finding opportunities and preparing for them.
@@ -33,6 +29,7 @@ class CareerHubScreen extends StatefulWidget {
 class _CareerHubScreenState extends State<CareerHubScreen> {
   late int _section;
   late final PageController _pageController;
+  bool _showTour = false;
 
   @override
   void initState() {
@@ -53,35 +50,36 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
     final surface = isDark ? const Color(0xFF1D1D22) : Colors.white;
 
     final topInset = AppLayoutMetrics.headerTopPadding(context, extra: 0);
-    final greenBackground = isDark
-        ? const Color(0xFF0F1B14)
-        : const Color(0xFFE8F5E9);
-    final headerHeight = topInset + 122.0;
+    final pageBackground = AppTheme.getBackground(context);
+    final headerHeight = topInset + 198.0;
 
     return AppBackScope(
       child: Scaffold(
-        backgroundColor: greenBackground,
+        backgroundColor: pageBackground,
         body: Stack(
           children: [
             // Content stays mounted while the segmented switcher changes page.
             Positioned.fill(
               top: headerHeight,
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (value) {
-                  if (_section == value) return;
-                  HapticFeedback.selectionClick();
-                  setState(() => _section = value);
-                  unawaited(_showWelcomeIfNeeded(value));
-                },
-                children: [
-                  const JobDiscoveryScreen(embedded: true),
-                  FreshGradPrepScreen(
-                    embedded: true,
-                    careerContext: widget.careerContext,
-                  ),
-                ],
+              child: TourAnchor(
+                id: 'hub_body',
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (value) {
+                    if (_section == value) return;
+                    HapticFeedback.selectionClick();
+                    setState(() => _section = value);
+                  },
+                  children: [
+                    JobDiscoveryScreen(embedded: true, onHelp: _startTour),
+                    FreshGradPrepScreen(
+                      embedded: true,
+                      careerContext: widget.careerContext,
+                      onHelp: _startTour,
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -92,90 +90,118 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
               left: 0,
               right: 0,
               child: Container(
-                color: greenBackground,
+                color: pageBackground,
                 padding: EdgeInsets.fromLTRB(20, topInset + 8, 20, 10),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: 'Kembali ke Kalender',
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                Navigator.of(context).pop();
-                              },
-                              borderRadius: BorderRadius.circular(21),
-                              child: Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: surface,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF34343A)
-                                        : const Color(0xFFE4E0D7),
+                    TourAnchor(
+                      id: 'hub_header',
+                      child: Row(
+                        children: [
+                          Semantics(
+                            button: true,
+                            label: 'Kembali ke Kalender',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.of(context).pop();
+                                },
+                                borderRadius: BorderRadius.circular(21),
+                                child: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: surface,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF383842)
+                                          : const Color(0xFFE5E0D5),
+                                      width: 1.4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: isDark ? 0.2 : 0.04,
+                                        ),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_back_rounded,
+                                    color: AppTheme.getTextPrimary(context),
+                                    size: 20,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: AppTheme.getTextPrimary(context),
-                                  size: 20,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          Hero(
+                            tag: 'career_hub_launcher',
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: surface,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF383842)
+                                      : const Color(0xFFE5E0D5),
+                                  width: 1.4,
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Hero(
-                          tag: 'career_hub_launcher',
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF25252B)
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
+                              child: Icon(
+                                Icons.auto_awesome_mosaic_rounded,
                                 color: isDark
-                                    ? const Color(0xFF34343A)
-                                    : const Color(0xFFE4E0D7),
+                                    ? const Color(0xFFE3DCFF)
+                                    : const Color(0xFF5C44E4),
+                                size: 19,
                               ),
                             ),
-                            child: Icon(
-                              Icons.auto_awesome_mosaic_rounded,
-                              color: isDark
-                                  ? const Color(0xFFE3DCFF)
-                                  : const Color(0xFF5C44E4),
-                              size: 19,
-                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'RUANG KARIER',
-                            style: TextStyle(
-                              color: AppTheme.getTextPrimary(context),
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.55,
-                            ),
+                          const SizedBox(width: 8),
+                          HeaderHelpButton(
+                            onTap: _startTour,
+                            semanticLabel: 'Buka tutorial Ruang Karier',
+                            iconColor: const Color(0xFF5C44E4),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    _buildSwitcher(isDark, surface),
+                    const SizedBox(height: 12),
+                    Text(
+                      'RUANG\nKARIER',
+                      style: TextStyle(
+                        color: AppTheme.getTextPrimary(context),
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.15,
+                        height: 0.99,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TourAnchor(
+                      id: 'hub_switcher',
+                      child: _buildSwitcher(isDark, surface),
+                    ),
                   ],
                 ),
               ),
             ),
+            if (_showTour)
+              AppTourOverlay(
+                tabIndex: 5,
+                onFinish: () {
+                  if (mounted) setState(() => _showTour = false);
+                },
+              ),
           ],
         ),
       ),
@@ -205,7 +231,7 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
           Expanded(
             child: _HubSegment(
               selected: _section == 0,
-              label: 'Portal Loker Resmi',
+              label: 'Portal Loker',
               icon: Icons.travel_explore_rounded,
               onTap: () => _select(0),
             ),
@@ -214,7 +240,7 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
           Expanded(
             child: _HubSegment(
               selected: _section == 1,
-              label: 'Persiapan Karirku',
+              label: 'Siapkan Karir',
               icon: Icons.school_rounded,
               onTap: () => _select(1),
             ),
@@ -232,22 +258,11 @@ class _CareerHubScreenState extends State<CareerHubScreen> {
       duration: const Duration(milliseconds: 360),
       curve: Curves.easeInOutCubicEmphasized,
     );
-    await _showWelcomeIfNeeded(value);
   }
 
-  Future<void> _showWelcomeIfNeeded(int value) async {
-    final seen = value == 0
-        ? await PrefsService.isDiscoveryIntroSeen()
-        : await PrefsService.isCareerPrepIntroSeen();
-    if (!mounted || seen) return;
-    Navigator.push(
-      context,
-      WelcomeScreenRoute(
-        child: value == 0
-            ? const DiscoveryWelcomeScreen()
-            : const CareerPrepWelcomeScreen(),
-      ),
-    );
+  void _startTour() {
+    HapticFeedback.selectionClick();
+    setState(() => _showTour = true);
   }
 }
 
@@ -267,8 +282,8 @@ class _HubSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
-    final activeBg = isDark ? Colors.white : const Color(0xFF1C1C1E);
-    final activeText = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final activeBg = isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B);
+    final activeText = Colors.white;
 
     return FluidBounceButton(
       onTap: onTap,

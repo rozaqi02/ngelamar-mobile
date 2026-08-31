@@ -8,17 +8,23 @@ import '../../models/calendar_event.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_layout_metrics.dart';
+import '../../widgets/app_tour_overlay.dart';
+import '../../widgets/header_help_button.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/calendar_planner_mascot.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/apple_animations.dart';
+import '../../services/device_calendar_service.dart';
+import '../../widgets/apple_toast.dart';
 import '../jobs/job_detail_screen.dart';
 
 /// Kalender kerja modern dan minimalis yang memusatkan seluruh jadwal seleksi,
 /// tindak lanjut, dan tenggat lamaran dalam satu tampilan.
 class CalendarScreen extends ConsumerStatefulWidget {
   final VoidCallback? onOpenCareerHub;
+  final VoidCallback? onStartTour;
 
-  const CalendarScreen({super.key, this.onOpenCareerHub});
+  const CalendarScreen({super.key, this.onOpenCareerHub, this.onStartTour});
 
   @override
   ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
@@ -142,9 +148,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         style: TextStyle(
                           color: textPrimary,
                           fontSize: 30,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.2,
-                          height: 0.98,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.15,
+                          height: 0.99,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -162,6 +168,57 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
                 Row(
                   children: [
+                    HeaderHelpButton(
+                      onTap: () => widget.onStartTour?.call(),
+                      semanticLabel: 'Buka tutorial Kalender',
+                    ),
+                    const SizedBox(width: 8),
+                    FluidBounceButton(
+                      onTap: () async {
+                        HapticFeedback.selectionClick();
+                        await DeviceCalendarService.syncJobs(
+                          ref.read(jobProvider).jobs,
+                        );
+                        await DeviceCalendarService.openSystemCalendar();
+                        if (!context.mounted) return;
+                        AppleToast.success(
+                          context,
+                          'Agenda disinkronkan ke kalender HP',
+                        );
+                      },
+                      semanticLabel: 'Sinkronkan ke kalender Android',
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF242428)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF383842)
+                                : const Color(0xFFE5E0D5),
+                            width: 1.4,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.04,
+                              ),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.event_available_rounded,
+                          color: Color(0xFF5C44E4),
+                          size: 19,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     if (!isViewingToday ||
                         _visibleMonth.year != today.year ||
                         _visibleMonth.month != today.month)
@@ -225,25 +282,35 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: widget.onOpenCareerHub,
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(21),
                           child: Container(
-                            width: 38,
-                            height: 38,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF27272A)
+                                  ? const Color(0xFF242428)
                                   : Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: borderColor.withValues(
-                                  alpha: isDark ? 0.3 : 0.6,
-                                ),
+                                color: isDark
+                                    ? const Color(0xFF383842)
+                                    : const Color(0xFFE5E0D5),
+                                width: 1.4,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.04,
+                                  ),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: const Icon(
                               Icons.auto_awesome_mosaic_rounded,
                               color: Color(0xFF5C44E4),
-                              size: 17,
+                              size: 19,
                             ),
                           ),
                         ),
@@ -255,537 +322,541 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             const SizedBox(height: 16),
 
             // 2. Minimal Bento Metrics (Borderless Tonal Cards)
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(
-                        color: borderColor.withValues(
-                          alpha: isDark ? 0.25 : 0.5,
-                        ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.15 : 0.03,
-                          ),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                DateFormat(
-                                  'MMM y',
-                                  'id_ID',
-                                ).format(_visibleMonth).toUpperCase(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: textSecondary,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.calendar_today_rounded,
-                                color: Color(0xFF5C44E4),
-                                size: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${eventsThisMonth.length} Agenda',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$selectionCountThisMonth seleksi / $otherCountThisMonth lainnya',
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-                      border: Border.all(
-                        color: borderColor.withValues(
-                          alpha: isDark ? 0.25 : 0.5,
-                        ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.15 : 0.03,
-                          ),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'AGENDA TERDEKAT',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: const Color(0xFFD97706),
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF3C7),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.schedule_rounded,
-                                color: Color(0xFFD97706),
-                                size: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          nearestEvent != null
-                              ? _formatRelativeDay(nearestEvent.date, today)
-                              : 'Semua Aman',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          nearestEvent != null
-                              ? '${nearestEvent.job.companyName} / ${_formatEventTime(nearestEvent.date)}'
-                              : 'Belum ada agenda seleksi',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 3. Calendar Month Card
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
-                border: Border.all(
-                  color: borderColor.withValues(alpha: isDark ? 0.25 : 0.5),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
+            TourAnchor(
+              id: 'cal_summary',
+              child: Row(
                 children: [
-                  // Month Navigator Row
-                  Row(
-                    children: [
-                      _MonthNavButton(
-                        icon: Icons.chevron_left_rounded,
-                        tooltip: 'Bulan sebelumnya',
-                        onTap: () => _moveMonth(-1),
-                      ),
-                      Expanded(
-                        child: Text(
-                          DateFormat('MMMM y', 'id_ID').format(_visibleMonth),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardPurple,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.18 : 0.08,
+                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
+                        ],
                       ),
-                      _MonthNavButton(
-                        icon: Icons.chevron_right_rounded,
-                        tooltip: 'Bulan berikutnya',
-                        onTap: () => _moveMonth(1),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Weekday Header Labels (Clean Typography)
-                  Row(
-                    children:
-                        const ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB']
-                            .map(
-                              (day) => Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
                                 child: Text(
-                                  day,
-                                  textAlign: TextAlign.center,
+                                  DateFormat(
+                                    'MMM y',
+                                    'id_ID',
+                                  ).format(_visibleMonth).toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: textSecondary.withValues(alpha: 0.7),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white.withValues(alpha: 0.78),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
-                            )
-                            .toList(),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Day grid with compact multi-category event markers.
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: calendarCells,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7,
-                          mainAxisSpacing: 6,
-                          crossAxisSpacing: 6,
-                        ),
-                    itemBuilder: (context, index) {
-                      final dayNumber = index - leadingDays + 1;
-                      if (dayNumber < 1 || dayNumber > daysInMonth) {
-                        return const SizedBox.shrink();
-                      }
-                      final date = DateTime(
-                        _visibleMonth.year,
-                        _visibleMonth.month,
-                        dayNumber,
-                      );
-                      final isSelected = _sameDay(date, _selectedDate);
-                      final isToday = _sameDay(date, today);
-                      final dayEvents = events
-                          .where((event) => _sameDay(event.date, date))
-                          .toList();
-                      final hasEvents = dayEvents.isNotEmpty;
-                      final markerColors = <Color>[];
-                      for (final event in dayEvents) {
-                        final color = _calendarEventColor(
-                          event.legendKind,
-                          isDark,
-                        );
-                        if (!markerColors.contains(color)) {
-                          markerColors.add(color);
-                        }
-                      }
-
-                      Color cellBg;
-                      Color cellTextColor;
-
-                      if (isSelected) {
-                        cellBg = isDark
-                            ? const Color(0xFFE5DDFF)
-                            : const Color(0xFF19191B);
-                        cellTextColor = isDark
-                            ? const Color(0xFF19191B)
-                            : Colors.white;
-                      } else if (hasEvents) {
-                        cellBg = isDark
-                            ? const Color(0xFF242429)
-                            : const Color(0xFFF7F4EE);
-                        cellTextColor = textPrimary;
-                      } else {
-                        cellBg = Colors.transparent;
-                        cellTextColor = textPrimary;
-                      }
-
-                      return Semantics(
-                        button: true,
-                        selected: isSelected,
-                        label:
-                            '${DateFormat('d MMMM y', 'id_ID').format(date)}, ${dayEvents.length} kegiatan',
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selectedDate = date);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 160),
-                            decoration: BoxDecoration(
-                              color: cellBg,
-                              shape: BoxShape.circle,
-                              border: isToday && !isSelected
-                                  ? Border.all(
-                                      color: const Color(0xFF5C44E4),
-                                      width: 1.4,
-                                    )
-                                  : null,
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Transform.translate(
-                                  offset: Offset(
-                                    0,
-                                    markerColors.isNotEmpty ? -3 : 0,
-                                  ),
-                                  child: Text(
-                                    '$dayNumber',
-                                    style: TextStyle(
-                                      color: cellTextColor,
-                                      fontSize: 13,
-                                      fontWeight:
-                                          isSelected || hasEvents || isToday
-                                          ? FontWeight.w700
-                                          : FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                if (markerColors.isNotEmpty)
-                                  Positioned(
-                                    bottom: 5,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: markerColors
-                                          .take(4)
-                                          .map(
-                                            (color) => Container(
-                                              width: 4.5,
-                                              height: 4.5,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 1,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: color,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                  ),
-                              ],
+                              const Icon(
+                                Icons.calendar_today_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${eventsThisMonth.length} Agenda',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.4,
                             ),
                           ),
-                        ),
-                      );
-                    },
+                          const SizedBox(height: 2),
+                          Text(
+                            '$selectionCountThisMonth seleksi · $otherCountThisMonth lainnya',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.82),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 14),
-
-                  // Four event categories used by the markers above.
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF27272A).withValues(alpha: 0.5)
-                          : const Color(0xFFF9F7F2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 6,
-                      children: [
-                        _CalendarLegendItem(
-                          color: _calendarEventColor('application', isDark),
-                          label: 'Lamaran',
-                        ),
-                        _CalendarLegendItem(
-                          color: _calendarEventColor('interview', isDark),
-                          label: 'Seleksi',
-                        ),
-                        _CalendarLegendItem(
-                          color: _calendarEventColor('next_action', isDark),
-                          label: 'Tindak Lanjut',
-                        ),
-                        _CalendarLegendItem(
-                          color: _calendarEventColor('deadline', isDark),
-                          label: 'Tenggat',
-                        ),
-                      ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardYellow,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.18 : 0.08,
+                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'TERDEKAT',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Color(0xFF7A5208),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const Icon(
+                                Icons.schedule_rounded,
+                                color: Color(0xFF7A5208),
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            nearestEvent != null
+                                ? _formatRelativeDay(nearestEvent.date, today)
+                                : 'Santai dulu',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF121214),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            nearestEvent != null
+                                ? '${nearestEvent.job.companyName} · ${_formatEventTime(nearestEvent.date)}'
+                                : 'Belum ada agenda seleksi',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF5C4A18),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // 4. Selected Day Agenda Section
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    isViewingToday
-                        ? 'HARI INI'
-                        : DateFormat(
-                            'EEEE, d MMMM y',
-                            'id_ID',
-                          ).format(_selectedDate).toUpperCase(),
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 3.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF27272A)
-                        : const Color(0xFFEFECE6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    selectedEvents.isEmpty
-                        ? 'KOSONG'
-                        : '${selectedEvents.length} JADWAL',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // 5. Selected Day Events List or Clean Empty State
-            if (selectedEvents.isEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 18,
-                ),
+            // 3. Calendar Month Card
+            TourAnchor(
+              id: 'cal_grid',
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
                 decoration: BoxDecoration(
                   color: surfaceColor,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusCardLarge),
                   border: Border.all(
                     color: borderColor.withValues(alpha: isDark ? 0.25 : 0.5),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF27272A)
-                            : const Color(0xFFF4F2EE),
-                        borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.15 : 0.03,
                       ),
-                      child: Icon(
-                        Icons.event_available_rounded,
-                        color: textSecondary,
-                        size: 20,
-                      ),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tidak ada jadwal kegiatan',
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Month Navigator Row
+                    Row(
+                      children: [
+                        _MonthNavButton(
+                          icon: Icons.chevron_left_rounded,
+                          tooltip: 'Bulan sebelumnya',
+                          onTap: () => _moveMonth(-1),
+                        ),
+                        Expanded(
+                          child: Text(
+                            DateFormat('MMMM y', 'id_ID').format(_visibleMonth),
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Pilih tanggal lain atau tambahkan jadwal pada lamaranmu.',
-                            style: TextStyle(
-                              color: textSecondary,
-                              fontSize: 11.5,
-                              height: 1.3,
+                        ),
+                        _MonthNavButton(
+                          icon: Icons.chevron_right_rounded,
+                          tooltip: 'Bulan berikutnya',
+                          onTap: () => _moveMonth(1),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Weekday Header Labels (Clean Typography)
+                    Row(
+                      children:
+                          const [
+                                'MIN',
+                                'SEN',
+                                'SEL',
+                                'RAB',
+                                'KAM',
+                                'JUM',
+                                'SAB',
+                              ]
+                              .map(
+                                (day) => Expanded(
+                                  child: Text(
+                                    day,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: textSecondary.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Day grid with compact multi-category event markers.
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: calendarCells,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 7,
+                            mainAxisSpacing: 6,
+                            crossAxisSpacing: 6,
+                          ),
+                      itemBuilder: (context, index) {
+                        final dayNumber = index - leadingDays + 1;
+                        if (dayNumber < 1 || dayNumber > daysInMonth) {
+                          return const SizedBox.shrink();
+                        }
+                        final date = DateTime(
+                          _visibleMonth.year,
+                          _visibleMonth.month,
+                          dayNumber,
+                        );
+                        final isSelected = _sameDay(date, _selectedDate);
+                        final isToday = _sameDay(date, today);
+                        final dayEvents = events
+                            .where((event) => _sameDay(event.date, date))
+                            .toList();
+                        final hasEvents = dayEvents.isNotEmpty;
+                        final markerColors = <Color>[];
+                        for (final event in dayEvents) {
+                          final color = _calendarEventColor(
+                            event.legendKind,
+                            isDark,
+                          );
+                          if (!markerColors.contains(color)) {
+                            markerColors.add(color);
+                          }
+                        }
+
+                        Color cellBg;
+                        Color cellTextColor;
+
+                        if (isSelected) {
+                          cellBg = isDark
+                              ? const Color(0xFFE5DDFF)
+                              : const Color(0xFF19191B);
+                          cellTextColor = isDark
+                              ? const Color(0xFF19191B)
+                              : Colors.white;
+                        } else if (hasEvents) {
+                          cellBg = isDark
+                              ? const Color(0xFF242429)
+                              : const Color(0xFFF7F4EE);
+                          cellTextColor = textPrimary;
+                        } else {
+                          cellBg = Colors.transparent;
+                          cellTextColor = textPrimary;
+                        }
+
+                        return Semantics(
+                          button: true,
+                          selected: isSelected,
+                          label:
+                              '${DateFormat('d MMMM y', 'id_ID').format(date)}, ${dayEvents.length} kegiatan',
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _selectedDate = date);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 160),
+                              decoration: BoxDecoration(
+                                color: cellBg,
+                                shape: BoxShape.circle,
+                                border: isToday && !isSelected
+                                    ? Border.all(
+                                        color: const Color(0xFF5C44E4),
+                                        width: 1.4,
+                                      )
+                                    : null,
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      markerColors.isNotEmpty ? -3 : 0,
+                                    ),
+                                    child: Text(
+                                      '$dayNumber',
+                                      style: TextStyle(
+                                        color: cellTextColor,
+                                        fontSize: 13,
+                                        fontWeight:
+                                            isSelected || hasEvents || isToday
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (markerColors.isNotEmpty)
+                                    Positioned(
+                                      bottom: 5,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: markerColors
+                                            .take(4)
+                                            .map(
+                                              (color) => Container(
+                                                width: 4.5,
+                                                height: 4.5,
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 1,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: color,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Four event categories used by the markers above.
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF27272A).withValues(alpha: 0.5)
+                            : const Color(0xFFF9F7F2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 6,
+                        children: [
+                          _CalendarLegendItem(
+                            color: _calendarEventColor('application', isDark),
+                            label: 'Lamaran',
+                          ),
+                          _CalendarLegendItem(
+                            color: _calendarEventColor('interview', isDark),
+                            label: 'Seleksi',
+                          ),
+                          _CalendarLegendItem(
+                            color: _calendarEventColor('next_action', isDark),
+                            label: 'Tindak Lanjut',
+                          ),
+                          _CalendarLegendItem(
+                            color: _calendarEventColor('deadline', isDark),
+                            label: 'Tenggat',
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              )
-            else
-              ...selectedEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _CalendarEventCard(event: event),
-                ),
               ),
+            ),
+            const SizedBox(height: 20),
+
+            // 4. Selected Day Agenda Section
+            TourAnchor(
+              id: 'cal_agenda',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isViewingToday
+                              ? 'HARI INI'
+                              : DateFormat(
+                                  'EEEE, d MMMM y',
+                                  'id_ID',
+                                ).format(_selectedDate).toUpperCase(),
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF27272A)
+                              : const Color(0xFFEFECE6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          selectedEvents.isEmpty
+                              ? 'KOSONG'
+                              : '${selectedEvents.length} JADWAL',
+                          style: TextStyle(
+                            color: textSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 5. Selected Day Events List or Clean Empty State
+                  if (selectedEvents.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusCard,
+                        ),
+                        border: Border.all(
+                          color: borderColor.withValues(
+                            alpha: isDark ? 0.25 : 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF27272A)
+                                  : const Color(0xFFF4F2EE),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.event_available_rounded,
+                              color: textSecondary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hari ini bebas agenda',
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Pilih tanggal lain, atau catat jadwal di lamaranmu.',
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 11.5,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ...selectedEvents.map(
+                      (event) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _CalendarEventCard(event: event),
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 6),
 
@@ -793,7 +864,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             Center(
               child: Opacity(
                 opacity: isDark ? 0.85 : 1.0,
-                child: const CalendarPlannerMascot(width: 190, height: 158),
+                child: const CalendarPlannerMascot(width: 190, height: 172),
               ),
             ),
           ],

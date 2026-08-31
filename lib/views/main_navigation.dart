@@ -98,9 +98,16 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
         onNavigateTab: (index) => _onTabTapped(index),
         onOpenCareerHub: _openCareerHub,
       ),
-      const JobListScreen(key: ValueKey(1)),
+      JobListScreen(
+        key: const ValueKey(1),
+        onStartTour: () => _startAppTour(1),
+      ),
       const SizedBox(key: ValueKey(2)),
-      CalendarScreen(key: const ValueKey(3), onOpenCareerHub: _openCareerHub),
+      CalendarScreen(
+        key: const ValueKey(3),
+        onOpenCareerHub: _openCareerHub,
+        onStartTour: () => _startAppTour(3),
+      ),
       SettingsScreen(
         key: const ValueKey(4),
         onStartAppTour: () => _startAppTour(4),
@@ -189,8 +196,11 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
     final openAddJob = launchData['open_add_job'] as bool? ?? false;
     final jobId = launchData['job_id'] as String? ?? '';
 
+    final openCalendar = launchData['open_calendar'] as bool? ?? false;
     if (openAddJob) {
       _openAddJob();
+    } else if (openCalendar) {
+      setState(() => _currentIndex = 3);
     } else if (jobId.isNotEmpty) {
       final jobs = ref.read(jobProvider).jobs;
       final target = jobs.where((j) => j.id == jobId).firstOrNull;
@@ -365,7 +375,9 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
             // Four destinations plus a raised central "Catat Lamaran" action.
             Align(
               alignment: Alignment.bottomCenter,
-              child: LayoutBuilder(
+              child: TourAnchor(
+                id: 'home_nav',
+                child: LayoutBuilder(
                 builder: (context, constraints) => SizedBox(
                   // A compact dock has a more deliberate capsule shape than
                   // a bar stretched edge-to-edge on wide phone screens.
@@ -487,6 +499,7 @@ class _MainNavigationState extends ConsumerState<MainNavigation>
                     ),
                   ),
                 ),
+              ),
               ),
             ),
             if (_isAppTourVisible)

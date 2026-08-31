@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.32.0+250 - 2026-09-01
+
+### Added
+- Widget kalender home screen terpisah (agenda seleksi).
+- Sinkronisasi agenda Ngelamar ke kalender Android (tombol di menu Kalender).
+- Penggelapan background saat membuka detail lamaran, sama seperti form catat lamaran.
+
+### Changed
+- Widget pengingat dirombak ke bahasa visual cream + kartu ungu/kuning, 4 ukuran (1x1, 2x2, 4x2, 4x3).
+- APK distribusi arm64-only (~23.5 MB).
+
 ## 2.28.0+245 - 2026-08-26
 
 ### Added

@@ -24,6 +24,16 @@ class MainActivity : FlutterActivity() {
                     }
                     NgelamarWidgetStorage.save(applicationContext, payload)
                     NgelamarReminderWidgetProvider.updateAll(applicationContext)
+                    NgelamarCalendarWidgetProvider.updateAll(applicationContext)
+                    result.success(null)
+                }
+                "syncDeviceCalendar" -> {
+                    val events = call.arguments as? List<*>
+                    DeviceCalendarBridge.sync(this, events)
+                    result.success(null)
+                }
+                "openDeviceCalendar" -> {
+                    DeviceCalendarBridge.openCalendar(this)
                     result.success(null)
                 }
                 "getInitialLaunchData" -> {
@@ -31,11 +41,13 @@ class MainActivity : FlutterActivity() {
                     val fromWidget = launchIntent?.getBooleanExtra("from_home_widget", false) ?: false
                     val jobId = launchIntent?.getStringExtra("job_id") ?: ""
                     val openAddJob = launchIntent?.getBooleanExtra("open_add_job", false) ?: false
+                    val openCalendar = launchIntent?.getBooleanExtra("open_calendar", false) ?: false
                     if (fromWidget) {
                         // Consumed: avoid replaying the widget action on the next resume.
                         launchIntent?.removeExtra("from_home_widget")
                         launchIntent?.removeExtra("job_id")
                         launchIntent?.removeExtra("open_add_job")
+                        launchIntent?.removeExtra("open_calendar")
                     }
                     val isShare = launchIntent?.action == Intent.ACTION_SEND &&
                         launchIntent.type?.startsWith("text/") == true
@@ -49,6 +61,7 @@ class MainActivity : FlutterActivity() {
                         "from_home_widget" to fromWidget,
                         "job_id" to jobId,
                         "open_add_job" to openAddJob,
+                        "open_calendar" to openCalendar,
                         "from_share" to (isShare && sharedText.isNotBlank()),
                         "shared_text" to sharedText,
                     ))
@@ -92,11 +105,13 @@ class MainActivity : FlutterActivity() {
                     "from_home_widget" to true,
                     "job_id" to (newIntent.getStringExtra("job_id") ?: ""),
                     "open_add_job" to newIntent.getBooleanExtra("open_add_job", false),
+                    "open_calendar" to newIntent.getBooleanExtra("open_calendar", false),
                 ),
             )
             newIntent.removeExtra("from_home_widget")
             newIntent.removeExtra("job_id")
             newIntent.removeExtra("open_add_job")
+            newIntent.removeExtra("open_calendar")
         }
     }
 }

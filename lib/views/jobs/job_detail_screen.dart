@@ -19,6 +19,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/app_back_policy.dart';
 import '../../widgets/bookmark_thumbs_up_mascot.dart';
 import '../../widgets/company_logo_badge.dart';
+import '../../widgets/company_logo_preview.dart';
 import '../../widgets/delight_celebration.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
@@ -1184,10 +1185,10 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           Text(
                             currentJob.companyName,
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 24,
                               fontWeight: FontWeight.w900,
                               color: txtPri,
-                              letterSpacing: -0.4,
+                              letterSpacing: -0.6,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1223,53 +1224,54 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   controller: scrollController,
                   padding: const EdgeInsets.fromLTRB(22, 18, 22, 40),
                   children: [
+                    Row(
+                      children: [
+                        _buildFactChip(
+                          eyebrow: 'Status',
+                          value: currentJob.status,
+                          color: AppTheme.cardPurple,
+                          icon: Icons.flag_rounded,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFactChip(
+                          eyebrow: 'Gaji',
+                          value: currentJob.salaryOffered ?? 'Belum diisi',
+                          color: AppTheme.cardYellow,
+                          icon: Icons.payments_rounded,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFactChip(
+                          eyebrow: 'Mode',
+                          value: currentJob.workType,
+                          color: AppTheme.cardGreen,
+                          icon: Icons.home_work_rounded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       decoration: BoxDecoration(
                         color: cardBg,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: cardBorder),
                       ),
                       child: Column(
                         children: [
                           _buildDetailRow(
-                            icon: Icons.flag_rounded,
-                            label: 'Status Tahapan',
-                            value: currentJob.status,
-                            badgeColor: AppTheme.getStatusColor(
-                              currentJob.status,
-                            ),
-                            isDark: isDark,
-                          ),
-                          Divider(height: 20, color: dividerColor),
-                          _buildDetailRow(
-                            icon: Icons.payments_rounded,
-                            label: 'Tawaran Gaji',
-                            value:
-                                currentJob.salaryOffered ?? 'Tidak dicantumkan',
-                            isDark: isDark,
-                          ),
-                          Divider(height: 20, color: dividerColor),
-                          _buildDetailRow(
-                            icon: Icons.work_outline_rounded,
-                            label: 'Tipe Kerja',
-                            value: currentJob.workType,
-                            isDark: isDark,
-                          ),
-                          Divider(height: 20, color: dividerColor),
-                          _buildDetailRow(
                             icon: Icons.location_on_outlined,
-                            label: 'Lokasi Kantor',
+                            label: 'Lokasi',
                             value:
                                 currentJob.location?.trim().isNotEmpty == true
                                 ? currentJob.location!.trim()
                                 : 'Belum dicantumkan',
                             isDark: isDark,
                           ),
-                          Divider(height: 20, color: dividerColor),
+                          Divider(height: 18, color: dividerColor),
                           _buildDetailRow(
-                            icon: Icons.calendar_today_rounded,
-                            label: 'Tanggal Melamar',
+                            icon: Icons.event_available_rounded,
+                            label: 'Melamar',
                             value:
                                 '${currentJob.appliedDate.day}/${currentJob.appliedDate.month}/${currentJob.appliedDate.year}',
                             isDark: isDark,
@@ -1600,6 +1602,51 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     );
   }
 
+  Widget _buildFactChip({
+    required String eyebrow,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFF121214)),
+            const SizedBox(height: 10),
+            Text(
+              eyebrow,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+                color: const Color(0xFF121214).withValues(alpha: 0.62),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF121214),
+                height: 1.15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDetailRow({
     required IconData icon,
     required String label,
@@ -1898,17 +1945,32 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                             offset: const Offset(0, 3),
                             child: ScaleTransition(
                               scale: _logoBounceAnim,
-                              child: Hero(
-                                tag:
-                                    widget.companyLogoHeroTag ??
-                                    'company_logo_${currentJob.id}',
-                                createRectTween: companyLogoRectTween,
-                                flightShuttleBuilder: companyLogoFlightShuttle,
-                                placeholderBuilder: companyLogoHeroPlaceholder,
-                                child: CompanyLogoBadge(
-                                  companyName: currentJob.companyName,
-                                  size: logoSize,
-                                  customImagePath: currentJob.companyLogoPath,
+                              child: GestureDetector(
+                                onTap: () {
+                                  final tag =
+                                      widget.companyLogoHeroTag ??
+                                      'company_logo_${currentJob.id}';
+                                  CompanyLogoPreviewPage.open(
+                                    context,
+                                    companyName: currentJob.companyName,
+                                    customImagePath: currentJob.companyLogoPath,
+                                    heroTag: tag,
+                                  );
+                                },
+                                child: Hero(
+                                  tag:
+                                      widget.companyLogoHeroTag ??
+                                      'company_logo_${currentJob.id}',
+                                  createRectTween: companyLogoRectTween,
+                                  flightShuttleBuilder:
+                                      companyLogoFlightShuttle,
+                                  placeholderBuilder:
+                                      companyLogoHeroPlaceholder,
+                                  child: CompanyLogoBadge(
+                                    companyName: currentJob.companyName,
+                                    size: logoSize,
+                                    customImagePath: currentJob.companyLogoPath,
+                                  ),
                                 ),
                               ),
                             ),
@@ -2566,43 +2628,30 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: Hero(
-                    tag: statusActionHeroTag(currentJob.id),
-                    createRectTween: statusActionRectTween,
-                    flightShuttleBuilder: statusActionFlightShuttle,
-                    placeholderBuilder: statusActionHeroPlaceholder,
-                    child: StatusActionHeroMetadata(
-                      isExpanded: true,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.heavyImpact();
+                      _showStatusPicker(context, currentJob);
+                    },
+                    icon: const Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'Perbarui Status Lamaran',
+                      style: statusActionLabelTextStyle(context),
+                    ),
+                    style: ElevatedButton.styleFrom(
                       backgroundColor: isDark
                           ? const Color(0xFF5C44E4)
                           : const Color(0xFF19191B),
                       foregroundColor: Colors.white,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          HapticFeedback.heavyImpact();
-                          _showStatusPicker(context, currentJob);
-                        },
-                        icon: const Icon(
-                          Icons.swap_horiz_rounded,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                        label: Text(
-                          'Perbarui Status Lamaran',
-                          style: statusActionLabelTextStyle(context),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? const Color(0xFF5C44E4)
-                              : const Color(0xFF19191B),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                          elevation: 8,
-                          shadowColor: Colors.black.withValues(alpha: 0.35),
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
                       ),
+                      elevation: 8,
+                      shadowColor: Colors.black.withValues(alpha: 0.35),
                     ),
                   ),
                 ),
@@ -2862,7 +2911,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E24) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
           ),

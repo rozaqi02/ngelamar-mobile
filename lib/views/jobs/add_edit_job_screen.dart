@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../services/notification_service.dart';
 import '../../services/salary_evaluator_service.dart';
+import '../../services/spreadsheet_import_service.dart';
 import '../../services/text_parser_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_dialog.dart';
@@ -25,15 +27,7 @@ import '../../widgets/app_layout_metrics.dart';
 import 'job_detail_screen.dart';
 
 /// Screen: Tambah & Edit Catatan Lamaran Kerja.
-/// Didesain 100% presisi mengikuti referensi visual mockup:
-/// - Latar belakang dominan Warm Vibrant Yellow (seperti kartu Amazon)
-/// - Top Bar: Tombol bundar putih (Back), Logo Perusahaan bundar di tengah, Tombol Bookmark/Impor di kanan
-/// - Nama Perusahaan besar tebal di tengah
-/// - Pill Container Posisi/Role (Software Development Engineer style)
-/// - Teks lokasi dengan ikon pin
-/// - Tiga pill informasi: gaji, tipe kerja, dan status
-/// - Section Card Putih melengkung tumpul (28px) dengan floating pill header "Kualifikasi & Detail Seleksi"
-/// - Tombol Aksi Utama Pil Hitam Solid di bagian bawah: "Catat Lamaran Ini" / "Simpan Perubahan"
+/// Catat Cepat: satu kartu. Detail Lengkap: tiga grup (siapa, syarat, catatan).
 class AddEditJobScreen extends ConsumerStatefulWidget {
   final JobApplication? jobToEdit;
   final bool autoFocusPaste;
@@ -88,6 +82,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
   bool _isExtracting = false;
   bool _showSmartImport = false;
   bool _quickMode = false;
+  bool _notesExpanded = false;
 
   final List<String> _statusOptions = [
     'Tersimpan',
@@ -157,6 +152,13 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       _priority = j.priority;
       _nextActionType = j.nextActionType ?? 'Tindak lanjut';
       _nextActionAt = j.nextActionAt;
+      _notesExpanded =
+          j.jobDescription.trim().isNotEmpty ||
+          (j.hrContact?.trim().isNotEmpty ?? false) ||
+          (j.notes?.trim().isNotEmpty ?? false) ||
+          (j.screenshotPath?.isNotEmpty ?? false) ||
+          (j.pdfCvPath?.isNotEmpty ?? false) ||
+          (j.nextActionNote?.trim().isNotEmpty ?? false);
     }
     if (j == null && widget.initialSharedText?.trim().isNotEmpty == true) {
       _showSmartImport = true;
@@ -229,6 +231,166 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     }
   }
 
+  Future<void> _importSpreadsheet() async {
+    HapticFeedback.selectionClick();
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+      if (picked == null || picked.files.isEmpty) return;
+      final file = picked.files.single;
+      final bytes =
+          file.bytes ??
+          (file.path == null ? null : await File(file.path!).readAsBytes());
+      if (bytes == null) {
+        throw const SpreadsheetImportException('Berkas tidak dapat dibaca.');
+      }
+      final parsed = SpreadsheetImportService.parse(
+        bytes: Uint8List.fromList(bytes),
+        fileName: file.name,
+      );
+      if (!mounted) return;
+      if (parsed.jobs.isEmpty) {
+        AppleToast.warning(
+          context,
+          'Tidak ada baris lamaran yang bisa diimpor.',
+          subtitle: parsed.warnings.isEmpty
+              ? 'Pastikan kolom Perusahaan dan Posisi terisi.'
+              : parsed.warnings.first,
+        );
+        return;
+      }
+      if (parsed.jobs.length == 1) {
+        final job = parsed.jobs.first;
+        setState(() {
+          _companyController.text = job.companyName;
+          _positionController.text = job.position;
+          if (job.location != null) _locationController.text = job.location!;
+          if (job.salaryOffered != null) {
+            _salaryController.text = job.salaryOffered!;
+          }
+          if (job.jobUrl != null) _urlController.text = job.jobUrl!;
+          if (job.hrContact != null) _hrContactController.text = job.hrContact!;
+          if (job.jobDescription.isNotEmpty) {
+            _descriptionController.text = job.jobDescription;
+          }
+          if (job.notes != null) _notesController.text = job.notes!;
+          _status = job.status;
+          if (!_quickMode) _workType = job.workType;
+          _jobSource = job.jobSource ?? _jobSource;
+          _sourcePlatform = 'Excel';
+          _showSmartImport = false;
+        });
+        AppleToast.success(context, '1 lamaran dari Excel diisi ke formulir.');
+        return;
+      }
+
+      final confirmed = await _showSpreadsheetPreview(parsed);
+      if (confirmed != true || !mounted) return;
+      final result = await ref
+          .read(jobProvider.notifier)
+          .importJobs(parsed.jobs);
+      if (!mounted) return;
+      AppleToast.success(
+        context,
+        '${result.importedCount} lamaran masuk dari Excel${result.skippedCount > 0 ? ', ${result.skippedCount} duplikat dilewati' : ''}.',
+      );
+      Navigator.pop(context);
+    } on SpreadsheetImportException catch (error) {
+      if (mounted) AppleToast.warning(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AppleToast.warning(context, 'Berkas Excel belum dapat dibaca.');
+      }
+    }
+  }
+
+  Future<bool?> _showSpreadsheetPreview(SpreadsheetImportResult parsed) {
+    final isDark = AppTheme.isDark(context);
+    final sheetBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    final txtSec = isDark ? const Color(0xFFA0A0A8) : const Color(0xFF707074);
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Impor ${parsed.jobs.length} lamaran',
+              style: TextStyle(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w900,
+                color: txtPri,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              parsed.skippedInvalid + parsed.skippedEmpty > 0
+                  ? '${parsed.skippedInvalid + parsed.skippedEmpty} baris dilewati. Duplikat akan diabaikan saat menyimpan.'
+                  : 'Duplikat perusahaan + posisi akan dilewati.',
+              style: TextStyle(fontSize: 12.5, color: txtSec, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            ...parsed.jobs
+                .take(3)
+                .map(
+                  (job) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '${job.companyName} • ${job.position}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: txtPri,
+                      ),
+                    ),
+                  ),
+                ),
+            if (parsed.jobs.length > 3)
+              Text(
+                '+${parsed.jobs.length - 3} lamaran lainnya',
+                style: TextStyle(fontSize: 12, color: txtSec),
+              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Batal'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5C44E4),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Impor ke Tracker'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Ekstraksi otomatis dari Link URL atau Teks Iklan
   void _extractFromLinkOrText() async {
     final text = _linkOrTextController.text.trim();
@@ -248,8 +410,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       if (!mounted) return;
 
       final extractedFields = <String>[
-        if (result.companyName.isNotEmpty) 'perusahaan',
-        if (result.position.isNotEmpty) 'posisi',
+        if (result.hasUsableCompany) 'perusahaan',
+        if (result.hasUsablePosition) 'posisi',
         if (result.location?.isNotEmpty == true) 'lokasi',
         if (result.salary?.isNotEmpty == true) 'gaji',
         if (result.rawDescription.isNotEmpty) 'deskripsi',
@@ -267,10 +429,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       if (confirmed != true || !mounted) return;
 
       setState(() {
-        if (result.companyName.isNotEmpty) {
+        if (result.hasUsableCompany) {
           _companyController.text = result.companyName;
         }
-        if (result.position.isNotEmpty) {
+        if (result.hasUsablePosition) {
           _positionController.text = result.position;
         }
         if (result.salary != null) {
@@ -309,7 +471,7 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         '${extractedFields.length} bagian berhasil ditemukan',
         subtitle: extractedFields.join(', '),
       );
-      if (result.companyName.isNotEmpty && result.position.isNotEmpty) {
+      if (result.hasUsableCompany && result.hasUsablePosition) {
         setState(() => _showSmartImport = false);
         DelightCelebration.show(
           context,
@@ -403,13 +565,13 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
             const SizedBox(height: 16),
             _buildPreviewRow(
               'Posisi',
-              result.position.isNotEmpty ? result.position : '-',
+              result.hasUsablePosition ? result.position : '-',
               txtPri,
               txtSec,
             ),
             _buildPreviewRow(
               'Perusahaan',
-              result.companyName.isNotEmpty ? result.companyName : '-',
+              result.hasUsableCompany ? result.companyName : '-',
               txtPri,
               txtSec,
             ),
@@ -424,6 +586,30 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
               _buildPreviewRow('Lokasi', result.location!, txtPri, txtSec),
             if (result.hrContact != null && result.hrContact!.isNotEmpty)
               _buildPreviewRow('Kontak HR', result.hrContact!, txtPri, txtSec),
+            if (result.hasUsableCompany && result.hasUsablePosition)
+              Builder(
+                builder: (_) {
+                  final duplicate = ref
+                      .read(jobProvider.notifier)
+                      .findDuplicate(
+                        companyName: result.companyName,
+                        position: result.position,
+                      );
+                  if (duplicate == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      'Lamaran ${duplicate.position} di ${duplicate.companyName} sudah ada di tracker.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFC2410C),
+                        height: 1.35,
+                      ),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -976,16 +1162,16 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     );
   }
 
-  Widget _buildQuickModeCard({
+  Widget _buildFormCard({
     required bool isDark,
     required Color cardBg,
     required Color cardBorder,
-    required Color txtPri,
-    required Color txtSec,
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(18, 18, 18, 16),
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: padding,
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(28),
@@ -998,172 +1184,1159 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.bolt_rounded,
-                color: Color(0xFFF59E0B),
-                size: 20,
+      child: child,
+    );
+  }
+
+  Widget _buildSectionEyebrow(String label, Color color) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0.7,
+        color: color,
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    required bool isDark,
+    required Color txtPri,
+    int maxLength = 80,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    String? Function(String?)? validator,
+    Widget? suffixIcon,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLength: maxLength,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      textCapitalization: textCapitalization,
+      onChanged: (_) => setState(() {}),
+      style: TextStyle(
+        fontSize: maxLines > 1 ? 13 : 14,
+        fontWeight: maxLines > 1 ? FontWeight.w500 : FontWeight.w700,
+        color: txtPri,
+        height: maxLines > 1 ? 1.4 : null,
+      ),
+      decoration: _buildInputDeco(
+        hint: hint,
+        icon: icon,
+        isDark: isDark,
+        suffixIcon: suffixIcon,
+        maxLength: maxLength,
+        currentLength: controller.text.length,
+      ),
+      validator: validator,
+    );
+  }
+
+  Future<void> _pasteUrl() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text != null && data!.text!.trim().isNotEmpty) {
+      setState(() => _urlController.text = data.text!.trim());
+    }
+  }
+
+  Widget _buildDatePill({
+    required bool isDark,
+    required Color txtPri,
+    required Color txtSec,
+  }) {
+    return FluidBounceButton(
+      onTap: _pickAppliedDate,
+      hapticEnabled: false,
+      scaleFactor: 0.96,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isDark ? const Color(0xFF383842) : const Color(0xFFE5E0D5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.event_available_rounded,
+              size: 16,
+              color: Color(0xFF5C44E4),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              DateFormat('dd MMM yyyy', 'id_ID').format(_appliedDate),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: txtPri,
               ),
-              const SizedBox(width: 7),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.expand_more_rounded, size: 16, color: txtSec),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoPicker({
+    required bool isDark,
+    required Color circleBtnBg,
+    required Color circleBtnBorder,
+    required String companyName,
+  }) {
+    return FluidBounceButton(
+      onTap: _pickCompanyLogo,
+      semanticLabel: 'Pilih logo perusahaan',
+      hapticEnabled: false,
+      scaleFactor: 0.96,
+      child: Stack(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: circleBtnBg,
+              shape: BoxShape.circle,
+              border: Border.all(color: circleBtnBorder),
+            ),
+            child: CompanyLogoBadge(
+              companyName: companyName.isNotEmpty ? companyName : 'N',
+              customImagePath: _companyLogoPath,
+              size: 56,
+              backgroundColor: isDark
+                  ? const Color(0xFF282830)
+                  : const Color(0xFFF0EDE6),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF5C44E4)
+                    : const Color(0xFF19191B),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                color: Colors.white,
+                size: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTermsChip({
+    required String eyebrow,
+    required String value,
+    required Color color,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: FluidBounceButton(
+        onTap: onTap,
+        hapticEnabled: false,
+        scaleFactor: 0.96,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 12, 10, 12),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF121214)),
+              const SizedBox(height: 10),
               Text(
-                'Catat Cepat',
+                eyebrow,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                  color: const Color(0xFF121214).withValues(alpha: 0.62),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  color: txtPri,
+                  color: Color(0xFF121214),
+                  height: 1.15,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Simpan tiga informasi penting dulu. Detail lain bisa dilengkapi nanti.',
-            style: TextStyle(fontSize: 11.5, color: txtSec, height: 1.35),
+        ),
+      ),
+    );
+  }
+
+  void _showSalarySheet() {
+    HapticFeedback.selectionClick();
+    final isDark = AppTheme.isDark(context);
+    final txtPri = isDark ? Colors.white : const Color(0xFF121214);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          const SizedBox(height: 14),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E24) : Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Gaji penawaran',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: txtPri,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Boleh dikosongkan kalau belum ada angka.',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark
+                        ? const Color(0xFFA0A0A8)
+                        : const Color(0xFF707074),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _salaryController,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [RupiahInputFormatter()],
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: txtPri,
+                  ),
+                  decoration: _buildInputDeco(
+                    hint: 'Contoh: Rp 15.000.000',
+                    icon: Icons.payments_rounded,
+                    isDark: isDark,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark
+                          ? const Color(0xFF5C44E4)
+                          : const Color(0xFF19191B),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text(
+                      'Simpan gaji',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFormHeadline({
+    required bool isEdit,
+    required Color txtPri,
+    required Color txtSec,
+  }) {
+    final company = _companyController.text.trim();
+    final position = _positionController.text.trim();
+    final String title;
+    final String subtitle;
+    if (_quickMode && !isEdit) {
+      title = 'CATAT\nCEPAT';
+      subtitle = 'Tulis perusahaan dan posisi. Sisanya bisa dilengkapi nanti.';
+    } else if (company.isNotEmpty) {
+      title = company;
+      subtitle = position.isNotEmpty
+          ? position
+          : 'Lengkapi syarat kerja dan catatan yang kamu punya.';
+    } else {
+      title = 'DETAIL\nLAMARAN';
+      subtitle = 'Isi siapa, syarat kerja, dan catatan yang kamu punya.';
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w900,
+            color: txtPri,
+            letterSpacing: -1.15,
+            height: 0.99,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: TextStyle(fontSize: 13, height: 1.35, color: txtSec),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickModeCard({
+    required bool isDark,
+    required Color cardBg,
+    required Color cardBorder,
+    required Color txtPri,
+    required Color txtSec,
+  }) {
+    return _buildFormCard(
+      isDark: isDark,
+      cardBg: cardBg,
+      cardBorder: cardBorder,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           _buildFieldLabel(
-            'Nama Perusahaan',
+            'Perusahaan',
             isRequired: true,
             isDark: isDark,
             textColor: txtSec,
           ),
           const SizedBox(height: 6),
-          TextFormField(
+          _buildTextField(
             controller: _companyController,
+            hint: 'Contoh: PT Bank Central Asia Tbk',
+            icon: Icons.business_rounded,
+            isDark: isDark,
+            txtPri: txtPri,
             maxLength: 80,
             textCapitalization: TextCapitalization.words,
-            onChanged: (_) => setState(() {}),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: txtPri,
-            ),
-            decoration: _buildInputDeco(
-              hint: 'Contoh: PT Bank Central Asia Tbk',
-              icon: Icons.business_rounded,
-              isDark: isDark,
-            ),
             validator: (v) => v == null || v.trim().isEmpty
                 ? 'Nama Perusahaan wajib diisi'
                 : null,
           ),
           const SizedBox(height: 12),
           _buildFieldLabel(
-            'Posisi / Pekerjaan',
+            'Posisi',
             isRequired: true,
             isDark: isDark,
             textColor: txtSec,
           ),
           const SizedBox(height: 6),
-          TextFormField(
+          _buildTextField(
             controller: _positionController,
+            hint: 'Contoh: Software Development Engineer',
+            icon: Icons.badge_rounded,
+            isDark: isDark,
+            txtPri: txtPri,
             maxLength: 100,
             textCapitalization: TextCapitalization.words,
-            onChanged: (_) => setState(() {}),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: txtPri,
-            ),
-            decoration: _buildInputDeco(
-              hint: 'Contoh: Software Development Engineer',
-              icon: Icons.badge_rounded,
-              isDark: isDark,
-            ),
             validator: (v) => v == null || v.trim().isEmpty
                 ? 'Posisi lowongan wajib diisi'
                 : null,
           ),
           const SizedBox(height: 12),
           _buildFieldLabel(
-            'URL / Tautan Lowongan',
+            'Tautan lowongan',
             isRequired: false,
             isDark: isDark,
             textColor: txtSec,
           ),
           const SizedBox(height: 6),
-          TextFormField(
+          _buildTextField(
             controller: _urlController,
+            hint: 'https://linkedin.com/jobs/...',
+            icon: Icons.link_rounded,
+            isDark: isDark,
+            txtPri: txtPri,
             maxLength: 500,
             keyboardType: TextInputType.url,
-            onChanged: (_) => setState(() {}),
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: txtPri,
-            ),
-            decoration: _buildInputDeco(
-              hint: 'Contoh: https://linkedin.com/jobs/...',
-              icon: Icons.link_rounded,
-              isDark: isDark,
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.paste_rounded, size: 18),
-                tooltip: 'Tempel URL',
-                onPressed: () async {
-                  final data = await Clipboard.getData('text/plain');
-                  if (data?.text != null && data!.text!.trim().isNotEmpty) {
-                    setState(() {
-                      _urlController.text = data.text!.trim();
-                    });
-                  }
-                },
-              ),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.paste_rounded, size: 18),
+              tooltip: 'Tempel URL',
+              onPressed: _pasteUrl,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _buildFieldLabel(
-            'Tanggal Melamar',
+            'Tanggal',
             isRequired: true,
             isDark: isDark,
             textColor: txtSec,
           ),
-          const SizedBox(height: 6),
-          FluidBounceButton(
-            onTap: _pickAppliedDate,
-            hapticEnabled: false,
-            scaleFactor: 0.985,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF282830)
-                    : const Color(0xFFF9F7F2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF383842)
-                      : const Color(0xFFE5E0D5),
-                ),
-              ),
-              child: Row(
+          const SizedBox(height: 8),
+          _buildDatePill(isDark: isDark, txtPri: txtPri, txtSec: txtSec),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailForm({
+    required bool isDark,
+    required Color cardBg,
+    required Color cardBorder,
+    required Color txtPri,
+    required Color txtSec,
+    required Color circleBtnBg,
+    required Color circleBtnBorder,
+  }) {
+    final company = _companyController.text.trim();
+    final salary = _salaryController.text.trim();
+    final workLabel = (_workType.isEmpty || _workType == 'Belum ditentukan')
+        ? 'Pilih'
+        : _workType;
+    return Column(
+      children: [
+        _buildFormCard(
+          isDark: isDark,
+          cardBg: cardBg,
+          cardBorder: cardBorder,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionEyebrow('SIAPA & DI MANA', txtSec),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.event_available_rounded,
-                    size: 18,
-                    color: Color(0xFF5C44E4),
+                  _buildLogoPicker(
+                    isDark: isDark,
+                    circleBtnBg: circleBtnBg,
+                    circleBtnBorder: circleBtnBorder,
+                    companyName: company,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat('dd MMM yyyy', 'id_ID').format(_appliedDate),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: txtPri,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildFieldLabel(
+                          'Perusahaan',
+                          isRequired: true,
+                          isDark: isDark,
+                          textColor: txtSec,
+                        ),
+                        const SizedBox(height: 6),
+                        _buildTextField(
+                          controller: _companyController,
+                          hint: 'Nama perusahaan',
+                          icon: Icons.business_rounded,
+                          isDark: isDark,
+                          txtPri: txtPri,
+                          maxLength: 80,
+                          textCapitalization: TextCapitalization.words,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Nama Perusahaan wajib diisi'
+                              : null,
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  Icon(Icons.edit_calendar_outlined, size: 17, color: txtSec),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildFieldLabel(
+                'Posisi',
+                isRequired: true,
+                isDark: isDark,
+                textColor: txtSec,
+              ),
+              const SizedBox(height: 6),
+              _buildTextField(
+                controller: _positionController,
+                hint: 'Contoh: Software Development Engineer',
+                icon: Icons.badge_rounded,
+                isDark: isDark,
+                txtPri: txtPri,
+                maxLength: 100,
+                textCapitalization: TextCapitalization.words,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? 'Posisi lowongan wajib diisi'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              _buildFieldLabel(
+                'Lokasi',
+                isRequired: false,
+                isDark: isDark,
+                textColor: txtSec,
+              ),
+              const SizedBox(height: 6),
+              _buildTextField(
+                controller: _locationController,
+                hint: 'Jakarta Selatan, DKI Jakarta',
+                icon: Icons.location_on_outlined,
+                isDark: isDark,
+                txtPri: txtPri,
+                maxLength: 80,
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 12),
+              _buildFieldLabel(
+                'Tautan lowongan',
+                isRequired: false,
+                isDark: isDark,
+                textColor: txtSec,
+              ),
+              const SizedBox(height: 6),
+              _buildTextField(
+                controller: _urlController,
+                hint: 'https://linkedin.com/jobs/...',
+                icon: Icons.link_rounded,
+                isDark: isDark,
+                txtPri: txtPri,
+                maxLength: 500,
+                keyboardType: TextInputType.url,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.paste_rounded, size: 18),
+                  tooltip: 'Tempel URL',
+                  onPressed: _pasteUrl,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _buildDatePill(isDark: isDark, txtPri: txtPri, txtSec: txtSec),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildFormCard(
+          isDark: isDark,
+          cardBg: cardBg,
+          cardBorder: cardBorder,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionEyebrow('SYARAT KERJA', txtSec),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _buildTermsChip(
+                    eyebrow: 'Gaji',
+                    value: salary.isEmpty ? 'Isi' : salary,
+                    color: AppTheme.cardYellow,
+                    icon: Icons.payments_rounded,
+                    onTap: _showSalarySheet,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTermsChip(
+                    eyebrow: 'Mode',
+                    value: workLabel,
+                    color: AppTheme.cardGreen,
+                    icon: Icons.apartment_rounded,
+                    onTap: _showWorkTypePicker,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildTermsChip(
+                    eyebrow: 'Status',
+                    value: _status,
+                    color: AppTheme.cardPurple,
+                    icon: Icons.flag_rounded,
+                    onTap: _showStatusPicker,
+                  ),
+                ],
+              ),
+              if (_hasSelectionStatus) ...[
+                const SizedBox(height: 12),
+                FluidBounceButton(
+                  onTap: _pickSelectionSchedule,
+                  hapticEnabled: false,
+                  scaleFactor: 0.98,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _interviewDate != null
+                          ? (isDark
+                                ? const Color(0xFF132E1D)
+                                : const Color(0xFFDCFCE7))
+                          : (isDark
+                                ? const Color(0xFF282830)
+                                : const Color(0xFFF9F7F2)),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: _interviewDate != null
+                            ? const Color(0xFF22C55E)
+                            : (isDark
+                                  ? const Color(0xFF383842)
+                                  : const Color(0xFFE5E0D5)),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.alarm_on_rounded,
+                          size: 16,
+                          color: _interviewDate != null
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFF5C44E4),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _interviewDate != null
+                                ? _formatSelectionSchedule(_interviewDate!)
+                                : 'Jadwal tes / interview',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: _interviewDate != null
+                                  ? const Color(0xFF22C55E)
+                                  : txtSec,
+                            ),
+                          ),
+                        ),
+                        if (_interviewDate != null)
+                          GestureDetector(
+                            onTap: () => setState(() => _interviewDate = null),
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildNotesCard(
+          isDark: isDark,
+          cardBg: cardBg,
+          cardBorder: cardBorder,
+          txtPri: txtPri,
+          txtSec: txtSec,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotesCard({
+    required bool isDark,
+    required Color cardBg,
+    required Color cardBorder,
+    required Color txtPri,
+    required Color txtSec,
+  }) {
+    return _buildFormCard(
+      isDark: isDark,
+      cardBg: cardBg,
+      cardBorder: cardBorder,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FluidBounceButton(
+            onTap: () => setState(() => _notesExpanded = !_notesExpanded),
+            hapticEnabled: false,
+            scaleFactor: 0.99,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionEyebrow('CATATAN & LAMPIRAN', txtSec),
+                      if (!_notesExpanded) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Deskripsi, HR, tindakan, foto, dan CV',
+                          style: TextStyle(fontSize: 12, color: txtSec),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(
+                  _notesExpanded
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                  color: txtSec,
+                ),
+              ],
             ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.topCenter,
+            child: _notesExpanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 14),
+                      _buildFieldLabel(
+                        'Kualifikasi & deskripsi',
+                        isRequired: false,
+                        isDark: isDark,
+                        textColor: txtSec,
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLength: 3000,
+                        maxLines: 4,
+                        onChanged: (_) => setState(() {}),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: txtPri,
+                          height: 1.4,
+                        ),
+                        decoration: _buildInputDeco(
+                          hint:
+                              '• Minimal S1, pengalaman 2 tahun\n• Mahir Flutter',
+                          icon: Icons.notes_rounded,
+                          isDark: isDark,
+                          maxLength: 3000,
+                          currentLength: _descriptionController.text.length,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFieldLabel(
+                        'Catatan pribadi',
+                        isRequired: false,
+                        isDark: isDark,
+                        textColor: txtSec,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildTextField(
+                        controller: _notesController,
+                        hint: 'Yang perlu kamu ingat soal lamaran ini',
+                        icon: Icons.sticky_note_2_outlined,
+                        isDark: isDark,
+                        txtPri: txtPri,
+                        maxLength: 500,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFieldLabel(
+                        'Kontak HR',
+                        isRequired: false,
+                        isDark: isDark,
+                        textColor: txtSec,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildTextField(
+                        controller: _hrContactController,
+                        hint: 'email atau WhatsApp',
+                        icon: Icons.contact_mail_outlined,
+                        isDark: isDark,
+                        txtPri: txtPri,
+                        maxLength: 80,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFieldLabel(
+                        'Tindakan berikutnya',
+                        isRequired: false,
+                        isDark: isDark,
+                        textColor: txtSec,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _nextActionType,
+                              isExpanded: true,
+                              decoration: _buildInputDeco(
+                                hint: 'Jenis tindakan',
+                                icon: Icons.task_alt_rounded,
+                                isDark: isDark,
+                              ),
+                              items:
+                                  const [
+                                        'Tindak lanjut',
+                                        'Kirim dokumen',
+                                        'Siapkan tes',
+                                        'Jadwal interview',
+                                        'Ambil keputusan',
+                                      ]
+                                      .map(
+                                        (item) => DropdownMenuItem(
+                                          value: item,
+                                          child: Text(item),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (value) => setState(
+                                () =>
+                                    _nextActionType = value ?? 'Tindak lanjut',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FluidBounceButton(
+                              onTap: _pickNextActionSchedule,
+                              hapticEnabled: false,
+                              scaleFactor: 0.98,
+                              child: Container(
+                                height: 56,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF282830)
+                                      : const Color(0xFFF9F7F2),
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF383842)
+                                        : const Color(0xFFE5E0D5),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.alarm_rounded,
+                                      color: Color(0xFF5C44E4),
+                                      size: 17,
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Expanded(
+                                      child: Text(
+                                        _nextActionAt == null
+                                            ? 'Pilih waktu'
+                                            : _formatSelectionSchedule(
+                                                _nextActionAt!,
+                                              ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: _nextActionAt == null
+                                              ? txtSec
+                                              : txtPri,
+                                        ),
+                                      ),
+                                    ),
+                                    if (_nextActionAt != null)
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                          () => _nextActionAt = null,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close_rounded,
+                                          size: 15,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _nextActionNoteController,
+                        hint: 'Contoh: Kirim portofolio versi terbaru',
+                        icon: Icons.edit_note_rounded,
+                        isDark: isDark,
+                        txtPri: txtPri,
+                        maxLength: 240,
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFieldLabel(
+                        'Prioritas & label',
+                        isRequired: false,
+                        isDark: isDark,
+                        textColor: txtSec,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _priority,
+                              decoration: _buildInputDeco(
+                                hint: 'Prioritas',
+                                icon: Icons.flag_outlined,
+                                isDark: isDark,
+                              ),
+                              items: const ['Rendah', 'Normal', 'Tinggi']
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item,
+                                      child: Text(item),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _priority = value ?? 'Normal'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _labelsController,
+                              hint: 'Label, pisahkan koma',
+                              icon: Icons.sell_outlined,
+                              isDark: isDark,
+                              txtPri: txtPri,
+                              maxLength: 120,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _buildAttachmentBlock(
+                        isDark: isDark,
+                        txtPri: txtPri,
+                        txtSec: txtSec,
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAttachmentBlock({
+    required bool isDark,
+    required Color txtPri,
+    required Color txtSec,
+  }) {
+    return Column(
+      children: [
+        if (_screenshotPath != null && _screenshotPath!.isNotEmpty) ...[
+          Stack(
+            children: [
+              Container(
+                height: 150,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  image: DecorationImage(
+                    image: ResizeImage(
+                      FileImage(File(_screenshotPath!)),
+                      width: 1080,
+                    ),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: FluidBounceButton(
+                  onTap: () => setState(() => _screenshotPath = null),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.black87,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: OutlinedButton.icon(
+            onPressed: _pickScreenshot,
+            icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+            label: Text(
+              _screenshotPath != null
+                  ? 'Ganti foto screenshot'
+                  : 'Lampirkan screenshot loker',
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFDCD8CE),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              foregroundColor: txtPri,
+              backgroundColor: isDark
+                  ? const Color(0xFF282830)
+                  : const Color(0xFFF9F7F2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_pdfCvPath != null && _pdfCvPath!.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFE5E0D5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE53935).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Color(0xFFE53935),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _pdfCvPath!.split(Platform.pathSeparator).last,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: txtPri,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Dokumen PDF CV terlampir',
+                        style: TextStyle(fontSize: 11, color: txtSec),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _pdfCvPath = null),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
+                  tooltip: 'Hapus CV',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: OutlinedButton.icon(
+            onPressed: _pickPdfCv,
+            icon: const Icon(
+              Icons.picture_as_pdf_rounded,
+              size: 18,
+              color: Color(0xFFE53935),
+            ),
+            label: Text(
+              _pdfCvPath != null ? 'Ganti dokumen PDF CV' : 'Lampirkan PDF CV',
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(
+                color: isDark
+                    ? const Color(0xFF383842)
+                    : const Color(0xFFDCD8CE),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              foregroundColor: txtPri,
+              backgroundColor: isDark
+                  ? const Color(0xFF282830)
+                  : const Color(0xFFF9F7F2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1680,9 +2853,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final isDark = AppTheme.isDark(context);
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final canvasBg = isDark ? const Color(0xFF141418) : const Color(0xFFF6F1E8);
-    final pillCream = isDark
-        ? const Color(0xFF2A2824)
-        : const Color(0xFFE7DED0);
     final cardBg = isDark ? const Color(0xFF1E1E24) : Colors.white;
     final cardBorder = isDark
         ? const Color(0xFF33333C)
@@ -1693,19 +2863,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     final circleBtnBorder = isDark
         ? const Color(0xFF383842)
         : const Color(0xFFE5E0D5);
-
-    final displayCompany = _companyController.text.trim().isNotEmpty
-        ? _companyController.text.trim()
-        : 'Nama Perusahaan';
-    final displayPosition = _positionController.text.trim().isNotEmpty
-        ? _positionController.text.trim()
-        : 'Posisi Pekerjaan';
-    final displayLocation = _locationController.text.trim().isNotEmpty
-        ? _locationController.text.trim()
-        : 'Lokasi Perusahaan';
-    final displaySalary = _salaryController.text.trim().isNotEmpty
-        ? _salaryController.text.trim()
-        : 'Gaji Negosiasi';
 
     return PopScope(
       canPop: false,
@@ -1739,14 +2896,14 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                       extra: 10,
                     ),
                     20,
-                    118 + bottomInset,
+                    140 + bottomInset,
                   ),
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── 1. TOP HEADER BAR: CIRCULAR BACK + LOGO IN CENTER + BOOKMARK/IMPORT ──
+                        // ── 1. TOP HEADER: BACK + IMPORT ──
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -1784,66 +2941,6 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                     size: 22,
                                   ),
                                 ),
-                              ),
-                            ),
-
-                            // Center Circular Logo Container
-                            FluidBounceButton(
-                              onTap: _pickCompanyLogo,
-                              semanticLabel: 'Pilih logo perusahaan',
-                              hapticEnabled: false,
-                              scaleFactor: 0.96,
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: BoxDecoration(
-                                      color: circleBtnBg,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: circleBtnBorder,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: isDark ? 0.25 : 0.12,
-                                          ),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: CompanyLogoBadge(
-                                      companyName: displayCompany.isNotEmpty
-                                          ? displayCompany
-                                          : 'N',
-                                      customImagePath: _companyLogoPath,
-                                      size: 64,
-                                      backgroundColor: isDark
-                                          ? const Color(0xFF282830)
-                                          : const Color(0xFFF0EDE6),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: isDark
-                                            ? const Color(0xFF5C44E4)
-                                            : const Color(0xFF19191B),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt_rounded,
-                                        color: Colors.white,
-                                        size: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
 
@@ -2058,6 +3155,47 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                                 FluidBounceButton(
                                   onTap: _isExtracting
                                       ? null
+                                      : _importSpreadsheet,
+                                  hapticEnabled: false,
+                                  scaleFactor: 0.98,
+                                  semanticLabel: 'Impor dari Excel atau CSV',
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF282830)
+                                          : const Color(0xFFF3EFE6),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: cardBorder),
+                                    ),
+                                    child: const Center(
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.table_view_rounded,
+                                            color: Color(0xFF5C44E4),
+                                            size: 17,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Impor dari Excel (.xlsx)',
+                                            style: TextStyle(
+                                              color: Color(0xFF5C44E4),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                FluidBounceButton(
+                                  onTap: _isExtracting
+                                      ? null
                                       : _extractFromLinkOrText,
                                   hapticEnabled: false,
                                   scaleFactor: 0.98,
@@ -2160,217 +3298,12 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                           const SizedBox(height: 16),
                         ],
 
-                        // ── 3. COMPANY NAME (LARGE BOLD EDITORIAL TYPOGRAPHY - PERSIS MOCKUP) ──
-                        Text(
-                          displayCompany,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 27,
-                            fontWeight: FontWeight.w900,
-                            color: txtPri,
-                            letterSpacing: -0.6,
-                          ),
+                        _buildFormHeadline(
+                          isEdit: isEdit,
+                          txtPri: txtPri,
+                          txtSec: txtSec,
                         ),
-
-                        const SizedBox(height: 8),
-
-                        // ── 4. POSITION PILL BADGE CONTAINER (PERSIS MOCKUP) ──
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 9,
-                          ),
-                          decoration: BoxDecoration(
-                            color: pillCream,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            displayPosition,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: txtPri,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // ── 5. LOCATION WITH PIN ──
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 15,
-                              color: txtPri,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                displayLocation,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: txtPri,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 18),
-
-                        // ── 6. THREE HORIZONTAL INFO PILLS (GAJI, WORK TYPE, STATUS) - PERSIS MOCKUP ──
-                        if (!_quickMode)
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Pill 1: White Pill with Black Circle Coin (Gaji)
-                                Container(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    6,
-                                    6,
-                                    16,
-                                    6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: circleBtnBg,
-                                    borderRadius: BorderRadius.circular(28),
-                                    border: Border.all(color: circleBtnBorder),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: isDark ? 0.2 : 0.05,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF5C44E4)
-                                              : const Color(0xFF1C1C1E),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            'Rp',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        displaySalary,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w900,
-                                          color: txtPri,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                // Pill 2: Cream Pill with Clock Icon (Tipe Kerja)
-                                FluidBounceButton(
-                                  onTap: _showWorkTypePicker,
-                                  hapticEnabled: false,
-                                  scaleFactor: 0.96,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: pillCream,
-                                      borderRadius: BorderRadius.circular(28),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.access_time_rounded,
-                                          size: 16,
-                                          color: txtPri,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _workType,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w900,
-                                            color: txtPri,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                // Pill 3: Cream Pill with Briefcase Icon (Tahapan Status)
-                                FluidBounceButton(
-                                  onTap: _showStatusPicker,
-                                  hapticEnabled: false,
-                                  scaleFactor: 0.96,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: pillCream,
-                                      borderRadius: BorderRadius.circular(28),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.business_center_outlined,
-                                          size: 16,
-                                          color: txtPri,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _status,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w900,
-                                            color: txtPri,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        if (!_quickMode) const SizedBox(height: 20),
-
+                        const SizedBox(height: 16),
                         if (_quickMode)
                           _buildQuickModeCard(
                             isDark: isDark,
@@ -2378,984 +3311,21 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
                             cardBorder: cardBorder,
                             txtPri: txtPri,
                             txtSec: txtSec,
-                          ),
-
-                        // ── 7. STACKED BENTO CARD CONTAINER (MINIMUM QUALIFICATION & DETAIL FORM) ──
-                        if (!_quickMode)
-                          Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.topCenter,
-                            children: [
-                              // Big Card Container
-                              Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.only(top: 14),
-                                padding: const EdgeInsets.fromLTRB(
-                                  20,
-                                  28,
-                                  20,
-                                  22,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: cardBg,
-                                  borderRadius: BorderRadius.circular(32),
-                                  border: Border.all(color: cardBorder),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: isDark ? 0.25 : 0.08,
-                                      ),
-                                      blurRadius: 18,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Form Input: Nama Perusahaan
-                                    _buildFieldLabel(
-                                      'Nama Perusahaan',
-                                      isRequired: true,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _companyController,
-                                      maxLength: 80,
-                                      textCapitalization:
-                                          TextCapitalization.words,
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'Contoh: PT Bank Central Asia Tbk',
-                                        icon: Icons.business_rounded,
-                                        isDark: isDark,
-                                      ),
-                                      validator: (v) =>
-                                          v == null || v.trim().isEmpty
-                                          ? 'Nama Perusahaan wajib diisi'
-                                          : null,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: Posisi Lowongan
-                                    _buildFieldLabel(
-                                      'Posisi / Pekerjaan',
-                                      isRequired: true,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _positionController,
-                                      maxLength: 100,
-                                      textCapitalization:
-                                          TextCapitalization.words,
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'Contoh: Software Development Engineer',
-                                        icon: Icons.badge_rounded,
-                                        isDark: isDark,
-                                      ),
-                                      validator: (v) =>
-                                          v == null || v.trim().isEmpty
-                                          ? 'Posisi lowongan wajib diisi'
-                                          : null,
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: URL Lowongan
-                                    _buildFieldLabel(
-                                      'URL / Tautan Lowongan',
-                                      isRequired: false,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _urlController,
-                                      maxLength: 500,
-                                      keyboardType: TextInputType.url,
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'Contoh: https://linkedin.com/jobs/...',
-                                        icon: Icons.link_rounded,
-                                        isDark: isDark,
-                                        suffixIcon: IconButton(
-                                          icon: const Icon(
-                                            Icons.paste_rounded,
-                                            size: 18,
-                                          ),
-                                          tooltip: 'Tempel URL',
-                                          onPressed: () async {
-                                            final data =
-                                                await Clipboard.getData(
-                                                  'text/plain',
-                                                );
-                                            if (data?.text != null &&
-                                                data!.text!.trim().isNotEmpty) {
-                                              setState(() {
-                                                _urlController.text = data.text!
-                                                    .trim();
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: Gaji Penawaran
-                                    Text(
-                                      'Gaji Penawaran (Bulan)',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _salaryController,
-                                      maxLength: 50,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [RupiahInputFormatter()],
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint: 'Contoh: Rp 15.000.000',
-                                        icon: Icons.monetization_on_outlined,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: Lokasi Perusahaan
-                                    Text(
-                                      'Lokasi / Kota Penempatan',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: txtSec,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _locationController,
-                                      maxLength: 80,
-                                      textCapitalization:
-                                          TextCapitalization.words,
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'Contoh: Jakarta Selatan, DKI Jakarta',
-                                        icon: Icons.location_on_outlined,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Row: Tanggal Melamar & Tanggal Interview
-                                    Row(
-                                      children: [
-                                        // Tanggal Melamar
-                                        Expanded(
-                                          child: FluidBounceButton(
-                                            onTap: _pickAppliedDate,
-                                            hapticEnabled: false,
-                                            scaleFactor: 0.98,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? const Color(0xFF282830)
-                                                    : const Color(0xFFF9F7F2),
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: isDark
-                                                      ? const Color(0xFF383842)
-                                                      : const Color(0xFFE5E0D5),
-                                                ),
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons
-                                                            .event_available_rounded,
-                                                        size: 14,
-                                                        color: Color(
-                                                          0xFF5C44E4,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        'Tgl Melamar',
-                                                        style: TextStyle(
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          color: txtSec,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    DateFormat(
-                                                      'dd MMM yyyy',
-                                                      'id_ID',
-                                                    ).format(_appliedDate),
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w900,
-                                                      color: txtPri,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        if (_hasSelectionStatus) ...[
-                                          const SizedBox(width: 10),
-                                          // Jadwal Tes / Interview
-                                          Expanded(
-                                            child: FluidBounceButton(
-                                              onTap: _pickSelectionSchedule,
-                                              hapticEnabled: false,
-                                              scaleFactor: 0.98,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  12,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _interviewDate != null
-                                                      ? (isDark
-                                                            ? const Color(
-                                                                0xFF132E1D,
-                                                              )
-                                                            : const Color(
-                                                                0xFFDCFCE7,
-                                                              ))
-                                                      : (isDark
-                                                            ? const Color(
-                                                                0xFF282830,
-                                                              )
-                                                            : const Color(
-                                                                0xFFF9F7F2,
-                                                              )),
-                                                  borderRadius:
-                                                      BorderRadius.circular(16),
-                                                  border: Border.all(
-                                                    color:
-                                                        _interviewDate != null
-                                                        ? const Color(
-                                                            0xFF22C55E,
-                                                          )
-                                                        : (isDark
-                                                              ? const Color(
-                                                                  0xFF383842,
-                                                                )
-                                                              : const Color(
-                                                                  0xFFE5E0D5,
-                                                                )),
-                                                  ),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .spaceBetween,
-                                                      children: [
-                                                        Row(
-                                                          children: [
-                                                            Icon(
-                                                              Icons
-                                                                  .alarm_on_rounded,
-                                                              size: 14,
-                                                              color:
-                                                                  _interviewDate !=
-                                                                      null
-                                                                  ? const Color(
-                                                                      0xFF22C55E,
-                                                                    )
-                                                                  : const Color(
-                                                                      0xFF5C44E4,
-                                                                    ),
-                                                            ),
-                                                            const SizedBox(
-                                                              width: 4,
-                                                            ),
-                                                            Text(
-                                                              'Jadwal Seleksi',
-                                                              style: TextStyle(
-                                                                fontSize: 11,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w800,
-                                                                color:
-                                                                    _interviewDate !=
-                                                                        null
-                                                                    ? const Color(
-                                                                        0xFF22C55E,
-                                                                      )
-                                                                    : txtSec,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        if (_interviewDate !=
-                                                            null)
-                                                          FluidBounceButton(
-                                                            onTap: () => setState(
-                                                              () =>
-                                                                  _interviewDate =
-                                                                      null,
-                                                            ),
-                                                            child: const Icon(
-                                                              Icons
-                                                                  .close_rounded,
-                                                              size: 14,
-                                                              color:
-                                                                  Colors.grey,
-                                                            ),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      _interviewDate != null
-                                                          ? _formatSelectionSchedule(
-                                                              _interviewDate!,
-                                                            )
-                                                          : '+ Tanggal & Jam',
-                                                      style: TextStyle(
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w900,
-                                                        color:
-                                                            _interviewDate !=
-                                                                null
-                                                            ? const Color(
-                                                                0xFF22C55E,
-                                                              )
-                                                            : txtSec,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Actionability data: every active
-                                    // application can carry one explicit next
-                                    // move, rather than relying on a vague
-                                    // note that is easy to forget.
-                                    _buildFieldLabel(
-                                      'Tindakan Berikutnya',
-                                      isRequired: false,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child:
-                                              DropdownButtonFormField<String>(
-                                                initialValue: _nextActionType,
-                                                isExpanded: true,
-                                                decoration: _buildInputDeco(
-                                                  hint: 'Jenis tindakan',
-                                                  icon: Icons.task_alt_rounded,
-                                                  isDark: isDark,
-                                                ),
-                                                items:
-                                                    const [
-                                                          'Tindak lanjut',
-                                                          'Kirim dokumen',
-                                                          'Siapkan tes',
-                                                          'Jadwal interview',
-                                                          'Ambil keputusan',
-                                                        ]
-                                                        .map(
-                                                          (item) =>
-                                                              DropdownMenuItem(
-                                                                value: item,
-                                                                child: Text(
-                                                                  item,
-                                                                ),
-                                                              ),
-                                                        )
-                                                        .toList(),
-                                                onChanged: (value) => setState(
-                                                  () => _nextActionType =
-                                                      value ?? 'Tindak lanjut',
-                                                ),
-                                              ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: FluidBounceButton(
-                                            onTap: _pickNextActionSchedule,
-                                            hapticEnabled: false,
-                                            scaleFactor: 0.98,
-                                            child: Container(
-                                              height: 56,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? const Color(0xFF282830)
-                                                    : const Color(0xFFF9F7F2),
-                                                borderRadius:
-                                                    BorderRadius.circular(16),
-                                                border: Border.all(
-                                                  color: isDark
-                                                      ? const Color(0xFF383842)
-                                                      : const Color(0xFFE5E0D5),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.alarm_rounded,
-                                                    color: Color(0xFF5C44E4),
-                                                    size: 17,
-                                                  ),
-                                                  const SizedBox(width: 7),
-                                                  Expanded(
-                                                    child: Text(
-                                                      _nextActionAt == null
-                                                          ? 'Pilih waktu'
-                                                          : _formatSelectionSchedule(
-                                                              _nextActionAt!,
-                                                            ),
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontSize: 11.5,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color:
-                                                            _nextActionAt ==
-                                                                null
-                                                            ? txtSec
-                                                            : txtPri,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  if (_nextActionAt != null)
-                                                    GestureDetector(
-                                                      onTap: () => setState(
-                                                        () => _nextActionAt =
-                                                            null,
-                                                      ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                              left: 3,
-                                                            ),
-                                                        child: Icon(
-                                                          Icons.close_rounded,
-                                                          size: 15,
-                                                          color: Colors.grey,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    TextFormField(
-                                      controller: _nextActionNoteController,
-                                      maxLength: 240,
-                                      onChanged: (_) => setState(() {}),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'Contoh: Kirim portofolio versi terbaru',
-                                        icon: Icons.notes_rounded,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    _buildFieldLabel(
-                                      'Prioritas & Label',
-                                      isRequired: false,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child:
-                                              DropdownButtonFormField<String>(
-                                                initialValue: _priority,
-                                                decoration: _buildInputDeco(
-                                                  hint: 'Prioritas',
-                                                  icon: Icons.flag_outlined,
-                                                  isDark: isDark,
-                                                ),
-                                                items:
-                                                    const [
-                                                          'Rendah',
-                                                          'Normal',
-                                                          'Tinggi',
-                                                        ]
-                                                        .map(
-                                                          (item) =>
-                                                              DropdownMenuItem(
-                                                                value: item,
-                                                                child: Text(
-                                                                  item,
-                                                                ),
-                                                              ),
-                                                        )
-                                                        .toList(),
-                                                onChanged: (value) => setState(
-                                                  () => _priority =
-                                                      value ?? 'Normal',
-                                                ),
-                                              ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: TextFormField(
-                                            controller: _labelsController,
-                                            maxLength: 120,
-                                            onChanged: (_) => setState(() {}),
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: txtPri,
-                                            ),
-                                            decoration: _buildInputDeco(
-                                              hint: 'Label, pisahkan koma',
-                                              icon: Icons.sell_outlined,
-                                              isDark: isDark,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: Kontak HR
-                                    _buildFieldLabel(
-                                      'Kontak HR (WhatsApp / Email)',
-                                      isRequired: false,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _hrContactController,
-                                      maxLength: 80,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: txtPri,
-                                      ),
-                                      decoration: _buildInputDeco(
-                                        hint:
-                                            'hr.recruitment@perusahaan.com / +628...',
-                                        icon: Icons.contact_mail_outlined,
-                                        isDark: isDark,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 14),
-
-                                    // Form Input: Deskripsi / Kualifikasi
-                                    _buildFieldLabel(
-                                      'Kualifikasi & Deskripsi',
-                                      isRequired: false,
-                                      isDark: isDark,
-                                      textColor: txtSec,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    TextFormField(
-                                      controller: _descriptionController,
-                                      maxLength: 3000,
-                                      maxLines: 4,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: txtPri,
-                                        height: 1.4,
-                                      ),
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            '• Minimal S1 Pengalaman 2 Tahun\n• Mahir Flutter & State Management\n• Mampu berkomunikasi efektif...',
-                                        hintStyle: TextStyle(
-                                          fontSize: 12.5,
-                                          color: isDark
-                                              ? const Color(0xFF8E8E93)
-                                              : Colors.grey.shade400,
-                                          height: 1.4,
-                                        ),
-                                        filled: true,
-                                        fillColor: isDark
-                                            ? const Color(0xFF282830)
-                                            : const Color(0xFFF9F7F2),
-                                        counterText: '',
-                                        contentPadding: const EdgeInsets.all(
-                                          14,
-                                        ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFE5E0D5),
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFE5E0D5),
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF5C44E4)
-                                                : const Color(0xFF19191B),
-                                            width: 1.8,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 16),
-
-                                    // Screenshot Preview & Picker
-                                    if (_screenshotPath != null &&
-                                        _screenshotPath!.isNotEmpty) ...[
-                                      Stack(
-                                        children: [
-                                          Container(
-                                            height: 150,
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              image: DecorationImage(
-                                                image: ResizeImage(
-                                                  FileImage(
-                                                    File(_screenshotPath!),
-                                                  ),
-                                                  width: 1080,
-                                                ),
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 8,
-                                            right: 8,
-                                            child: FluidBounceButton(
-                                              onTap: () => setState(
-                                                () => _screenshotPath = null,
-                                              ),
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  6,
-                                                ),
-                                                decoration: const BoxDecoration(
-                                                  color: Colors.black87,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: Colors.white,
-                                                  size: 18,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 46,
-                                      child: OutlinedButton.icon(
-                                        onPressed: _pickScreenshot,
-                                        icon: const Icon(
-                                          Icons.add_photo_alternate_rounded,
-                                          size: 18,
-                                        ),
-                                        label: Text(
-                                          _screenshotPath != null
-                                              ? 'Ganti Foto Screenshot'
-                                              : 'Lampirkan Screenshot Poster Loker',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 12.5,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFDCD8CE),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          foregroundColor: txtPri,
-                                          backgroundColor: isDark
-                                              ? const Color(0xFF282830)
-                                              : const Color(0xFFF9F7F2),
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 12),
-
-                                    // Dokumen PDF CV Picker & Preview
-                                    if (_pdfCvPath != null &&
-                                        _pdfCvPath!.isNotEmpty) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF282830)
-                                              : const Color(0xFFF9F7F2),
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                          border: Border.all(
-                                            color: isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFE5E0D5),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFFE53935,
-                                                ).withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: const Icon(
-                                                Icons.picture_as_pdf_rounded,
-                                                color: Color(0xFFE53935),
-                                                size: 20,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    _pdfCvPath!
-                                                        .split(
-                                                          Platform
-                                                              .pathSeparator,
-                                                        )
-                                                        .last,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: txtPri,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    'Dokumen PDF CV Terlampir',
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color: txtSec,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            IconButton(
-                                              onPressed: () => setState(
-                                                () => _pdfCvPath = null,
-                                              ),
-                                              icon: const Icon(
-                                                Icons.close_rounded,
-                                                size: 18,
-                                                color: Colors.grey,
-                                              ),
-                                              tooltip: 'Hapus CV',
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 46,
-                                      child: OutlinedButton.icon(
-                                        onPressed: _pickPdfCv,
-                                        icon: const Icon(
-                                          Icons.picture_as_pdf_rounded,
-                                          size: 18,
-                                          color: Color(0xFFE53935),
-                                        ),
-                                        label: Text(
-                                          _pdfCvPath != null
-                                              ? 'Ganti Dokumen PDF CV'
-                                              : 'Lampirkan Dokumen PDF CV (Opsional)',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 12.5,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          side: BorderSide(
-                                            color: isDark
-                                                ? const Color(0xFF383842)
-                                                : const Color(0xFFDCD8CE),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          foregroundColor: txtPri,
-                                          backgroundColor: isDark
-                                              ? const Color(0xFF282830)
-                                              : const Color(0xFFF9F7F2),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Floating Header Pill (Minimum Qualification style)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: pillCream,
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: isDark ? 0.2 : 0.06,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'Formulir Detail Lamaran',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: txtPri,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          )
+                        else
+                          _buildDetailForm(
+                            isDark: isDark,
+                            cardBg: cardBg,
+                            cardBorder: cardBorder,
+                            txtPri: txtPri,
+                            txtSec: txtSec,
+                            circleBtnBg: circleBtnBg,
+                            circleBtnBorder: circleBtnBorder,
                           ),
 
                         // Tombol Hapus jika mode Edit
                         if (isEdit) ...[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
                             height: 48,
@@ -3507,42 +3477,27 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     required bool isDark,
     required Color textColor,
   }) {
-    final chipColor = isRequired
-        ? (isDark ? const Color(0xFF4A2028) : const Color(0xFFFFE5E7))
-        : (isDark ? const Color(0xFF302A4A) : const Color(0xFFEDE9FE));
-    final chipTextColor = isRequired
-        ? (isDark ? const Color(0xFFFFA8B0) : const Color(0xFFC62838))
-        : (isDark ? const Color(0xFFC4B5FD) : const Color(0xFF5C44E4));
-
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-            ),
-          ),
+    return Text.rich(
+      TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: textColor,
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-          decoration: BoxDecoration(
-            color: chipColor,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            isRequired ? 'Wajib' : 'Opsional',
-            style: TextStyle(
-              color: chipTextColor,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.1,
+        children: [
+          if (isRequired)
+            TextSpan(
+              text: ' *',
+              style: TextStyle(
+                color: isDark
+                    ? const Color(0xFFFF8A94)
+                    : const Color(0xFFE53935),
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -3551,6 +3506,8 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
     required IconData icon,
     bool isDark = false,
     Widget? suffixIcon,
+    int? maxLength,
+    int? currentLength,
   }) {
     final inputBg = isDark ? const Color(0xFF282830) : const Color(0xFFF9F7F2);
     final inputBorder = isDark
@@ -3558,6 +3515,10 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
         : const Color(0xFFE5E0D5);
     final iconColor = isDark ? Colors.white70 : const Color(0xFF121214);
     final hintColor = isDark ? const Color(0xFF8E8E93) : Colors.grey.shade400;
+    final showCounter =
+        maxLength != null &&
+        currentLength != null &&
+        currentLength >= (maxLength * 0.7).round();
 
     return InputDecoration(
       hintText: hint,
@@ -3570,21 +3531,21 @@ class _AddEditJobScreenState extends ConsumerState<AddEditJobScreen> {
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: inputBg,
-      counterText: '',
+      counterText: showCounter ? '$currentLength/$maxLength' : '',
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: inputBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: inputBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(
           color: isDark ? const Color(0xFF5C44E4) : const Color(0xFF19191B),
-          width: 1.8,
+          width: 1.6,
         ),
       ),
     );

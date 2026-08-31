@@ -31,6 +31,14 @@ internal object NgelamarWidgetStorage {
     private const val KEY_COMPANY_NAME = "company_name"
     private const val KEY_POSITION = "position"
     private const val KEY_ACTION_NOTE = "action_note"
+    private const val KEY_MONTH_LABEL = "month_label"
+    private const val KEY_AGENDA_COUNT = "agenda_count"
+    private const val KEY_E1_TITLE = "event1_title"
+    private const val KEY_E1_WHEN = "event1_when"
+    private const val KEY_E2_TITLE = "event2_title"
+    private const val KEY_E2_WHEN = "event2_when"
+    private const val KEY_E3_TITLE = "event3_title"
+    private const val KEY_E3_WHEN = "event3_when"
 
     fun save(context: Context, payload: Map<*, *>) {
         context.getSharedPreferences(WIDGET_PREFERENCES, Context.MODE_PRIVATE)
@@ -50,6 +58,14 @@ internal object NgelamarWidgetStorage {
             .putString(KEY_COMPANY_NAME, payload["companyName"].asSafeString())
             .putString(KEY_POSITION, payload["position"].asSafeString())
             .putString(KEY_ACTION_NOTE, payload["actionNote"].asSafeString())
+            .putString(KEY_MONTH_LABEL, payload["monthLabel"].asSafeString())
+            .putInt(KEY_AGENDA_COUNT, (payload["agendaCount"] as? Number)?.toInt() ?: 0)
+            .putString(KEY_E1_TITLE, payload["event1Title"].asSafeString())
+            .putString(KEY_E1_WHEN, payload["event1When"].asSafeString())
+            .putString(KEY_E2_TITLE, payload["event2Title"].asSafeString())
+            .putString(KEY_E2_WHEN, payload["event2When"].asSafeString())
+            .putString(KEY_E3_TITLE, payload["event3Title"].asSafeString())
+            .putString(KEY_E3_WHEN, payload["event3When"].asSafeString())
             .apply()
     }
 
@@ -71,6 +87,14 @@ internal object NgelamarWidgetStorage {
             companyName = preferences.getString(KEY_COMPANY_NAME, "") ?: "",
             position = preferences.getString(KEY_POSITION, "") ?: "",
             actionNote = preferences.getString(KEY_ACTION_NOTE, "Pantau terus kabar rekrutmen terbaru.") ?: "Pantau terus kabar rekrutmen terbaru.",
+            monthLabel = preferences.getString(KEY_MONTH_LABEL, "KALENDER") ?: "KALENDER",
+            agendaCount = preferences.getInt(KEY_AGENDA_COUNT, 0),
+            event1Title = preferences.getString(KEY_E1_TITLE, "") ?: "",
+            event1When = preferences.getString(KEY_E1_WHEN, "") ?: "",
+            event2Title = preferences.getString(KEY_E2_TITLE, "") ?: "",
+            event2When = preferences.getString(KEY_E2_WHEN, "") ?: "",
+            event3Title = preferences.getString(KEY_E3_TITLE, "") ?: "",
+            event3When = preferences.getString(KEY_E3_WHEN, "") ?: "",
         )
     }
 
@@ -94,6 +118,14 @@ internal data class NgelamarWidgetData(
     val companyName: String,
     val position: String,
     val actionNote: String,
+    val monthLabel: String = "KALENDER",
+    val agendaCount: Int = 0,
+    val event1Title: String = "",
+    val event1When: String = "",
+    val event2Title: String = "",
+    val event2When: String = "",
+    val event3Title: String = "",
+    val event3When: String = "",
 )
 
 class NgelamarReminderWidgetProvider : AppWidgetProvider() {

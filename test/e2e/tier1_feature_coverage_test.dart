@@ -989,7 +989,11 @@ void main() {
         final icLauncher = File(
           'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
         );
+        final foreground = File(
+          'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',
+        );
         expect(icLauncher.existsSync(), isTrue);
+        expect(foreground.existsSync(), isTrue);
       },
     );
 

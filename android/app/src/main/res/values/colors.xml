@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_color">#111113</color>
-    <color name="ic_launcher_background">#6750E8</color>
+    <color name="ic_launcher_background">#5C44E4</color>
     <color name="ngelamar_widget_surface">#FFFFFF</color>
-    <color name="widget_background">#FFFFFF</color>
-    <color name="widget_surface">#F4F2EE</color>
-    <color name="widget_text_primary">#18181B</color>
-    <color name="widget_text_secondary">#71717A</color>
-    <color name="widget_text_muted">#8E8E93</color>
-    <color name="widget_brand">#5C44E4</color>
+    <color name="widget_background">#F5EFE6</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_text_primary">#121214</color>
+    <color name="widget_text_secondary">#555558</color>
+    <color name="widget_text_muted">#707074</color>
+    <color name="widget_brand">#8B5CF6</color>
+    <color name="widget_card_purple">#8B5CF6</color>
+    <color name="widget_card_yellow">#FBBF24</color>
+    <color name="widget_card_green">#34D399</color>
+    <color name="widget_on_color">#121214</color>
+    <color name="widget_on_purple">#FFFFFF</color>
     <color name="widget_badge_amber_bg">#FEF3C7</color>
     <color name="widget_badge_amber_text">#78350F</color>
     <color name="widget_badge_indigo_bg">#EEF2FF</color>

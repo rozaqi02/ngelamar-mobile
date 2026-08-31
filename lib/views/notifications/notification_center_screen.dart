@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,9 +16,9 @@ import '../../widgets/confused_envelope_mascot.dart';
 import '../../widgets/company_logo_badge.dart';
 import '../../widgets/app_motion.dart';
 import '../../widgets/app_layout_metrics.dart';
-import '../../widgets/welcome_screen_route.dart';
+import '../../widgets/app_tour_overlay.dart';
+import '../../widgets/header_help_button.dart';
 import '../jobs/job_detail_screen.dart';
-import 'notification_welcome_screen.dart';
 
 /// Screen 4: Notification Center, aligned with the Home dashboard design.
 /// Membedakan secara visual dan filter antara:
@@ -38,6 +37,7 @@ class _NotificationCenterScreenState
     extends ConsumerState<NotificationCenterScreen> {
   late Future<bool> _permissionFuture;
   late Future<List<InboxMessage>> _inboxFuture;
+  bool _showTour = false;
   late final DateTime _screenOpenedAt;
   int _selectedCategoryIndex = 0;
 
@@ -94,7 +94,9 @@ class _NotificationCenterScreenState
     required Color textColor,
     required int totalCount,
   }) {
-    return Padding(
+    return TourAnchor(
+      id: 'notif_header',
+      child: Padding(
       padding: EdgeInsets.fromLTRB(
         20,
         AppLayoutMetrics.headerTopInsideSafeArea(context, extra: 12),
@@ -183,46 +185,14 @@ class _NotificationCenterScreenState
               ),
             ),
             const SizedBox(width: 12),
-            FluidBounceButton(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                Navigator.push(
-                  context,
-                  WelcomeScreenRoute(child: const NotificationWelcomeScreen()),
-                );
-              },
-              semanticLabel: 'Buka panduan Notifikasi',
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.getBackground(context),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF383842)
-                        : AppTheme.warmBorder,
-                    width: 1.4,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.20 : 0.04,
-                      ),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  CupertinoIcons.question_circle_fill,
-                  color: Color(0xFF5C44E4),
-                  size: 20,
-                ),
-              ),
+            HeaderHelpButton(
+              onTap: () => setState(() => _showTour = true),
+              semanticLabel: 'Buka tutorial Notifikasi',
+              size: 44,
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -238,7 +208,9 @@ class _NotificationCenterScreenState
 
     return Scaffold(
       backgroundColor: background,
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         bottom: false,
         child: FutureBuilder<List<InboxMessage>>(
           future: _inboxFuture,
@@ -272,7 +244,9 @@ class _NotificationCenterScreenState
                 .where((notice) => !_needsActionSoon(notice))
                 .toList(growable: false);
 
-            return RefreshIndicator(
+            return TourAnchor(
+              id: 'notif_list',
+              child: RefreshIndicator(
               onRefresh: _refresh,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
@@ -747,9 +721,19 @@ class _NotificationCenterScreenState
                     ),
                 ],
               ),
+            ),
             );
           },
         ),
+      ),
+          if (_showTour)
+            AppTourOverlay(
+              tabIndex: 6,
+              onFinish: () {
+                if (mounted) setState(() => _showTour = false);
+              },
+            ),
+        ],
       ),
     );
   }

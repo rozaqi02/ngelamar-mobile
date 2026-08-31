@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// Canonical launcher artwork — the same file shown in
+/// Settings → Tentang Aplikasi and used as the Android APK icon.
+const kAppLauncherIconAsset =
+    'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png';
+
 /// App Mascot Icon (Option 1: Balanced Close-Up 1.35x).
 /// Features:
 /// - Friendly sparkling left eye + joyful wink right eye
@@ -100,7 +105,8 @@ class _AppMascotIconPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
     canvas.drawRRect(bodyRect, borderPaint);
 
-    // Flap fold line
+    // Flap fold stays inside the black stroke (inset + clip so caps
+    // never poke past the rounded top corners).
     final foldPaint = Paint()
       ..color = const Color(0xFFE2DBD0)
       ..strokeWidth = 2.5
@@ -108,11 +114,14 @@ class _AppMascotIconPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
+    canvas.save();
+    canvas.clipRRect(bodyRect.deflate(2.8));
     final foldPath = Path()
-      ..moveTo(14, 28)
-      ..lineTo(50, 56)
-      ..lineTo(86, 28);
+      ..moveTo(24, 32)
+      ..lineTo(50, 53)
+      ..lineTo(76, 32);
     canvas.drawPath(foldPath, foldPaint);
+    canvas.restore();
 
     // ── MASKOT EYES & SMILE ──
     // Left eye (Big sparkle eye)

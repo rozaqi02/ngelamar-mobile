@@ -12,8 +12,6 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/apple_animations.dart';
 import '../../widgets/app_layout_metrics.dart';
 import '../../widgets/apple_toast.dart';
-import '../../widgets/welcome_screen_route.dart';
-import 'discovery_welcome_screen.dart';
 
 /// Screen 2: pintasan pencarian ke portal loker pihak ketiga.
 /// Header style konsisten 100% dengan menu DAFTAR LAMARAN dan PERSIAPAN KARIR:
@@ -23,8 +21,9 @@ import 'discovery_welcome_screen.dart';
 /// - 6 Kartu portal bergaya neo-modern dengan tujuan yang jelas.
 class JobDiscoveryScreen extends ConsumerStatefulWidget {
   final bool embedded;
+  final VoidCallback? onHelp;
 
-  const JobDiscoveryScreen({super.key, this.embedded = false});
+  const JobDiscoveryScreen({super.key, this.embedded = false, this.onHelp});
 
   @override
   ConsumerState<JobDiscoveryScreen> createState() => _JobDiscoveryScreenState();
@@ -278,22 +277,14 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
   }
 
   void _openWelcomeModal() {
-    HapticFeedback.selectionClick();
-    Navigator.push(
-      context,
-      WelcomeScreenRoute(child: const DiscoveryWelcomeScreen()),
-    );
+    widget.onHelp?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
     final txtPri = isDark ? Colors.white : const Color(0xFF121214);
-    final background = isDark
-        ? const Color(0xFF0F1B14)
-        : widget.embedded
-        ? const Color(0xFFE8F5E9)
-        : const Color(0xFFFAF8F5);
+    final background = AppTheme.getBackground(context);
     final visibleQueries = _searchHistory.isEmpty
         ? const ['Fresh graduate', 'Remote', 'Admin', 'UI/UX']
         : _searchHistory;
@@ -318,31 +309,57 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'PORTAL\nLOKER',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: txtPri,
-                            letterSpacing: -1.2,
-                            height: 1.0,
+                    if (!widget.embedded) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'PORTAL\nLOKER',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: txtPri,
+                              letterSpacing: -1.15,
+                              height: 0.99,
+                            ),
                           ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (!widget.embedded &&
-                                Navigator.canPop(context)) ...[
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (Navigator.canPop(context)) ...[
+                                FluidBounceButton(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    Navigator.of(context).pop();
+                                  },
+                                  semanticLabel: 'Kembali ke Beranda',
+                                  child: Container(
+                                    padding: const EdgeInsets.all(9),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF242428)
+                                          : Colors.white,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0xFF383842)
+                                            : const Color(0xFFE5E0D5),
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.back,
+                                      size: 18,
+                                      color: txtPri,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
                               FluidBounceButton(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  Navigator.of(context).pop();
-                                },
-                                semanticLabel: 'Kembali ke Beranda',
+                                onTap: _openWelcomeModal,
+                                semanticLabel:
+                                    'Buka panduan Portal Loker Resmi',
                                 child: Container(
                                   padding: const EdgeInsets.all(9),
                                   decoration: BoxDecoration(
@@ -355,53 +372,29 @@ class _JobDiscoveryScreenState extends ConsumerState<JobDiscoveryScreen> {
                                           ? const Color(0xFF383842)
                                           : const Color(0xFFE5E0D5),
                                     ),
-                                  ),
-                                  child: Icon(
-                                    CupertinoIcons.back,
-                                    size: 18,
-                                    color: txtPri,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            FluidBounceButton(
-                              onTap: _openWelcomeModal,
-                              semanticLabel: 'Buka panduan Portal Loker Resmi',
-                              child: Container(
-                                padding: const EdgeInsets.all(9),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF242428)
-                                      : Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF383842)
-                                        : const Color(0xFFE5E0D5),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: isDark ? 0.2 : 0.04,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: isDark ? 0.2 : 0.04,
+                                        ),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
                                       ),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  CupertinoIcons.question_circle_fill,
-                                  size: 18,
-                                  color: Color(0xFF1E8E3E),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.question_circle_fill,
+                                    size: 18,
+                                    color: Color(0xFF5C44E4),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     Text(
                       'Cari sekali, lalu buka di portal yang paling relevan.',
                       style: TextStyle(

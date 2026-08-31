@@ -5,8 +5,41 @@ import '../services/prefs_service.dart';
 import '../theme/app_theme.dart';
 import 'apple_animations.dart';
 
+/// Live registry of on-screen widgets the guided tour can spotlight.
+class TourRegistry {
+  static final Map<String, GlobalKey> _keys = <String, GlobalKey>{};
+
+  static GlobalKey keyOf(String id) =>
+      _keys.putIfAbsent(id, GlobalKey.new);
+
+  static Rect? rectOf(String id) {
+    final context = keyOf(id).currentContext;
+    if (context == null) return null;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return null;
+    final origin = box.localToGlobal(Offset.zero);
+    final rect = origin & box.size;
+    if (rect.width < 8 || rect.height < 8) return null;
+    return rect;
+  }
+}
+
+/// Marks a widget as a tour spotlight target. Keep [id] stable.
+class TourAnchor extends StatelessWidget {
+  final String id;
+  final Widget child;
+
+  const TourAnchor({super.key, required this.id, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(key: TourRegistry.keyOf(id), child: child);
+  }
+}
+
 /// Target area specification for the guided tour spotlight
 class TourTargetRect {
+  final String? anchorId;
   final Rect Function(
     Size screenSize,
     EdgeInsets padding,
@@ -16,11 +49,14 @@ class TourTargetRect {
   computeRect;
   final BorderRadius borderRadius;
   final bool isCircle;
+  final double inflate;
 
   const TourTargetRect({
+    this.anchorId,
     required this.computeRect,
     this.borderRadius = const BorderRadius.all(Radius.circular(20)),
     this.isCircle = false,
+    this.inflate = 8,
   });
 }
 
@@ -81,9 +117,12 @@ class AppTourOverlayState extends State<AppTourOverlay>
     required Color color,
     required double top,
     required double height,
+    String? anchorId,
     double horizontalInset = 16,
     bool fromBottom = false,
     bool cardBelow = true,
+    double inflate = 8,
+    BorderRadius? radius,
   }) {
     return AppTourStep(
       targetTabIndex: tab,
@@ -94,6 +133,8 @@ class AppTourOverlayState extends State<AppTourOverlay>
       accentColor: color,
       placeCardBelow: cardBelow,
       targetRect: TourTargetRect(
+        anchorId: anchorId,
+        inflate: inflate,
         computeRect: (size, pad, contentLeft, contentWidth) {
           final resolvedTop = fromBottom
               ? size.height - pad.bottom - top
@@ -105,7 +146,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
             height,
           );
         },
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: radius ?? BorderRadius.circular(22),
       ),
     );
   }
@@ -122,8 +163,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Lihat sapaan, progres, dan perhatian utama hari ini.',
             icon: Icons.home_rounded,
             color: purple,
-            top: 12,
-            height: 105,
+            anchorId: 'home_greeting',
+            top: 8,
+            height: 56,
+            radius: BorderRadius.circular(18),
           ),
           _step(
             tab: 0,
@@ -132,9 +175,12 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Ketuk kartu untuk membuka detail dan status lengkap.',
             icon: Icons.style_rounded,
             color: Color(0xFFF59E0B),
-            top: 132,
-            height: 210,
+            anchorId: 'home_cards',
+            top: 150,
+            height: 240,
             cardBelow: false,
+            inflate: 6,
+            radius: BorderRadius.circular(28),
           ),
           _step(
             tab: 0,
@@ -144,11 +190,14 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 'Berpindah menu atau gunakan tombol plus untuk mencatat lamaran.',
             icon: Icons.add_circle_rounded,
             color: purple,
-            top: 104,
-            height: 82,
-            horizontalInset: 28,
+            anchorId: 'home_nav',
+            top: 110,
+            height: 94,
+            horizontalInset: 24,
             fromBottom: true,
             cardBelow: false,
+            inflate: 10,
+            radius: BorderRadius.circular(36),
           ),
         ];
       case 1:
@@ -161,8 +210,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Cari posisi, perusahaan, atau kota dari satu kolom.',
             icon: Icons.search_rounded,
             color: purple,
-            top: 70,
-            height: 58,
+            anchorId: 'jobs_search',
+            top: 78,
+            height: 52,
+            radius: BorderRadius.circular(18),
           ),
           _step(
             tab: tabIndex,
@@ -171,8 +222,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Atur urutan, bentuk daftar, status, dan tipe kerja.',
             icon: Icons.tune_rounded,
             color: Color(0xFF0EA5E9),
-            top: 132,
-            height: 54,
+            anchorId: 'jobs_filters',
+            top: 140,
+            height: 48,
+            radius: BorderRadius.circular(16),
           ),
           _step(
             tab: tabIndex,
@@ -182,9 +235,12 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 'Ketuk kartu untuk melihat timeline dan tindakan berikutnya.',
             icon: Icons.work_rounded,
             color: Color(0xFFEC4899),
-            top: 195,
-            height: 190,
+            anchorId: 'jobs_cards',
+            top: 200,
+            height: 200,
             cardBelow: false,
+            inflate: 4,
+            radius: BorderRadius.circular(24),
           ),
         ];
       case 3:
@@ -196,8 +252,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Periksa agenda terdekat dan aktivitas bulan ini.',
             icon: Icons.event_available_rounded,
             color: purple,
-            top: 10,
-            height: 132,
+            anchorId: 'cal_summary',
+            top: 86,
+            height: 110,
+            radius: BorderRadius.circular(20),
           ),
           _step(
             tab: 3,
@@ -207,9 +265,12 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 'Warna membedakan lamaran, seleksi, tindak lanjut, dan tenggat.',
             icon: Icons.calendar_month_rounded,
             color: Color(0xFF059669),
-            top: 155,
-            height: 330,
+            anchorId: 'cal_grid',
+            top: 210,
+            height: 320,
             cardBelow: false,
+            inflate: 6,
+            radius: BorderRadius.circular(24),
           ),
           _step(
             tab: 3,
@@ -219,9 +280,85 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 'Pilih tanggal untuk melihat seluruh kegiatan hari tersebut.',
             icon: Icons.view_agenda_rounded,
             color: Color(0xFFD97706),
-            top: 500,
-            height: 120,
+            anchorId: 'cal_agenda',
+            top: 540,
+            height: 140,
             cardBelow: false,
+            radius: BorderRadius.circular(20),
+          ),
+        ];
+      case 5:
+        return [
+          _step(
+            tab: 5,
+            badge: 'Panduan Ruang Karier',
+            title: 'Ruang Kerja Karier',
+            description:
+                'Tempat mencari lowongan resmi dan menyiapkan seleksi tanpa meninggalkan Ngelamar.',
+            icon: Icons.auto_awesome_mosaic_rounded,
+            color: purple,
+            anchorId: 'hub_header',
+            top: 8,
+            height: 52,
+            radius: BorderRadius.circular(18),
+          ),
+          _step(
+            tab: 5,
+            badge: 'Panduan Ruang Karier',
+            title: 'Portal atau Persiapan',
+            description:
+                'Geser antara Portal Loker Resmi dan Persiapan Karirku sesuai kebutuhan hari ini.',
+            icon: Icons.swap_horiz_rounded,
+            color: Color(0xFF059669),
+            anchorId: 'hub_switcher',
+            top: 68,
+            height: 52,
+            radius: BorderRadius.circular(24),
+          ),
+          _step(
+            tab: 5,
+            badge: 'Panduan Ruang Karier',
+            title: 'Isi Workspace',
+            description:
+                'Buka portal lowongan atau latihan interview, CV, dan template pesan dari area ini.',
+            icon: Icons.work_outline_rounded,
+            color: Color(0xFFF59E0B),
+            anchorId: 'hub_body',
+            top: 130,
+            height: 280,
+            cardBelow: false,
+            inflate: 6,
+            radius: BorderRadius.circular(24),
+          ),
+        ];
+      case 6:
+        return [
+          _step(
+            tab: 6,
+            badge: 'Panduan Notifikasi',
+            title: 'Pusat Kabar',
+            description:
+                'Semua pengingat seleksi, pesan, dan status izin tampil di halaman ini.',
+            icon: Icons.notifications_rounded,
+            color: purple,
+            anchorId: 'notif_header',
+            top: 8,
+            height: 90,
+            radius: BorderRadius.circular(20),
+          ),
+          _step(
+            tab: 6,
+            badge: 'Panduan Notifikasi',
+            title: 'Daftar Kabar',
+            description:
+                'Ketuk item untuk membuka lamaran terkait atau menyelesaikan pengingat.',
+            icon: Icons.inbox_rounded,
+            color: Color(0xFF0EA5E9),
+            anchorId: 'notif_list',
+            top: 110,
+            height: 280,
+            cardBelow: false,
+            radius: BorderRadius.circular(22),
           ),
         ];
       case 4:
@@ -234,8 +371,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Kelola foto, nama, minat, dan informasi profesional.',
             icon: Icons.person_rounded,
             color: purple,
-            top: 10,
-            height: 150,
+            anchorId: 'profile_identity',
+            top: 8,
+            height: 220,
+            radius: BorderRadius.circular(24),
           ),
           _step(
             tab: 4,
@@ -244,8 +383,10 @@ class AppTourOverlayState extends State<AppTourOverlay>
             description: 'Pantau aktivitas serta ringkasan perjalanan lamaran.',
             icon: Icons.insights_rounded,
             color: Color(0xFF0EA5E9),
-            top: 172,
-            height: 190,
+            anchorId: 'profile_stats',
+            top: 250,
+            height: 200,
+            radius: BorderRadius.circular(20),
           ),
           _step(
             tab: 4,
@@ -255,9 +396,11 @@ class AppTourOverlayState extends State<AppTourOverlay>
                 'Atur tampilan, notifikasi, backup, bantuan, dan akun.',
             icon: Icons.settings_rounded,
             color: Color(0xFFF59E0B),
-            top: 380,
-            height: 190,
-            cardBelow: false,
+            anchorId: 'profile_settings',
+            top: 250,
+            height: 56,
+            cardBelow: true,
+            radius: BorderRadius.circular(16),
           ),
         ];
     }
@@ -275,6 +418,18 @@ class AppTourOverlayState extends State<AppTourOverlay>
     _pulseAnimation = Tween<double>(begin: 0.94, end: 1.06).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _remeasure());
+  }
+
+  void _remeasure() {
+    if (!mounted) return;
+    setState(() {});
+    final anchorId = _currentSteps[_currentStepIndex].targetRect.anchorId;
+    if (anchorId != null && TourRegistry.rectOf(anchorId) == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
@@ -287,6 +442,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
     HapticFeedback.selectionClick();
     if (_currentStepIndex < _currentSteps.length - 1) {
       setState(() => _currentStepIndex++);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _remeasure());
     } else {
       _finishTour();
     }
@@ -296,6 +452,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
     HapticFeedback.selectionClick();
     if (_currentStepIndex > 0) {
       setState(() => _currentStepIndex--);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _remeasure());
     }
   }
 
@@ -316,12 +473,17 @@ class AppTourOverlayState extends State<AppTourOverlay>
     final contentWidth = math.min(screenSize.width, 840.0);
     final contentLeft = (screenSize.width - contentWidth) / 2;
 
-    final rawTargetRect = step.targetRect.computeRect(
-      screenSize,
-      padding,
-      contentLeft,
-      contentWidth,
-    );
+    final measured = step.targetRect.anchorId == null
+        ? null
+        : TourRegistry.rectOf(step.targetRect.anchorId!);
+    final rawTargetRect =
+        (measured?.inflate(step.targetRect.inflate)) ??
+        step.targetRect.computeRect(
+          screenSize,
+          padding,
+          contentLeft,
+          contentWidth,
+        );
     final safeLeft = contentLeft + 6;
     final safeRight = contentLeft + contentWidth - 6;
     final safeTop = padding.top + 4;
@@ -337,8 +499,17 @@ class AppTourOverlayState extends State<AppTourOverlay>
     final cardWidth = math.min(contentWidth - 32, 440.0);
     final cardLeft = (screenSize.width - cardWidth) / 2;
 
+    final cardHeightEstimate = 236.0;
+    final spaceBelow = screenSize.height - padding.bottom - targetRect.bottom;
+    final spaceAbove = targetRect.top - padding.top;
+    final placeBelow = spaceBelow >= cardHeightEstimate + 20
+        ? true
+        : spaceAbove >= cardHeightEstimate + 20
+        ? false
+        : step.placeCardBelow;
+
     double cardTop;
-    if (step.placeCardBelow) {
+    if (placeBelow) {
       cardTop = targetRect.bottom + 16;
       final maxTop = screenSize.height - padding.bottom - 260;
       if (cardTop > maxTop) {
@@ -377,35 +548,7 @@ class AppTourOverlayState extends State<AppTourOverlay>
             ),
           ),
 
-          // ── 2. ANIMATED TARGET FOCUS POINTER BEACON ──
-          Positioned(
-            left: targetRect.center.dx - 18,
-            top: step.placeCardBelow
-                ? targetRect.bottom + 6
-                : targetRect.top - 24,
-            child: AnimatedBuilder(
-              animation: _pulseAnimation,
-              builder: (context, _) {
-                return Transform.translate(
-                  offset: Offset(
-                    0,
-                    step.placeCardBelow
-                        ? (_pulseAnimation.value - 1.0) * 8
-                        : -(_pulseAnimation.value - 1.0) * 8,
-                  ),
-                  child: Icon(
-                    step.placeCardBelow
-                        ? Icons.arrow_drop_up_rounded
-                        : Icons.arrow_drop_down_rounded,
-                    color: step.accentColor,
-                    size: 36,
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // ── 3. MATERIAL 3 COACHMARK CARD (RESPONSIVE & ZERO OFFSIDE) ──
+          // ── 2. MATERIAL 3 COACHMARK CARD (RESPONSIVE & ZERO OFFSIDE) ──
           Positioned(
             left: cardLeft,
             width: cardWidth,
