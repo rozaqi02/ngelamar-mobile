@@ -19,18 +19,19 @@ Isi `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://jfmmfnfxofodmallkmsq.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-or-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key-rahasia>
+CRON_SECRET=<string-acak-panjang>
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` hanya boleh berada di environment server Vercel,
 tidak boleh dimasukkan ke APK, Git, atau variabel yang berawalan
-`NEXT_PUBLIC_`.
+`NEXT_PUBLIC_`. Buat `CRON_SECRET` berupa string acak minimal 32 karakter.
 
 ## Deploy ke Vercel
 
 1. Push repo ini ke GitHub.
 2. Di Vercel pilih **Add New → Project** lalu impor repo `ngelamar-mobile`.
 3. Pada **Root Directory**, pilih `admin-web`.
-4. Tambahkan tiga environment variable di atas untuk **Production**,
+4. Tambahkan empat environment variable di atas untuk **Production**,
    **Preview**, dan **Development** sesuai kebutuhan.
 5. Deploy. Tambahkan URL Vercel, misalnya
    `https://ngelamar-admin.vercel.app`, ke **Supabase Auth → URL
@@ -46,6 +47,17 @@ tidak boleh dimasukkan ke APK, Git, atau variabel yang berawalan
 
 Tanpa langkah terakhir, akun dapat login ke Google tetapi tetap ditolak dari
 dashboard—ini disengaja.
+
+## Menjaga Supabase Free tetap aktif
+
+Vercel Cron memanggil `/api/cron/keepalive` setiap hari pukul 09.17 WIB. Route
+ini menjalankan satu query `SELECT` ringan ke tabel `admin_users`, sehingga
+proyek tetap memiliki aktivitas database tanpa membuat atau mengubah data.
+
+Vercel otomatis mengirim header `Authorization: Bearer <CRON_SECRET>` pada
+request cron. Endpoint menolak request tanpa secret yang sesuai. Setelah
+deploy, periksa **Vercel → Project → Settings → Cron Jobs** dan **Logs** untuk
+memastikan eksekusi mendapat respons HTTP 200.
 
 ## Fitur
 
