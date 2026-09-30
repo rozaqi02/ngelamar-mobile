@@ -64,12 +64,15 @@ Dengan Ngelamar, Anda dapat menyimpan lowongan, menyiapkan draft lamaran, memant
 4. Tekan **Install** dan tunggu hingga selesai.
 
 ### 🍏 Pengguna iPhone / iOS (.ipa)
-Aplikasi iOS dapat dipasang (*sideloading*) langsung menggunakan PC/Laptop:
-1. Unduh artifact **`Ngelamar-iOS-Release.ipa`** dari menu [GitHub Actions Releases / Artifacts](https://github.com/rozaqi02/ngelamar-mobile/actions).
-2. Hubungkan iPhone ke Laptop/PC menggunakan kabel data.
-3. Buka software **3uTools** (atau AltStore / Sideloadly) di Laptop Windows.
-4. Buka menu **Toolbox > IPA Signature**, masukkan file `.ipa` dan login dengan Apple ID gratis Anda.
-5. Klik **Install**, lalu di iPhone buka **Pengaturan > Umum > Manajemen Profil/Perangkat** dan pilih **Percayai Pengembang**.
+Aplikasi mendukung iOS 15 ke atas, termasuk iPhone XS dengan iOS 18. Build GitHub Actions menghasilkan **IPA tanpa tanda tangan**; file ini harus ditandatangani dengan Apple ID saat dipasang.
+
+1. Jalankan workflow [Build iOS IPA (Sideload Ready)](https://github.com/rozaqi02/ngelamar-mobile/actions/workflows/build-ios.yml) pada commit terbaru. Pastikan run **berhasil** dan artifact `Ngelamar-iOS-Release` tersedia. Unduh artifact tersebut dan ekstrak ZIP-nya untuk mendapatkan `Ngelamar-iOS-Release.ipa`.
+2. Di Windows, ikuti [panduan resmi AltStore Classic untuk Windows](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows): pasang iTunes dan iCloud versi situs Apple, pasang AltServer, sambungkan iPhone dengan kabel, pilih **Trust**, lalu pasang AltStore dengan Apple ID milikmu. Masukkan kata sandi Apple ID hanya di aplikasi resmi dan jangan kirim ke siapa pun.
+3. Di iPhone, percayai profil Apple ID pada **Pengaturan > Umum > VPN & Manajemen Perangkat**. Untuk iOS 16 ke atas, aktifkan **Mode Pengembang** pada **Pengaturan > Privasi & Keamanan** dan ikuti instruksi restart.
+4. Buka AltStore Classic > **My Apps** > **+**, pilih IPA tadi melalui app Files. Tunggu hingga Ngelamar muncul, lalu buka aplikasinya dan coba catat satu lamaran, buka Kalender, dan buat satu pengingat.
+5. Dengan Apple ID gratis, [refresh aplikasi melalui AltStore sebelum 7 hari](https://faq.altstore.io/altstore-classic/your-altstore) agar tetap bisa dibuka. AltStore dan AltServer harus dapat saling terhubung untuk refresh.
+
+Fitur sinkronisasi ke kalender sistem serta push FCM saat aplikasi tertutup masih khusus Android. Kalender dan pengingat lokal di dalam aplikasi tersedia di iOS. Periksa hasil uji pada iPhone fisik sebelum menganggap build siap dipakai harian.
 
 ---
 

@@ -4,7 +4,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ngelamar/services/backup_service.dart';
-import 'package:ngelamar/services/spreadsheet_import_service.dart';
 import 'package:ngelamar/services/text_parser_service.dart';
 import 'package:ngelamar/services/salary_evaluator_service.dart';
 import 'package:ngelamar/models/job_application.dart';
@@ -560,8 +559,8 @@ Penempatan: Surabaya
     );
 
     test('AppVersionService provides semantic version comparison', () {
-      expect(AppVersionService.version, equals('2.28.1'));
-      expect(AppVersionService.buildNumber, equals('246'));
+      expect(AppVersionService.version, equals('2.32.0'));
+      expect(AppVersionService.buildNumber, equals('250'));
       expect(
         AppVersionService.compareVersions('2.28.1', '2.25.5'),
         greaterThan(0),

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../models/job_application.dart';
 import '../../providers/job_provider.dart';
 import '../../theme/app_theme.dart';
@@ -20,7 +22,9 @@ import '../../widgets/app_tour_overlay.dart';
 import '../../widgets/safe_avatar_image.dart';
 import '../../services/notification_service.dart';
 import '../../services/prefs_service.dart';
+
 import 'package:intl/intl.dart';
+
 import '../jobs/add_edit_job_screen.dart';
 import '../jobs/job_detail_screen.dart';
 import '../notifications/notification_center_screen.dart';
@@ -1230,12 +1234,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Widget _buildEdgeToEdgeStackedDeck(List<JobApplication> jobs) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final cardMinHeight = math.max(320.0, screenHeight * 0.44);
-    // A wider reveal between cards gives the deck the calmer breathing room
-    // of the reference while preserving its compact layered interaction.
-    const collapsedStep = 80.0;
-    const expandedStep = 150.0;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final headerHeight = math.max(
+      42.0,
+      textScaler.scale(18.5) * 1.5 + 6 + textScaler.scale(10) * 1.5,
+    );
+    final collapsedStep = headerHeight + 44;
+    final cardMinHeight = math.max(
+      240.0,
+      headerHeight +
+          68 +
+          textScaler.scale(20) * 2.4 +
+          textScaler.scale(14) * 1.5,
+    );
+    // Open cards need a full content area and a gap before the next header.
+    // Dock clearance belongs to the scroll view rather than the card itself.
+    final expandedStep = cardMinHeight + 24;
 
     // Calculate Y offsets for each card in the stack
     final yPositions = <double>[];
@@ -1349,20 +1363,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 ),
                               ],
                             ),
-                            padding: EdgeInsets.fromLTRB(
-                              20,
-                              16,
-                              20,
-                              isLast
-                                  ? math.max(
-                                      140.0,
-                                      AppLayoutMetrics.contentBottomClearance(
-                                            context,
-                                          ) +
-                                          30,
-                                    )
-                                  : 24,
-                            ),
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1428,13 +1429,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                     color: Color(0xFFE53935),
                                                   ),
                                                   SizedBox(width: 3),
-                                                  Text(
-                                                    'H+7: Belum ada kabar?',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: Color(0xFFE53935),
+                                                  Flexible(
+                                                    child: Text(
+                                                      'H+7: Belum ada kabar?',
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Color(
+                                                          0xFFE53935,
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                 ],

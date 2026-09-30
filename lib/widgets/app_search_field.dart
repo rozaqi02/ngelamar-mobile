@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// Unified Neo-Modern Search Box Component.
@@ -32,14 +33,14 @@ class AppSearchField extends StatelessWidget {
         ? const Color(0xFF383840)
         : const Color(0xFFE5E0D5);
     final txtColor = isDark ? Colors.white : const Color(0xFF121214);
-    final hintColor = isDark
-        ? const Color(0xFF8E8E93)
-        : const Color(0xFF9E9EA4);
+    final hintColor = AppTheme.getTextSecondary(context);
     final iconColor = isDark
         ? const Color(0xFFA0A0A8)
         : const Color(0xFF707074);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final fieldHeight = (48 + (textScale - 1) * 14).clamp(48, 64).toDouble();
+    final fieldHeight =
+        (MediaQuery.textScalerOf(context).scale(13.5) * 1.2 + 24)
+            .clamp(48.0, double.infinity)
+            .toDouble();
 
     return Container(
       height: fieldHeight,
@@ -56,87 +57,78 @@ class AppSearchField extends StatelessWidget {
           ),
         ],
       ),
-      child: TextField(
-        controller: controller,
-        autofocus: autofocus,
-        textAlignVertical: TextAlignVertical.center,
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-          color: txtColor,
-          height: 1.2,
-        ),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: hintText,
-          hintStyle: TextStyle(
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, value, _) => TextField(
+          controller: controller,
+          autofocus: autofocus,
+          textAlignVertical: TextAlignVertical.center,
+          style: TextStyle(
             fontSize: 13.5,
-            fontWeight: FontWeight.w500,
-            color: hintColor,
+            fontWeight: FontWeight.w600,
+            color: txtColor,
             height: 1.2,
           ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 8),
-            child: Icon(CupertinoIcons.search, size: 18, color: iconColor),
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 48,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: controller,
-            builder: (context, val, _) {
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: ScaleTransition(scale: anim, child: child),
-                ),
-                child: val.text.isEmpty
-                    ? const SizedBox.shrink()
-                    : Semantics(
-                        key: const ValueKey('search_clear_btn'),
-                        button: true,
-                        label: 'Hapus pencarian',
-                        child: IconButton(
-                          tooltip: 'Hapus pencarian',
-                          onPressed: () {
-                            controller.clear();
-                            if (onClear != null) onClear!();
-                            if (onChanged != null) onChanged!('');
-                          },
-                          padding: const EdgeInsets.only(right: 10),
-                          icon: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white24 : Colors.black12,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 13,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hintText,
+            hintStyle: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
+              color: hintColor,
+              height: 1.2,
+            ),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 14, right: 8),
+              child: Icon(CupertinoIcons.search, size: 18, color: iconColor),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 48,
+            ),
+            suffixIcon: value.text.isEmpty
+                ? null
+                : Semantics(
+                    key: const ValueKey('search_clear_btn'),
+                    button: true,
+                    label: 'Hapus pencarian',
+                    child: IconButton(
+                      tooltip: 'Hapus pencarian',
+                      onPressed: () {
+                        controller.clear();
+                        if (onClear != null) onClear!();
+                        if (onChanged != null) onChanged!('');
+                      },
+                      padding: const EdgeInsets.only(right: 10),
+                      icon: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 13,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
-              );
-            },
+                    ),
+                  ),
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 48,
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 0,
+            ),
           ),
-          suffixIconConstraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 48,
-          ),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 0,
-          ),
+          onChanged: onChanged,
         ),
-        onChanged: onChanged,
       ),
     );
   }

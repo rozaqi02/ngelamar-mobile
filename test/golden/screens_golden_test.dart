@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +19,7 @@ import 'package:ngelamar/views/jobs/job_detail_screen.dart';
 import 'package:ngelamar/views/calendar/calendar_screen.dart';
 import 'package:ngelamar/views/settings/settings_screen.dart';
 import 'package:ngelamar/theme/app_theme.dart';
+import 'package:ngelamar/widgets/app_search_field.dart';
 
 List<JobApplication> _createGoldenSampleJobs() {
   final baseDate = DateTime(2026, 8, 25, 10, 0, 0);
@@ -146,6 +148,7 @@ Widget _buildGoldenWrapper({
   required double width,
   required double height,
   required List<JobApplication> jobs,
+  double textScale = 1,
 }) {
   final notifier = _GoldenMockJobNotifier(jobs, isDark: isDark);
   return ProviderScope(
@@ -155,6 +158,12 @@ Widget _buildGoldenWrapper({
       theme: AppTheme.appleLightTheme,
       darkTheme: AppTheme.appleDarkTheme,
       themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: RepaintBoundary(
         key: const ValueKey('golden_root'),
         child: SizedBox(width: width, height: height, child: child),
@@ -313,6 +322,113 @@ void main() {
 
   final jobs = _createGoldenSampleJobs();
 
+  group('iPhone XS layout', () {
+    for (final isDark in [false, true]) {
+      final screens = <String, Widget>{
+        'Beranda': const DashboardScreen(),
+        'Lamaran': const JobListScreen(),
+        'Detail': JobDetailScreen(job: jobs.first),
+        'Kalender': CalendarScreen(now: () => DateTime(2026, 8, 25)),
+        'Profil': const SettingsScreen(),
+      };
+      for (final screen in screens.entries) {
+        testWidgets('${screen.key}, dark=$isDark, notch and home indicator', (
+          tester,
+        ) async {
+          tester.view.physicalSize = const Size(375, 812);
+          tester.view.devicePixelRatio = 1;
+          tester.view.padding = const FakeViewPadding(top: 44, bottom: 34);
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPadding);
+          await tester.pumpWidget(
+            _buildGoldenWrapper(
+              child: screen.value,
+              isDark: isDark,
+              width: 375,
+              height: 812,
+              jobs: jobs,
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 300));
+          await GoogleFonts.pendingFonts();
+          await tester.pump(const Duration(seconds: 2));
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      for (final textScale in [1.0, 2.0]) {
+        testWidgets(
+          'Opened deck stays readable, dark=$isDark, scale=$textScale',
+          (tester) async {
+            tester.view.physicalSize = const Size(375, 812);
+            tester.view.devicePixelRatio = 1;
+            tester.view.padding = const FakeViewPadding(top: 44, bottom: 34);
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            addTearDown(tester.view.resetPadding);
+            await tester.pumpWidget(
+              _buildGoldenWrapper(
+                child: const DashboardScreen(),
+                isDark: isDark,
+                width: 375,
+                height: 812,
+                jobs: jobs,
+                textScale: textScale,
+              ),
+            );
+            await tester.pump(const Duration(milliseconds: 300));
+            await GoogleFonts.pendingFonts();
+            await tester.pump(const Duration(seconds: 2));
+            expect(tester.takeException(), isNull);
+            await tester.tap(find.text('Gojek (GoTo Group)'));
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+            final detailBottom = tester
+                .getRect(find.text('Lihat Detail').first)
+                .bottom;
+            final nextHeaderTop = tester
+                .getRect(find.text(jobs.first.companyName))
+                .top;
+            expect(detailBottom, lessThan(nextHeaderTop));
+            await tester.drag(
+              find.byType(SingleChildScrollView).first,
+              const Offset(0, -1200),
+            );
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
+
+    testWidgets('Search uses full width and supports large text', (
+      tester,
+    ) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(3)),
+            child: Scaffold(body: AppSearchField(controller: controller)),
+          ),
+        ),
+      );
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).decoration!.suffixIcon,
+        isNull,
+      );
+      await tester.enterText(find.byType(TextField), 'Flutter');
+      await tester.pump();
+      expect(find.byTooltip('Hapus pencarian'), findsOneWidget);
+      await tester.tap(find.byTooltip('Hapus pencarian'));
+      await tester.pump();
+      expect(controller.text, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Automated Golden UI Regression Baselines (20 Matrix Snapshots)', () {
     // 1. Home / Dashboard Screen
     for (final theme in themes) {
@@ -451,7 +567,7 @@ void main() {
               width: width,
               height: height,
               jobs: jobs,
-              child: const CalendarScreen(),
+              child: CalendarScreen(now: () => DateTime(2026, 8, 25)),
             ),
           );
           await tester.pump(const Duration(milliseconds: 300));

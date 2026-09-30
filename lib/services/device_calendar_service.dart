@@ -9,12 +9,14 @@ import '../models/job_application.dart';
 /// Writes upcoming Ngelamar agenda into the device calendar, and can open
 /// the system calendar app. Android-only; no-ops on other platforms.
 class DeviceCalendarService {
+  static bool get isSupported => !kIsWeb && Platform.isAndroid;
+
   static const MethodChannel _channel = MethodChannel(
     'com.ngelamar.app.ngelamar/home_widget',
   );
 
   static Future<void> syncJobs(Iterable<JobApplication> jobs) async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (!isSupported) return;
     final events = CalendarEventAdapter.fromJobs(jobs)
         .where(
           (event) => !event.at.isBefore(
@@ -42,7 +44,7 @@ class DeviceCalendarService {
   }
 
   static Future<void> openSystemCalendar() async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (!isSupported) return;
     try {
       await _channel.invokeMethod<void>('openDeviceCalendar');
     } catch (error) {

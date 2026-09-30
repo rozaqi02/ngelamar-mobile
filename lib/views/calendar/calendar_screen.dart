@@ -23,8 +23,14 @@ import '../jobs/job_detail_screen.dart';
 class CalendarScreen extends ConsumerStatefulWidget {
   final VoidCallback? onOpenCareerHub;
   final VoidCallback? onStartTour;
+  final DateTime Function()? now;
 
-  const CalendarScreen({super.key, this.onOpenCareerHub, this.onStartTour});
+  const CalendarScreen({
+    super.key,
+    this.onOpenCareerHub,
+    this.onStartTour,
+    this.now,
+  });
 
   @override
   ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
@@ -34,10 +40,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _visibleMonth;
   late DateTime _selectedDate;
 
+  DateTime get _today =>
+      DateUtils.dateOnly(widget.now?.call() ?? DateTime.now());
+
   @override
   void initState() {
     super.initState();
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = _today;
     _visibleMonth = DateTime(today.year, today.month);
     _selectedDate = today;
   }
@@ -61,7 +70,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   void _goToToday() {
     HapticFeedback.mediumImpact();
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = _today;
     setState(() {
       _visibleMonth = DateTime(today.year, today.month);
       _selectedDate = today;
@@ -83,12 +92,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final textSecondary = AppTheme.getTextSecondary(context);
     final surfaceColor = AppTheme.getSurface(context);
     final borderColor = AppTheme.getBorder(context);
+    final summaryColor = isDark ? const Color(0xFF332B59) : AppTheme.cardPurple;
+    final summaryText = AppTheme.getCardForeground(summaryColor);
+    final upcomingColor = isDark
+        ? const Color(0xFF3A3020)
+        : AppTheme.cardYellow;
+    final upcomingText = isDark
+        ? const Color(0xFFFFCB72)
+        : const Color(0xFF5C4A18);
 
     final events = _collectEvents(ref.watch(jobProvider).jobs);
     final selectedEvents = events
         .where((event) => _sameDay(event.date, _selectedDate))
         .toList();
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = _today;
     final isViewingToday = _sameDay(_selectedDate, today);
 
     final firstDay = DateTime(_visibleMonth.year, _visibleMonth.month);
@@ -172,52 +189,54 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       onTap: () => widget.onStartTour?.call(),
                       semanticLabel: 'Buka tutorial Kalender',
                     ),
-                    const SizedBox(width: 8),
-                    FluidBounceButton(
-                      onTap: () async {
-                        HapticFeedback.selectionClick();
-                        await DeviceCalendarService.syncJobs(
-                          ref.read(jobProvider).jobs,
-                        );
-                        await DeviceCalendarService.openSystemCalendar();
-                        if (!context.mounted) return;
-                        AppleToast.success(
-                          context,
-                          'Agenda disinkronkan ke kalender HP',
-                        );
-                      },
-                      semanticLabel: 'Sinkronkan ke kalender Android',
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF242428)
-                              : Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(
+                    if (DeviceCalendarService.isSupported) ...[
+                      const SizedBox(width: 8),
+                      FluidBounceButton(
+                        onTap: () async {
+                          HapticFeedback.selectionClick();
+                          await DeviceCalendarService.syncJobs(
+                            ref.read(jobProvider).jobs,
+                          );
+                          await DeviceCalendarService.openSystemCalendar();
+                          if (!context.mounted) return;
+                          AppleToast.success(
+                            context,
+                            'Agenda disinkronkan ke kalender HP',
+                          );
+                        },
+                        semanticLabel: 'Sinkronkan ke kalender Android',
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? const Color(0xFF383842)
-                                : const Color(0xFFE5E0D5),
-                            width: 1.4,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.2 : 0.04,
-                              ),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                                ? const Color(0xFF242428)
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF383842)
+                                  : const Color(0xFFE5E0D5),
+                              width: 1.4,
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.event_available_rounded,
-                          color: Color(0xFF5C44E4),
-                          size: 19,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.04,
+                                ),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.event_available_rounded,
+                            color: Color(0xFF5C44E4),
+                            size: 19,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                     const SizedBox(width: 8),
                     if (!isViewingToday ||
                         _visibleMonth.year != today.year ||
@@ -330,7 +349,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppTheme.cardPurple,
+                        color: summaryColor,
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
@@ -357,16 +376,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.78),
+                                    color: summaryText,
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.calendar_today_rounded,
-                                color: Colors.white,
+                                color: summaryText,
                                 size: 14,
                               ),
                             ],
@@ -374,8 +393,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           const SizedBox(height: 8),
                           Text(
                             '${eventsThisMonth.length} Agenda',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: summaryText,
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.4,
@@ -385,7 +404,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           Text(
                             '$selectionCountThisMonth seleksi · $otherCountThisMonth lainnya',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.82),
+                              color: summaryText,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -399,7 +418,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppTheme.cardYellow,
+                        color: upcomingColor,
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
@@ -417,22 +436,22 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'TERDEKAT',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: Color(0xFF7A5208),
+                                    color: upcomingText,
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.schedule_rounded,
-                                color: Color(0xFF7A5208),
+                                color: upcomingText,
                                 size: 14,
                               ),
                             ],
@@ -444,8 +463,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 : 'Santai dulu',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF121214),
+                            style: TextStyle(
+                              color: AppTheme.getCardForeground(upcomingColor),
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.4,
@@ -458,8 +477,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 : 'Belum ada agenda seleksi',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF5C4A18),
+                            style: TextStyle(
+                              color: upcomingText,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -543,9 +562,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                     day,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      color: textSecondary.withValues(
-                                        alpha: 0.7,
-                                      ),
+                                      color: textSecondary,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5,

@@ -1,10 +1,14 @@
 name: Build iOS IPA (Sideload Ready)
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - 'codex/**'
     paths:
       - 'lib/**'
       - 'ios/**'
@@ -13,7 +17,9 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-14
+    # Firebase's current Apple SDK requires Xcode 26.2 or newer.
+    # The deployment target stays iOS 15, including iPhone XS on iOS 18.
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
@@ -22,6 +28,7 @@ jobs:
 
       - name: Print Xcode and Swift versions
         run: |
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
           xcodebuild -version
           swift --version
           ls /Applications | grep Xcode
@@ -42,6 +49,9 @@ jobs:
           flutter clean
           flutter pub get
 
+      - name: Verify iPhone XS layouts
+        run: flutter test test/golden/screens_golden_test.dart --plain-name 'iPhone XS layout'
+
       - name: Clean iOS build artifacts
         run: |
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
@@ -54,14 +64,22 @@ jobs:
 
       - name: Package Payload to IPA
         run: |
+          test -f build/ios/iphoneos/Runner.app/Runner
+          /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' build/ios/iphoneos/Runner.app/Info.plist
+          lipo -verify_arch arm64 build/ios/iphoneos/Runner.app/Runner
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r -9 Ngelamar-iOS-Release.ipa Payload
+          unzip -t Ngelamar-iOS-Release.ipa
+          shasum -a 256 Ngelamar-iOS-Release.ipa > Ngelamar-iOS-Release.ipa.sha256
           rm -rf Payload
 
       - name: Upload IPA to Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Ngelamar-iOS-Release
-          path: Ngelamar-iOS-Release.ipa
+          path: |
+            Ngelamar-iOS-Release.ipa
+            Ngelamar-iOS-Release.ipa.sha256
+          if-no-files-found: error
           retention-days: 14
