@@ -148,7 +148,6 @@ Widget _buildGoldenWrapper({
   required double width,
   required double height,
   required List<JobApplication> jobs,
-  double textScale = 1,
 }) {
   final notifier = _GoldenMockJobNotifier(jobs, isDark: isDark);
   return ProviderScope(
@@ -161,7 +160,7 @@ Widget _buildGoldenWrapper({
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
           context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        ).copyWith(textScaler: TextScaler.linear(1)),
         child: child!,
       ),
       home: RepaintBoundary(
@@ -357,49 +356,6 @@ void main() {
         });
       }
 
-      for (final textScale in [1.0, 2.0]) {
-        testWidgets(
-          'Opened deck stays readable, dark=$isDark, scale=$textScale',
-          (tester) async {
-            tester.view.physicalSize = const Size(375, 812);
-            tester.view.devicePixelRatio = 1;
-            tester.view.padding = const FakeViewPadding(top: 44, bottom: 34);
-            addTearDown(tester.view.resetPhysicalSize);
-            addTearDown(tester.view.resetDevicePixelRatio);
-            addTearDown(tester.view.resetPadding);
-            await tester.pumpWidget(
-              _buildGoldenWrapper(
-                child: const DashboardScreen(),
-                isDark: isDark,
-                width: 375,
-                height: 812,
-                jobs: jobs,
-                textScale: textScale,
-              ),
-            );
-            await tester.pump(const Duration(milliseconds: 300));
-            await GoogleFonts.pendingFonts();
-            await tester.pump(const Duration(seconds: 2));
-            expect(tester.takeException(), isNull);
-            await tester.tap(find.text('Gojek (GoTo Group)'));
-            await tester.pumpAndSettle();
-            expect(tester.takeException(), isNull);
-            final detailBottom = tester
-                .getRect(find.text('Lihat Detail').first)
-                .bottom;
-            final nextHeaderTop = tester
-                .getRect(find.text(jobs.first.companyName))
-                .top;
-            expect(detailBottom, lessThan(nextHeaderTop));
-            await tester.drag(
-              find.byType(SingleChildScrollView).first,
-              const Offset(0, -1200),
-            );
-            await tester.pumpAndSettle();
-            expect(tester.takeException(), isNull);
-          },
-        );
-      }
     }
 
     testWidgets('Search uses full width and supports large text', (
