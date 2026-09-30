@@ -66,7 +66,7 @@ jobs:
         run: |
           test -f build/ios/iphoneos/Runner.app/Runner
           /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' build/ios/iphoneos/Runner.app/Info.plist
-          lipo -verify_arch arm64 build/ios/iphoneos/Runner.app/Runner
+          lipo build/ios/iphoneos/Runner.app/Runner -verify_arch arm64
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r -9 Ngelamar-iOS-Release.ipa Payload
